@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight — General</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-red);">GENERAL</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:10px; color:#666;">MODO AUDITORÍA</span>
+        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    </div>
+  </header>
+
+  <div class="admin-container">
+    <div class="dashboard-grid">
+        <a href="reporte-pnl.html" class="dash-card" style="border-color:var(--mc-accent-green);">
+            <div class="dash-icon">📈</div>
+            <h3 class="dash-title">Reporte P&L</h3>
+            <div class="dash-desc">Rentabilidad Mensual</div>
+        </a>
+        <a href="admin-logs.html" class="dash-card">
+            <div class="dash-icon">🛡️</div>
+            <h3 class="dash-title">Logs Seguridad</h3>
+            <div class="dash-desc">Auditoría de eventos</div>
+        </a>
+        <a href="panel-master.html" class="dash-card" style="border-color:var(--mc-accent-purple);">
+            <div class="dash-icon">⚙️</div>
+            <h3 class="dash-title">Master Data</h3>
+            <div class="dash-desc">Configuración Global</div>
+        </a>
+        <a href="#" class="dash-card">
+            <div class="dash-icon">👁️</div>
+            <h3 class="dash-title">Visión Global</h3>
+            <div class="dash-desc">Acceso a módulos operativos</div>
+        </a>
+    </div>
+  </div>
+</body>
+</html>

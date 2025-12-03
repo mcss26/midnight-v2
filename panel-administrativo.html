@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight — Administrativo</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: #FFD700;">ADMIN</span></div>
+    <div style="display:flex; gap:10px;">
+        <a href="modulo-qr.html" class="btn-action" style="padding:6px 10px;">📍 FICHAR</a>
+        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    </div>
+  </header>
+
+  <div class="admin-container" style="margin-top:30px;">
+    
+    <div class="dashboard-section">
+        <div class="section-label">TESORERÍA & CAJA</div>
+        <div class="dashboard-grid">
+            <a href="admin-cierre.html" class="dash-card">
+                <div class="dash-icon">🌜</div>
+                <h3 class="dash-title">Cierre Noche</h3>
+                <div class="dash-desc">Validar Cierre de Caja</div>
+            </a>
+            <a href="admin-arqueo.html" class="dash-card">
+                <div class="dash-icon">📑</div>
+                <h3 class="dash-title">Arqueo Semanal</h3>
+                <div class="dash-desc">Control Caja Fuerte</div>
+            </a>
+            <a href="admin-pagos.html" class="dash-card">
+                <div class="dash-icon">💸</div>
+                <h3 class="dash-title">Calendario Pagos</h3>
+                <div class="dash-desc">Vencimientos</div>
+            </a>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <div class="section-label">LOGÍSTICA & PAGOS</div>
+        <div class="dashboard-grid">
+            <a href="admin-deposito.html" class="dash-card" style="border-color:#FFD700;">
+                <div class="dash-icon">🏭</div>
+                <h3 class="dash-title">Depósito Central</h3>
+                <div class="dash-desc">Control Stock & Compras</div>
+            </a>
+            <a href="admin-compras.html" class="dash-card">
+                <div class="dash-icon">💳</div>
+                <h3 class="dash-title">Órdenes de Pago</h3>
+                <div class="dash-desc">Facturas & Solicitudes</div>
+            </a>
+            <a href="panel-master.html" class="dash-card" style="border-color:var(--mc-accent-purple);">
+                <div class="dash-icon">⚙️</div>
+                <h3 class="dash-title">Master Data</h3>
+                <div class="dash-desc">Proveedores & Config</div>
+            </a>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <div class="section-label">COMERCIAL</div>
+        <div class="dashboard-grid">
+            <a href="admin-carta.html" class="dash-card">
+                <div class="dash-icon">🍹</div>
+                <h3 class="dash-title">Carta Web</h3>
+                <div class="dash-desc">Precios Públicos</div>
+            </a>
+        </div>
+    </div>
+
+  </div>
+</body>
+</html>

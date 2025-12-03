@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight — Operativo</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: #fff;">OPS</span></div>
+    <div style="display:flex; gap:10px;">
+        <a href="modulo-qr.html" class="btn-action" style="padding:6px 10px;">📍 FICHAR</a>
+        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    </div>
+  </header>
+
+  <div class="admin-container" style="margin-top:30px;">
+    
+    <div class="dashboard-grid">
+        <a href="operativo-dotacion.html" class="dash-card" style="height:180px; justify-content:center; text-align:center;">
+            <div style="font-size:36px;">👷</div>
+            <h3 class="dash-title" style="margin-top:10px;">DOTACIÓN</h3>
+            <div class="dash-desc">Armado de Equipos</div>
+        </a>
+
+        <a href="operativo-stock.html" class="dash-card" style="height:180px; justify-content:center; text-align:center;">
+            <div style="font-size:36px;">📦</div>
+            <h3 class="dash-title" style="margin-top:10px;">STOCK ACTUAL</h3>
+            <div class="dash-desc">Consulta Inventario</div>
+        </a>
+
+        <a href="operativo-pedidos.html" class="dash-card" style="height:180px; justify-content:center; text-align:center;">
+            <div style="font-size:36px;">📝</div>
+            <h3 class="dash-title" style="margin-top:10px;">SOLICITAR COMPRA</h3>
+            <div class="dash-desc">Reposición Insumos</div>
+        </a>
+    </div>
+
+    <div class="dashboard-grid" style="margin-top:20px;">
+        <a href="encargado-novedades.html" class="dash-card">
+            <div class="dash-icon">📢</div>
+            <h3 class="dash-title">Libro de Novedades</h3>
+            <div class="dash-desc">Bitácora de la Noche</div>
+        </a>
+    </div>
+
+  </div>
+</body>
+</html>

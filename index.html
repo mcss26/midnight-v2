@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight V2 — Acceso</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <div id="login-overlay" style="display:flex;">
+    <div class="login-box">
+      <h2 style="color:var(--mc-accent-blue); font-family:'Outfit'; margin:0 0 10px 0; letter-spacing:1px;">MIDNIGHT CLUB</h2>
+      <p style="color:#666; font-size:11px; margin-bottom:30px;">SISTEMA DE GESTIÓN INTEGRAL V2</p>
+      
+      <input type="text" id="userInput" class="login-input" placeholder="USUARIO" autocomplete="off">
+      <input type="password" id="passInput" class="login-input" placeholder="CONTRASEÑA">
+      
+      <div id="loginError" class="login-error">Credenciales inválidas</div>
+      <button id="btnLogin" class="btn-login" style="background:var(--mc-accent-blue); color:#000;">INGRESAR</button>
+    </div>
+  </div>
+
+  <script>
+    // CREDENCIALES
+    const SUPABASE_URL = 'https://dlwewdlfuovxofetcmjv.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsd2V3ZGxmdW92eG9mZXRjbWp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3Mjc0OTAsImV4cCI6MjA4MDMwMzQ5MH0.8Ddesga7tiHQ-kPAXgJO1zEswXafk-M_F3qenWuHEgs';
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // MAPEO EXACTO DE ROLES A PANELES
+    const REDIRECT_MAP = {
+      // Nivel 1: Staff
+      'staff_caja': 'panel-staff.html',
+      'staff_barra': 'panel-staff.html',
+      'staff_acreditaciones': 'panel-staff.html',
+      
+      // Nivel 2: Encargados
+      'encargado_caja': 'panel-encargados.html',
+      'encargado_barra': 'panel-encargados.html',
+      'encargado_seguridad': 'panel-encargados.html',
+      'encargado_limpieza': 'panel-encargados.html',
+      
+      // Nivel 3: Gerencias (SEPARADAS)
+      'admin_rrpp': 'panel-gerencia.html',      // RRPP usa el panel genérico o web
+      'admin_admin': 'panel-administrativo.html', // NUEVO
+      'admin_operativo': 'panel-operativo.html',  // NUEVO
+      
+      // Nivel 4: General
+      'gerencia_general': 'panel-general.html'
+    };
+
+    document.getElementById('btnLogin').addEventListener('click', doLogin);
+    document.getElementById('passInput').addEventListener('keydown', (e) => { if(e.key==='Enter') doLogin() });
+
+    async function doLogin() {
+        const u = document.getElementById('userInput').value.trim();
+        const p = document.getElementById('passInput').value.trim();
+        const btn = document.getElementById('btnLogin');
+        const err = document.getElementById('loginError');
+        
+        btn.innerText = "VERIFICANDO..."; err.style.display = 'none';
+
+        const email = u.includes('@') ? u : `${u}@midnight.com`;
+        const { data, error } = await client.auth.signInWithPassword({ email: email, password: p });
+
+        if (error || !data.user) {
+            btn.innerText = "INGRESAR";
+            err.style.display = 'block';
+            err.innerText = "Usuario o contraseña incorrectos";
+            return;
+        }
+
+        const { data: profile } = await client.from('profiles').select('role').eq('id', data.user.id).single();
+
+        if (profile && REDIRECT_MAP[profile.role]) {
+            localStorage.setItem('mc_user_role', profile.role);
+            localStorage.setItem('mc_user_name', u.toUpperCase());
+            window.location.href = REDIRECT_MAP[profile.role];
+        } else {
+            btn.innerText = "INGRESAR";
+            err.style.display = 'block';
+            err.innerText = "Usuario sin rol válido.";
+            await client.auth.signOut();
+        }
+    }
+  </script>
+</body>
+</html>
