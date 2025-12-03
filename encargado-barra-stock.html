@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight - Movimientos de Stock</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Tarjeta Principal */
+    .stock-card {
+        background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius);
+        padding: 30px; margin-bottom: 30px;
+    }
+    
+    /* Historial */
+    .movement-row {
+        background: #111; border: 1px solid #222; border-left: 4px solid var(--accent-green);
+        border-radius: 6px; padding: 12px 15px; margin-bottom: 8px;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--accent-green);">STOCK</span></div>
+    <button onclick="window.location.href='encargado-barra-index.html'" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    <div class="section-header">
+        <h2 class="section-title">Transferencia de Inventario</h2>
+        <button onclick="loadMovements()" class="btn-refresh">REFRESCAR</button>
+    </div>
+
+    <div class="stock-card">
+        <h3 class="section-title" style="font-size:18px; color:var(--accent-green); margin-bottom:25px;">Entrega de Depósito a Barra</h3>
+        
+        <label class="input-label">INSUMO A TRANSFERIR</label>
+        <select id="selSku" class="modal-select"></select>
+        
+        <div style="display:flex; gap:15px; margin-top:15px;">
+            <div style="flex:1;">
+                <label class="input-label">CANTIDAD</label>
+                <input type="number" id="qtyTransfer" class="modal-input" placeholder="0">
+            </div>
+            <div style="flex:1;">
+                <label class="input-label">BARRA / ÁREA DESTINO</label>
+                <input type="text" id="areaDestino" class="modal-input" placeholder="Ej: BARRA 1" value="BARRA 1">
+            </div>
+        </div>
+
+        <button onclick="submitTransfer()" id="btnTransfer" class="btn-primary" style="width:100%; padding:15px; margin-top:20px;">REGISTRAR ENTREGA Y DESCONTAR STOCK 📦</button>
+    </div>
+
+    <h3 class="section-title" style="font-size:18px; margin-bottom:15px;">Movimientos Recientes (Hoy)</h3>
+    <div id="movementsList" class="data-list">
+        <div style="text-align:center; padding: 20px; color: var(--txt-secondary);">Cargando movimientos...</div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentUser = null;
+    let skus = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        await loadSkus();
+        loadMovements();
+    });
+
+    // === Carga de Datos ===
+
+    async function loadSkus() {
+        // Cargar solo insumos activos y de alta rotación (BEBIDAS, INSUMOS)
+        const { data } = await client.from('inventory_skus')
+            .select('id, name, unit_type, stock_current')
+            .in('category', ['BEBIDAS', 'INSUMOS BARRA', 'INSUMOS'])
+            .eq('is_active', true)
+            .order('name');
+
+        skus = data || [];
+        const sel = document.getElementById('selSku');
+        
+        if (!skus.length) { 
+            sel.innerHTML = '<option value="">No hay insumos maestros.</option>'; 
+            return; 
+        }
+
+        sel.innerHTML = '<option value="">Selecciona el insumo...</option>' + 
+            skus.map(s => `<option value="${s.id}" data-stock="${s.stock_current}">${s.name} (Stock: ${s.stock_current} ${s.unit_type})</option>`).join('');
+    }
+
+    async function loadMovements() {
+        const today = new Date().toISOString().split('T')[0];
+        const container = document.getElementById('movementsList');
+        
+        const { data } = await client.from('inventory_movements')
+            .select(`id, created_at, change_amount, movement_type, notes, inventory_skus(name)`)
+            .eq('event_date', today)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--txt-secondary);">No hay movimientos registrados hoy.</div>`;
+            return;
+        }
+
+        container.innerHTML = data.map(m => {
+            const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            // Estilo por tipo de movimiento
+            let color = 'var(--txt-secondary)';
+            let icon = '🔄';
+            if (m.movement_type === 'ENTREGA_BARRA') { icon = '⬆️'; color = 'var(--accent-green)'; }
+            if (m.movement_type === 'MERMA') { icon = '⬇️'; color = 'var(--accent-red)'; }
+
+            return `
+            <div class="movement-row" style="border-left-color:${color};">
+                <div>
+                    <div style="font-weight:700; color:#fff; font-size:14px;">${icon} ${m.inventory_skus.name}</div>
+                    <div style="font-size:12px; color:var(--txt-secondary); margin-top:4px;">
+                        ${m.movement_type} ${m.change_amount} u.
+                        <span style="color:var(--txt-tertiary); margin-left:10px;">${m.notes || ''}</span>
+                    </div>
+                </div>
+                <div style="font-size:10px; color:var(--txt-tertiary);">${time}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // === Lógica de Transferencia ===
+
+    async function submitTransfer() {
+        const skuId = document.getElementById('selSku').value;
+        const qty = parseFloat(document.getElementById('qtyTransfer').value);
+        const area = document.getElementById('areaDestino').value.toUpperCase().trim();
+        
+        if (!skuId || !qty || qty <= 0) return alert("Selecciona el insumo e ingresa una cantidad válida.");
+        if (!area) return alert("Ingresa el área destino.");
+
+        const currentSku = skus.find(s => s.id == skuId);
+        if (qty > currentSku.stock_current) return alert(`⚠️ Stock insuficiente. Solo quedan ${currentSku.stock_current} unidades.`);
+
+        if(!confirm(`¿CONFIRMAR la entrega de ${qty} unidades de ${currentSku.name} a ${area}? Se descontará el stock global.`)) return;
+
+        const btn = document.getElementById('btnTransfer');
+        btn.disabled = true; btn.innerText = "PROCESANDO...";
+
+        try {
+            // 1. Registrar Movimiento (Salida de Depósito)
+            const { error: moveError } = await client.from('inventory_movements').insert({
+                sku_id: skuId,
+                user_id: currentUser.id,
+                change_amount: -qty, // Cantidad negativa = SALIDA DE INVENTARIO
+                movement_type: 'ENTREGA_BARRA', 
+                notes: `ENTREGA a: ${area}`,
+                event_date: new Date().toISOString().split('T')[0]
+            });
+            if (moveError) throw moveError;
+
+            // 2. Ajustar Stock Global
+            const newStock = (currentSku.stock_current || 0) - qty;
+            const { error: stockError } = await client.from('inventory_skus')
+                .update({ stock_current: newStock })
+                .eq('id', skuId);
+            if (stockError) throw stockError;
+
+            alert("✅ Entrega registrada. Stock global actualizado.");
+            
+            // Limpiar y refrescar
+            document.getElementById('qtyTransfer').value = '';
+            await loadSkus();
+            loadMovements();
+
+        } catch (e) {
+            console.error(e);
+            alert("Error al registrar la transferencia: " + e.message);
+        } finally {
+            btn.disabled = false; btn.innerText = "REGISTRAR ENTREGA Y DESCONTAR STOCK 📦";
+        }
+    }
+  </script>
+</body>
+</html>

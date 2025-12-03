@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight - Stock Global Operativo</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Estilo para los botones de acción rápida en stock */
+    .btn-stock-adjust {
+        background: var(--bg-card); border: 1px solid var(--border-light); 
+        color: var(--txt-primary); padding: 8px 12px; border-radius: 6px;
+        font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s;
+    }
+    .btn-stock-adjust:hover { background: var(--bg-hover); }
+
+    /* Inputs "Stealth" para la tabla - Reutilizando de admin-skus.html */
+    .table-input { 
+        background: transparent; border: 1px solid transparent; color: var(--text-primary); 
+        width: 100%; text-align: center; font-family: 'Inter', monospace; font-size: 13px; 
+        padding: 6px; border-radius: 4px; transition: all 0.2s;
+    }
+    .table-input:focus { background: #000; border-color: var(--accent-blue); outline: none; }
+    .table-input:hover { background: rgba(255,255,255,0.05); }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--text-primary);">INVENTARIO</span></div>
+    <button onclick="window.location.href='operativo-index.html'" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Stock Global Operativo</h2>
+            <p class="section-desc">Monitoreo de inventario maestro y ajustes de conteo.</p>
+        </div>
+        <button onclick="loadData()" class="btn-primary">REFRESCAR</button>
+    </div>
+
+    <input type="text" id="searchInput" class="search-input-admin" placeholder="🔍 Buscar insumo por nombre..." oninput="filterList()">
+
+    <div class="table-container" style="margin-top: 20px;">
+        <table class="sku-table">
+            <thead>
+                <tr>
+                    <th style="padding-left: 25px;">INSUMO / CATEGORÍA</th>
+                    <th style="text-align:center; width: 100px;">STOCK ACTUAL</th>
+                    <th style="text-align:center; width: 100px;">STOCK IDEAL</th>
+                    <th style="text-align:right; width: 120px;">COSTO UNITARIO</th>
+                    <th style="width: 200px; text-align:center;">AJUSTE RÁPIDO</th>
+                </tr>
+            </thead>
+            <tbody id="skuList">
+                <tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--txt-secondary);">Cargando inventario...</td></tr>
+            </tbody>
+        </table>
+    </div>
+  </div>
+
+  <div id="adjustModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 class="section-title" style="font-size:20px; margin-bottom:10px;">Ajuste Detallado de Stock</h3>
+        <p class="section-desc">Registra un movimiento en ${new Date().toLocaleDateString()}</p>
+        <input type="hidden" id="adjSkuId">
+        <input type="hidden" id="adjCurrentStock">
+        
+        <label class="input-label">INSUMO:</label>
+        <div id="adjSkuName" style="font-weight:700; color:var(--accent-blue); font-size:16px; margin-bottom:15px;"></div>
+
+        <div style="display:flex; gap:15px;">
+            <div style="flex:1;">
+                <label class="input-label">TIPO DE MOVIMIENTO</label>
+                <select id="adjType" class="modal-select">
+                    <option value="AJUSTE_POSITIVO">INGRESO / AJUSTE (+) </option>
+                    <option value="AJUSTE_NEGATIVO">EGRESO / AJUSTE (-)</option>
+                    <option value="RECEPCION_COMPRA">RECEPCIÓN DE COMPRA</option>
+                    <option value="INVENTARIO_FISICO">CONTEO FÍSICO (Inicial/Final)</option>
+                </select>
+            </div>
+            <div style="flex:1;">
+                <label class="input-label">CANTIDAD A AJUSTAR</label>
+                <input type="number" id="adjAmount" class="modal-input" placeholder="0">
+            </div>
+        </div>
+
+        <label class="input-label">NOTA / JUSTIFICACIÓN (Obligatorio)</label>
+        <textarea id="adjNotes" class="modal-input" placeholder="Detalle el motivo del ajuste..." style="height:80px;"></textarea>
+
+        <div class="modal-btns">
+            <button onclick="closeModal()" class="btn-modal-cancel">Cancelar</button>
+            <button onclick="saveAdjustment()" class="btn-modal-save" style="background:var(--accent-green);">GUARDAR Y ACTUALIZAR STOCK</button>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    let allSkus = [];
+    let currentUser = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        await loadData();
+    });
+
+    // === Carga de Datos (Migrado a JOIN) ===
+
+  async function loadData() {
+        const skusRes = await client.from('inventory_stock')
+            .select(`
+                sku_id, 
+                stock_current, 
+                stock_ideal, 
+                inventory_skus(name, category, unit_type, cost_price, is_active)
+            `)
+            .eq('inventory_skus.is_active', true) 
+            .order('sku_id'); 
+            
+        // Reformateamos los datos para un acceso más fácil, manteniendo el ID del stock
+        allSkus = (skusRes.data || [])
+            .filter(item => item.inventory_skus) // Filtramos si la unión (JOIN) devolvió nulo
+            .map(item => ({
+                id: item.sku_id,
+                name: item.inventory_skus.name,
+                category: item.inventory_skus.category,
+                unit_type: item.inventory_skus.unit_type,
+                cost_price: item.inventory_skus.cost_price,
+                stock_current: item.stock_current,
+                stock_ideal: item.stock_ideal
+            }));
+        
+        // Si hay un error en la base de datos, lo mostramos
+        if (skusRes.error) {
+             console.error("Error de carga de Supabase:", skusRes.error);
+             document.getElementById('skuList').innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--accent-red);">Error al conectar/cargar datos.</td></tr>';
+             return;
+        }
+
+        renderList(allSkus);
+    }
+
+    // === Renderizado y Filtros ===
+
+    function renderList(list) {
+        const tbody = document.getElementById('skuList');
+        if (!list.length) { 
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--txt-secondary);">Sin insumos operativos cargados.</td></tr>'; 
+            return; 
+        }
+
+        tbody.innerHTML = list.map(i => {
+            const stockColor = i.stock_current < (i.stock_ideal * 0.2) ? 'var(--accent-red)' : (i.stock_current < i.stock_ideal ? 'var(--accent-gold)' : 'var(--accent-green)');
+
+            return `
+            <tr>
+                <td style="padding-left: 25px;">
+                    <div class="row-title">${i.name}</div>
+                    <div class="row-sub-text"><span class="tag tag-gray">${i.category || 'GRAL'}</span></div>
+                </td>
+                <td style="text-align:center; font-weight:700; color:${stockColor};">${i.stock_current} ${i.unit_type}</td>
+                <td style="text-align:center; color:var(--txt-secondary);">${i.stock_ideal || '-'}</td>
+                <td class="col-costo">${MC_UTILS.formatCurrency(i.cost_price)}</td>
+                <td style="text-align:center;">
+                    <button onclick="openModal(${i.id}, 1)" class="btn-stock-adjust" style="border-color:var(--accent-green); color:var(--accent-green);">+ ADJ</button>
+                    <button onclick="openModal(${i.id}, -1)" class="btn-stock-adjust" style="border-color:var(--accent-red); color:var(--accent-red); margin-left:8px;">- ADJ</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function filterList() {
+        const t = document.getElementById('searchInput').value.toLowerCase();
+        renderList(allSkus.filter(i => i.name.toLowerCase().includes(t)));
+    }
+
+    // === Lógica del Modal ===
+
+    function openModal(skuId, type) {
+        // Buscamos por ID (que ahora es el sku_id)
+        const sku = allSkus.find(x => x.id === skuId); 
+        document.getElementById('adjSkuId').value = sku.id;
+        document.getElementById('adjCurrentStock').value = sku.stock_current;
+        document.getElementById('adjSkuName').innerText = sku.name;
+        
+        // Predeterminar tipo de ajuste
+        if (type === 1) {
+             document.getElementById('adjType').value = 'AJUSTE_POSITIVO';
+             document.querySelector('.modal-box button.btn-modal-save').style.background = 'var(--accent-green)';
+        } else {
+             document.getElementById('adjType').value = 'AJUSTE_NEGATIVO';
+             document.querySelector('.modal-box button.btn-modal-save').style.background = 'var(--accent-red)';
+        }
+
+        document.getElementById('adjAmount').value = '';
+        document.getElementById('adjNotes').value = '';
+        document.getElementById('adjustModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('adjustModal').style.display = 'none';
+    }
+
+    async function saveAdjustment() {
+        const skuId = document.getElementById('adjSkuId').value;
+        const currentStock = parseFloat(document.getElementById('adjCurrentStock').value);
+        const type = document.getElementById('adjType').value;
+        const amount = parseFloat(document.getElementById('adjAmount').value);
+        const notes = document.getElementById('adjNotes').value.trim();
+
+        if (!amount || amount <= 0) return alert("Ingresa una cantidad válida.");
+        if (!notes) return alert("La justificación es obligatoria.");
+
+        let changeAmount = amount;
+        if (type === 'AJUSTE_NEGATIVO') {
+            changeAmount = -amount;
+        }
+
+        const newStock = currentStock + changeAmount;
+        
+        if (newStock < 0) return alert("Error: El ajuste negativo excede el stock actual.");
+
+        if (!confirm(`Confirmar ajuste de ${changeAmount} unidades? Stock final estimado: ${newStock}`)) return;
+
+        // --- FIX DE UUID: Obtener ID o NULL si es 'dev' ---
+        const userId = (currentUser.id === 'dev') ? null : currentUser.id; 
+        
+        // Deshabilitar botón
+        const btn = document.querySelector('.modal-box button.btn-modal-save');
+        btn.disabled = true; btn.innerText = "ACTUALIZANDO...";
+
+        try {
+            // 1. Registrar el Movimiento (Inventario)
+            const { error: moveError } = await client.from('inventory_movements').insert({
+                sku_id: skuId,
+                user_id: userId,
+                change_amount: changeAmount,
+                movement_type: type,
+                notes: notes,
+                event_date: new Date().toISOString().split('T')[0]
+            });
+            if (moveError) throw moveError;
+
+            // 2. Actualizar el Stock Operativo (Tabla inventory_stock)
+            const { error: stockError } = await client.from('inventory_stock')
+                .update({ stock_current: newStock })
+                .eq('sku_id', skuId); // CRÍTICO: Usamos sku_id como PK
+            if (stockError) throw stockError;
+
+            // 3. Registrar Log (Auditoría)
+             await client.from('admin_logs').insert({ 
+                admin_id: userId, 
+                action: 'AJUSTE_STOCK_OPERATIVO', 
+                details: `SKU ${skuId}: ${type} por ${changeAmount}. Nuevo stock: ${newStock}.` 
+             });
+
+            alert("✅ Stock ajustado y movimiento registrado.");
+            closeModal();
+            
+            // ⭐ Esperar a que los nuevos datos se carguen y se dibuje la tabla.
+            await loadData(); 
+            
+        } catch (e) {
+            console.error(e);
+            alert("Error al guardar el ajuste: " + e.message);
+        } finally {
+            btn.disabled = false; btn.innerText = "GUARDAR Y ACTUALIZAR STOCK";
+        }
+    }
+  </script>
+</body>
+</html>

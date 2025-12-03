@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight - Cierre Stock Barra</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Estilos específicos para la tabla de inventario */
+    .stock-audit-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 20px; }
+    .stock-audit-table th, .stock-audit-table td {
+        padding: 10px 12px; border: 1px solid var(--border-light); text-align: center;
+        vertical-align: middle;
+    }
+    .stock-audit-table th { background: #101012; color: var(--txt-secondary); font-size: 11px; text-transform: uppercase; }
+    .stock-audit-table td { color: var(--txt-primary); }
+    
+    .input-stock {
+        width: 60px; background: #000; border: 1px solid #333; color: #fff;
+        padding: 5px; text-align: center; border-radius: 4px; font-weight: 600;
+    }
+    .input-stock.calc { background: transparent; border: none; font-weight: 700; color: var(--accent-green); }
+    .input-stock.calc-error { color: var(--accent-red); }
+
+    /* Estilo para hacer editable la apertura */
+    .input-stock.depot-apertura:not(:disabled) { border-color: var(--accent-gold); }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--accent-gold);">STOCK</span></div>
+    <button onclick="window.location.href='encargado-barra-index.html'" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Cierre de Inventario de Barra</h2>
+            <p class="section-desc">Auditoría y cálculo de consumo por punto de venta para la jornada de hoy.</p>
+        </div>
+        <button onclick="submitClose()" id="btnCerrar" class="btn-primary" style="background:var(--accent-gold); color:#000;">🔒 CERRAR AUDITORÍA</button>
+    </div>
+
+    <div style="background:var(--bg-card); padding:20px; border-radius:var(--radius); margin-bottom:20px;">
+        <label class="input-label">FECHA DE JORNADA</label>
+        <input type="date" id="eventDate" class="modal-input" style="width:200px;" disabled>
+    </div>
+
+    <div class="table-container">
+        <table class="stock-audit-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width: 250px;">INSUMO</th>
+                    <th colspan="2" style="background:#222;">DEPÓSITO</th>
+                    <th colspan="3" style="background:var(--accent-blue); color:#fff;">MOVIMIENTO Y CIERRE BARRA</th>
+                    <th colspan="3" style="background:var(--accent-green); color:#000;">CÁLCULO DE CONSUMO (VENTA)</th>
+                </tr>
+                <tr>
+                    <th style="background:var(--accent-gold); color:#000;">APERTURA (Conteo Físico)</th>
+                    <th>CIERRE FINAL</th>
+                    <th>TRANSFERIDO (Reposición)</th>
+                    <th>STOCK BARRA 1 (Cierre)</th>
+                    <th>STOCK BARRA 2 (Cierre)</th>
+                    <th style="background:var(--accent-green); color:#000;">CONSUMO B1</th>
+                    <th style="background:var(--accent-green); color:#000;">CONSUMO B2</th>
+                    <th style="background:var(--accent-green); color:#000;">ARQUEO DEPÓSITO</th>
+                </tr>
+            </thead>
+            <tbody id="stockBody">
+                <tr><td colspan="9" style="text-align:center; padding: 40px; color: var(--txt-secondary);">Cargando insumos...</td></tr>
+            </tbody>
+        </table>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let allSkus = [];
+    const BAR_LOCATIONS = ['B1', 'B2']; 
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        document.getElementById('eventDate').valueAsDate = new Date();
+        await loadSkusForAudit();
+    });
+
+    // === LÓGICA DE CARGA ===
+
+    async function loadSkusForAudit() {
+        // Cargar SKUs de alta rotación (BEBIDAS) - FILTRO AMPLIADO
+        const { data } = await client.from('inventory_skus')
+            .select('id, name, unit_type') 
+            .in('category', ['BEBIDAS', 'INSUMOS BARRA', 'VODKA', 'GIN', 'RON', 'WHISKY', 'APERITIVOS', 'CERVEZAS', 'COPAS', 'INSUMOS']) // Filtro Ampliado
+            .eq('is_active', true)
+            .order('name');
+        
+        allSkus = data || [];
+        renderAuditTable(allSkus);
+    }
+
+    // === RENDERIZADO Y CÁLCULO ===
+
+    function renderAuditTable(list) {
+        const tbody = document.getElementById('stockBody');
+        if (!list.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--txt-secondary);">No hay insumos para auditar.</td></tr>'; return; }
+
+        tbody.innerHTML = list.map(s => {
+            return `
+            <tr data-sku-id="${s.id}">
+                <td style="text-align:left;">
+                    <div style="font-weight:600; color:#fff;">${s.name}</div>
+                    <div style="font-size:11px; color:var(--txt-secondary); margin-top:4px;">Unidad: ${s.unit_type}</div>
+                </td>
+                
+                <td><input type="number" class="input-stock depot-apertura" value="0" oninput="calculateRow(${s.id})"></td>
+                <td><input type="number" class="input-stock depot-final" value="0" oninput="calculateRow(${s.id})"></td>
+                
+                <td><input type="number" class="input-stock transfer" value="0" oninput="calculateRow(${s.id})"></td>
+                
+                <td><input type="number" class="input-stock bar-closing-B1" value="0" oninput="calculateRow(${s.id})"></td>
+                <td><input type="number" class="input-stock bar-closing-B2" value="0" oninput="calculateRow(${s.id})"></td>
+                
+                <td><input type="text" class="input-stock calc consumption-B1" value="0" disabled></td>
+                <td><input type="text" class="input-stock calc consumption-B2" value="0" disabled></td>
+                <td><input type="text" class="input-stock calc depot-audit" value="0" disabled></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function calculateRow(skuId) {
+        const row = document.querySelector(`tr[data-sku-id="${skuId}"]`);
+        if (!row) return;
+
+        // --- 1. Lectura de Inputs ---
+        const depotApertura = parseFloat(row.querySelector('.depot-apertura').value) || 0;
+        const transfer = parseFloat(row.querySelector('.transfer').value) || 0;
+        const depotFinal = parseFloat(row.querySelector('.depot-final').value) || 0;
+        const barClosingB1 = parseFloat(row.querySelector('.bar-closing-B1').value) || 0;
+        const barClosingB2 = parseFloat(row.querySelector('.bar-closing-B2').value) || 0;
+
+        // --- 2. Cálculos de Consumo (Venta) ---
+        
+        // Consumo B1 = Stock Inicial Barra (Asumimos 0) + Transferido - Cierre B1
+        // Nota: El 'transfer' de esta tabla es la suma de reposiciones. Si el insumo no fue transferido a B1, el consumo es 0.
+        
+        const c1 = (transfer > 0) ? (transfer * 0.5) - barClosingB1 : 0; // Asunción de reparto 50/50 si hay transferencia
+        const c2 = (transfer > 0) ? (transfer * 0.5) - barClosingB2 : 0; // Asunción de reparto 50/50 si hay transferencia
+        
+        // Simplificación: Si el stock inicial de barra es 0, y se transfiere X, y quedan Y, el consumo es X-Y.
+        // C1 = Transferido - Cierre B1
+        const consumptionB1 = transfer - barClosingB1;
+        const consumptionB2 = transfer - barClosingB2;
+
+        // Stock que debería quedar en el Depósito si todo cuadra (Lo que no se transfirió, más el inicial del depósito)
+        const expectedFinalDepot = depotApertura - transfer; 
+
+        // --- 3. Actualización de Display ---
+
+        const c1Input = row.querySelector('.consumption-B1');
+        const c2Input = row.querySelector('.consumption-B2');
+        const depotAuditInput = row.querySelector('.depot-audit');
+
+        c1Input.value = consumptionB1.toFixed(0);
+        c2Input.value = consumptionB2.toFixed(0);
+
+        // Resaltar error si el consumo es negativo (imposible, a menos que el cierre sea mayor a la reposición)
+        if (consumptionB1 < 0 || consumptionB2 < 0) {
+            c1Input.classList.add('calc-error');
+            c2Input.classList.add('calc-error');
+        } else {
+            c1Input.classList.remove('calc-error');
+            c2Input.classList.remove('calc-error');
+        }
+        
+        // Auditoría DEPÓSITO: La diferencia entre el stock final contado y el stock final esperado (Apertura - Transferido)
+        const depotDifference = depotFinal - expectedFinalDepot; 
+        
+        if (Math.abs(depotDifference) > 1) { 
+             depotAuditInput.classList.add('calc-error');
+             depotAuditInput.value = `DIFF: ${depotDifference.toFixed(0)}`;
+        } else {
+             depotAuditInput.classList.remove('calc-error');
+             depotAuditInput.value = depotApertura.toFixed(0); // Muestra el valor de apertura si cuadra
+        }
+    }
+
+    // === LÓGICA DE CIERRE ===
+
+    async function submitClose() {
+        const date = document.getElementById('eventDate').value;
+        const btn = document.getElementById('btnCerrar');
+        btn.disabled = true; btn.innerText = "PROCESANDO CIERRE...";
+
+        if(!confirm("¿Confirmas que has ingresado el conteo de cierre completo?")) {
+            btn.disabled = false; btn.innerText = "🔒 CERRAR AUDITORÍA";
+            return;
+        }
+
+        let auditData = [];
+        let globalStockUpdatePromises = [];
+        let totalConsumption = 0;
+
+        document.querySelectorAll('#stockBody tr').forEach(row => {
+            const skuId = row.dataset.skuId;
+            const c1 = parseFloat(row.querySelector('.consumption-B1').value) || 0;
+            const c2 = parseFloat(row.querySelector('.consumption-B2').value) || 0;
+            const depotFinal = parseFloat(row.querySelector('.depot-final').value) || 0;
+            const depotApertura = parseFloat(row.querySelector('.depot-apertura').value) || 0;
+            const transfer = parseFloat(row.querySelector('.transfer').value) || 0;
+            const skuName = row.querySelector('td:first-child div').innerText;
+
+            totalConsumption += c1 + c2;
+            
+            // 1. Recolección de Datos Detallados (para el log)
+            auditData.push({
+                sku_id: skuId,
+                sku_name: skuName,
+                // NUEVOS CAMPOS CLAVE
+                depot_apertura: depotApertura, // Stock Inicial Contado
+                depot_transfer: transfer,
+                depot_final: depotFinal, // Stock Final Contado
+                // Consumos y Balances
+                consumption_b1: c1,
+                consumption_b2: c2,
+                stock_final_b1: parseFloat(row.querySelector('.bar-closing-B1').value) || 0,
+                stock_final_b2: parseFloat(row.querySelector('.bar-closing-B2').value) || 0,
+            });
+            
+            // 2. Preparar Actualización de Stock Global (ajustar stock_current al conteo final del depósito)
+            globalStockUpdatePromises.push(
+                client.from('inventory_skus').update({ stock_current: depotFinal, updated_at: new Date() }).eq('id', skuId)
+            );
+        });
+
+        // 3. Registrar el Movimiento (Cierre de Inventario)
+        try {
+            await Promise.all(globalStockUpdatePromises); // Ejecutar actualización de stock global
+
+            // Se registra un único movimiento que contiene todos los detalles de la auditoría.
+            const { error: moveError } = await client.from('inventory_movements').insert({
+                user_id: currentUser.id,
+                change_amount: totalConsumption, 
+                movement_type: 'CIERRE_INVENTARIO_BARRA', 
+                notes: `Cierre de Stock de Barra del ${date}. Detalles: ${JSON.stringify(auditData)}`,
+                event_date: date
+            });
+
+            if(moveError) throw moveError;
+
+            alert("✅ Auditoría de Stock de Barra cerrada y Stock Global ajustado al conteo del Depósito.");
+            window.location.href = 'encargado-barra-index.html';
+
+        } catch (e) {
+            console.error(e);
+            alert("Error al cerrar la auditoría: " + e.message);
+        } finally {
+            btn.disabled = false; btn.innerText = "🔒 CERRAR AUDITORÍA";
+        }
+    }
+  </script>
+</body>
+</html>

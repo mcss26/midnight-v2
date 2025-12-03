@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight - Jefatura de Barra</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Tabs Navegación */
+    .tab-nav { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 1px solid var(--border-light); padding-bottom: 0; }
+    .tab-btn { 
+        background: none; border: none; color: var(--txt-secondary); padding: 15px 10px; 
+        font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; 
+        border-bottom: 3px solid transparent; transition: 0.2s;
+    }
+    .tab-btn:hover { color: #fff; }
+    .tab-btn.active { color: var(--txt-primary); border-bottom-color: var(--accent-gold); }
+
+    /* Estilo para el Reporte/Pedido */
+    .report-card {
+        background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius);
+        padding: 16px 20px; margin-bottom: 10px;
+    }
+    .report-card.pedido { border-left: 4px solid var(--accent-green); }
+    .report-card.incidente { border-left: 4px solid var(--accent-red); }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--accent-gold);">BARRA</span></div>
+    <button onclick="window.location.href='encargados-index.html'" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Monitor de Actividad Staff</h2>
+            <p class="section-desc">Reportes de novedades y pedidos de insumos en tiempo real.</p>
+        </div>
+        <button onclick="loadIncidents('active')" class="btn-refresh">REFRESCAR</button>
+    </div>
+
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('incidents', this)">📢 INCIDENTES</button>
+        <button class="tab-btn" onclick="switchTab('orders', this)">📦 PEDIDOS ACTIVOS</button>
+        <button class="tab-btn" onclick="switchTab('history', this)">📜 HISTORIAL</button>
+    </div>
+
+    <div id="view-incidents">
+        <div id="incidentsList" class="data-list"></div>
+    </div>
+
+    <div id="view-orders" style="display:none;">
+        <div id="ordersList" class="data-list"></div>
+    </div>
+    
+    <div id="view-history" style="display:none;">
+        <div id="historyList" class="data-list"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        loadIncidents('active');
+    });
+
+    function switchTab(view, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        document.getElementById('view-incidents').style.display = 'none';
+        document.getElementById('view-orders').style.display = 'none';
+        document.getElementById('view-history').style.display = 'none';
+        
+        if (view === 'incidents') {
+            document.getElementById('view-incidents').style.display = 'block';
+            loadIncidents('active');
+        } else if (view === 'orders') {
+            document.getElementById('view-orders').style.display = 'block';
+            loadOrders('open');
+        } else if (view === 'history') {
+            document.getElementById('view-history').style.display = 'block';
+            loadHistory();
+        }
+    }
+
+    // === LÓGICA DE CARGA ===
+
+    async function loadIncidents() {
+        // Carga Incidentes de Barra que no sean PEDIDO y estén abiertos
+        const { data, error } = await client.from('incident_reports')
+            .select(`id, created_at, type, severity, description, status, profiles(full_name, username)`)
+            .eq('area', 'BARRA')
+            .neq('type', 'PEDIDO')
+            .neq('status', 'closed')
+            .order('severity', { ascending: false })
+            .order('created_at', { ascending: false });
+
+        renderList(document.getElementById('incidentsList'), data, error, 'incidente');
+    }
+
+    async function loadOrders() {
+        // Carga solo los PEDIDOS abiertos
+        const { data, error } = await client.from('incident_reports')
+            .select(`id, created_at, type, severity, description, status, profiles(full_name, username)`)
+            .eq('area', 'BARRA')
+            .eq('type', 'PEDIDO')
+            .neq('status', 'closed')
+            .order('created_at', { ascending: false });
+
+        renderList(document.getElementById('ordersList'), data, error, 'pedido');
+    }
+
+    async function loadHistory() {
+        // Carga incidentes y pedidos resueltos
+        const { data, error } = await client.from('incident_reports')
+            .select(`id, created_at, type, severity, description, status, profiles(full_name, username)`)
+            .eq('area', 'BARRA')
+            .eq('status', 'closed')
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        renderList(document.getElementById('historyList'), data, error, 'history');
+    }
+
+    // === LÓGICA DE RENDERIZADO ===
+
+    function renderList(container, data, error, context) {
+        if (error) {
+            container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--accent-red);">Error al cargar: ${error.message}</div>`;
+            return;
+        }
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--txt-secondary);">No hay ${context === 'pedido' ? 'pedidos' : 'novedades'} activos.</div>`;
+            return;
+        }
+
+        container.innerHTML = data.map(r => {
+            const reporter = r.profiles ? (r.profiles.full_name || r.profiles.username) : 'Sistema';
+            const time = new Date(r.created_at).toLocaleString('es-AR', { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
+            
+            let typeColor = (r.type === 'PEDIDO') ? 'var(--accent-green)' : (r.severity === 'ALTA' ? 'var(--accent-red)' : 'var(--accent-blue)');
+            let cardClass = (r.type === 'PEDIDO') ? 'pedido' : 'incidente';
+            let btnText = (r.type === 'PEDIDO') ? 'ENTREGADO' : 'CERRAR';
+
+            return `
+            <div class="report-card ${cardClass}">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <div style="font-size:15px; font-weight:700; color:#fff;">${r.type} <span style="font-size:10px; color:${typeColor}; margin-left:8px;">${r.severity}</span></div>
+                        <div style="font-size:12px; color:var(--txt-secondary); margin-top:5px; line-height:1.4;">${r.description}</div>
+                        <div style="font-size:10px; color:var(--txt-tertiary); margin-top:8px;">
+                            Reportado por: ${reporter} • ${time}
+                        </div>
+                    </div>
+                    <button 
+                        onclick="closeReport(${r.id}, '${r.type}')" 
+                        class="btn-primary" 
+                        style="background:${typeColor}; color:#000; padding:8px 12px; font-size:11px; margin-left:15px;">
+                        ${btnText}
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    
+    // === LÓGICA DE ACCIÓN ===
+
+    async function closeReport(id, type) {
+        const action = type === 'PEDIDO' ? 'entrega' : 'cierre';
+        if(!confirm(`¿Confirmar ${action} del reporte #${id}?`)) return;
+
+        const { error } = await client.from('incident_reports')
+            .update({ status: 'closed' })
+            .eq('id', id);
+
+        if(error) {
+            alert("Error al cerrar: " + error.message);
+        } else {
+            alert(`${type} marcado como finalizado.`);
+            // Refrescar la vista actual después de la acción
+            const currentView = document.querySelector('.tab-btn.active').innerText.toLowerCase().includes('incidente') ? 'incidents' : 'orders';
+            switchTab(currentView, document.querySelector('.tab-btn.active'));
+        }
+    }
+  </script>
+</body>
+</html>
