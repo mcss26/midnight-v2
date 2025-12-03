@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight Admin — Cargos</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: #d600ff;">ROLES</span></div>
+    <button onclick="window.history.back()" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    <div class="section-header">
+        <h2 class="section-title">Cargos & Pagos</h2>
+        <button onclick="openModal()" class="btn-refresh">+ NUEVO CARGO</button>
+    </div>
+    <div id="rolesList" class="dashboard-grid"></div>
+  </div>
+
+  <div id="roleModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Definir Cargo</h3>
+        <input type="hidden" id="rId">
+        <label class="input-label">Puesto</label><input type="text" id="rName" class="modal-input">
+        <label class="input-label">Jornal Base</label><input type="number" id="rPay" class="modal-input">
+        <div class="modal-btns"><button onclick="closeModal()" class="btn-modal-cancel">CANCELAR</button><button onclick="saveRole()" class="btn-modal-save">GUARDAR</button></div>
+    </div>
+  </div>
+
+  <script>
+    // CREDENCIALES V2
+    const SUPABASE_URL = 'https://dlwewdlfuovxofetcmjv.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsd2V3ZGxmdW92eG9mZXRjbWp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3Mjc0OTAsImV4cCI6MjA4MDMwMzQ5MH0.8Ddesga7tiHQ-kPAXgJO1zEswXafk-M_F3qenWuHEgs';
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    window.onload = loadRoles;
+
+    async function loadRoles() {
+        const { data } = await client.from('staff_roles').select('*').order('role_name');
+        document.getElementById('rolesList').innerHTML = data.map(r => `
+            <div class="dash-card" style="height:auto;">
+                <div style="display:flex; justify-content:space-between;">
+                    <h3 class="dash-title" style="color:#d600ff;">${r.role_name}</h3>
+                    <button onclick="edit(${r.id})" style="border:none; background:none; cursor:pointer;">✏️</button>
+                </div>
+                <div class="dash-desc">Base: $${r.base_pay}</div>
+            </div>`).join('');
+    }
+
+    function openModal() { document.getElementById('roleModal').style.display='flex'; document.getElementById('rId').value=''; }
+    function closeModal() { document.getElementById('roleModal').style.display='none'; }
+    
+    async function edit(id) {
+        const { data } = await client.from('staff_roles').select('*').eq('id',id).single();
+        document.getElementById('rId').value = data.id;
+        document.getElementById('rName').value = data.role_name;
+        document.getElementById('rPay').value = data.base_pay;
+        document.getElementById('roleModal').style.display='flex';
+    }
+
+    async function saveRole() {
+        const id = document.getElementById('rId').value;
+        const p = { role_name: document.getElementById('rName').value, base_pay: document.getElementById('rPay').value };
+        if(id) await client.from('staff_roles').update(p).eq('id',id);
+        else await client.from('staff_roles').insert(p);
+        closeModal(); loadRoles();
+    }
+  </script>
+</body>
+</html>

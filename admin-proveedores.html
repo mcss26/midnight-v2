@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight Admin — Proveedores</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: #fff;">PROVEEDORES</span></div>
+    <button onclick="window.history.back()" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    <div class="section-header">
+        <h2 class="section-title">Directorio</h2>
+        <button onclick="modalSupp()" class="btn-refresh">+ NUEVO</button>
+    </div>
+    <div id="suppList" class="data-list"></div>
+  </div>
+
+  <div id="suppModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Datos Proveedor</h3>
+        <input type="hidden" id="sId">
+        <label class="input-label">Nombre</label><input type="text" id="sName" class="modal-input">
+        <label class="input-label">Categoría</label>
+        <select id="sCat" class="modal-select">
+            <option value="INSUMOS">INSUMOS</option>
+            <option value="SERVICIOS">SERVICIOS</option>
+            <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+            <option value="LEGALES">LEGALES</option>
+        </select>
+        <label class="input-label">Centro Costos</label>
+        <select id="sCost" class="modal-select">
+            <option value="COD">COD (Directo)</option>
+            <option value="OPEX">OPEX (Operativo)</option>
+            <option value="G&A">G&A (Admin)</option>
+        </select>
+        <label class="input-label">Facturación</label>
+        <select id="sBill" class="modal-select">
+            <option value="FACTURA_A">Factura A</option>
+            <option value="FACTURA_C">Factura C</option>
+            <option value="SIN_FACTURA">Sin Factura</option>
+        </select>
+        <div class="modal-btns"><button onclick="closeModal()" class="btn-modal-cancel">CANCELAR</button><button onclick="saveSupp()" class="btn-modal-save">GUARDAR</button></div>
+    </div>
+  </div>
+
+  <script>
+    // CREDENCIALES V2
+    const SUPABASE_URL = 'https://dlwewdlfuovxofetcmjv.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsd2V3ZGxmdW92eG9mZXRjbWp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3Mjc0OTAsImV4cCI6MjA4MDMwMzQ5MH0.8Ddesga7tiHQ-kPAXgJO1zEswXafk-M_F3qenWuHEgs';
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    window.onload = loadSupps;
+
+    async function loadSupps() {
+        const { data } = await client.from('suppliers').select('*').order('name');
+        document.getElementById('suppList').innerHTML = data.map(s => `
+            <div class="dash-card" style="height:auto; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-weight:700; color:#fff;">${s.name}</div>
+                    <div style="font-size:10px; color:#666;">${s.category} • ${s.cost_center}</div>
+                </div>
+                <button onclick="editS(${s.id})" style="border:none; background:none; cursor:pointer;">✏️</button>
+            </div>`).join('');
+    }
+
+    function modalSupp() { document.getElementById('suppModal').style.display='flex'; document.getElementById('sId').value=''; }
+    function closeModal() { document.getElementById('suppModal').style.display='none'; }
+    
+    async function editS(id) {
+        const { data } = await client.from('suppliers').select('*').eq('id',id).single();
+        document.getElementById('sId').value = data.id;
+        document.getElementById('sName').value = data.name;
+        document.getElementById('sCat').value = data.category;
+        document.getElementById('sCost').value = data.cost_center;
+        document.getElementById('sBill').value = data.billing_condition;
+        document.getElementById('suppModal').style.display='flex';
+    }
+
+    async function saveSupp() {
+        const id = document.getElementById('sId').value;
+        const d = {
+            name: document.getElementById('sName').value,
+            category: document.getElementById('sCat').value,
+            cost_center: document.getElementById('sCost').value,
+            billing_condition: document.getElementById('sBill').value
+        };
+        if(id) await client.from('suppliers').update(d).eq('id',id);
+        else await client.from('suppliers').insert(d);
+        closeModal(); loadSupps();
+    }
+  </script>
+</body>
+</html>

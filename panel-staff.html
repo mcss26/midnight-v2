@@ -8,7 +8,10 @@
 <body>
   <header class="admin-header">
     <div class="admin-logo">MIDNIGHT<span style="color: #fff;">STAFF</span></div>
-    <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    <div style="display:flex; gap:10px; align-items:center;">
+        <span id="staffName" style="font-size:10px; color:#666; font-weight:700;"></span>
+        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    </div>
   </header>
 
   <div class="admin-container" style="max-width:500px; margin-top:30px;">
@@ -20,12 +23,37 @@
             <h3 class="dash-title" style="margin-top:10px;">FICHAR ENTRADA</h3>
         </a>
 
-        <a href="#" class="dash-card" style="justify-content:center; align-items:center; text-align:center; height:150px; border-color:var(--mc-accent-blue);">
+        <a id="btnOp" href="#" class="dash-card" style="justify-content:center; align-items:center; text-align:center; height:150px; border-color:var(--mc-accent-blue);">
             <div style="font-size:30px;">🚀</div>
             <h3 class="dash-title" style="margin-top:10px; color:var(--mc-accent-blue);">MI OPERACIÓN</h3>
-            <div class="dash-desc">Ir a mi pantalla de trabajo</div>
+            <div id="lblOp" class="dash-desc">Cargando acceso...</div>
         </a>
     </div>
   </div>
+
+  <script>
+    // Lógica de Redirección según Rol
+    const role = localStorage.getItem('mc_user_role');
+    const user = localStorage.getItem('mc_user_name');
+    
+    document.getElementById('staffName').innerText = user || 'STAFF';
+
+    const btn = document.getElementById('btnOp');
+    const lbl = document.getElementById('lblOp');
+
+    if (role === 'staff_caja') {
+        btn.href = 'staff-caja.html';
+        lbl.innerText = 'Ir a Cierre de Caja';
+    } else if (role === 'staff_barra') {
+        btn.href = 'staff-barra.html';
+        lbl.innerText = 'Ir a Pedidos Barra';
+    } else if (role === 'staff_acreditaciones') {
+        btn.href = 'staff-acreditaciones.html';
+        lbl.innerText = 'Ir a Control Puerta';
+    } else {
+        lbl.innerText = 'Rol no operativo';
+        btn.style.opacity = '0.5';
+    }
+  </script>
 </body>
 </html>
