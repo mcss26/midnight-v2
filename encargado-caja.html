@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Midnight — Encargado Caja</title>
+  
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Tabs Superiores */
+    .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+    .tab-btn { 
+        background: #111; border: 1px solid #333; color: #666; padding: 10px 15px; 
+        border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer;
+    }
+    .tab-btn.active { background: #fff; color: #000; border-color: #fff; }
+
+    /* Cards de Validación */
+    .validation-card {
+        background: #111; border: 1px solid #333; border-radius: 8px; padding: 15px; margin-bottom: 10px;
+        display: flex; flex-direction: column; gap: 10px;
+    }
+    .val-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #333; padding-bottom: 10px; }
+    .val-title { font-family: 'Outfit'; color: #fff; font-size: 16px; }
+    .val-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: #222; color: #888; }
+    .val-data { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; }
+    .val-value { font-family: monospace; font-size: 14px; font-weight: 700; color: #fff; }
+
+    /* Stock Librería */
+    .stock-row { 
+        display: flex; justify-content: space-between; align-items: center; 
+        padding: 12px; background: #080808; border-bottom: 1px solid #222;
+    }
+    .stock-input { 
+        width: 60px; background: #1a1a1a; border: 1px solid #333; color: #fff; 
+        text-align: center; padding: 5px; border-radius: 4px; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-gold);">LÍDER</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700;">ENCARGADO</span>
+        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    </div>
+  </header>
+
+  <div class="admin-container" style="max-width:600px; margin-top:20px;">
+    
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('validar', this)">🔍 VALIDAR CAJAS</button>
+        <button class="tab-btn" onclick="switchTab('stock', this)">✏️ LIBRERÍA</button>
+        <button class="tab-btn" onclick="switchTab('novedades', this)">📢 NOVEDADES</button>
+    </div>
+
+    <div id="view-validar">
+        <div class="section-header">
+            <h2 class="section-title">Cierres Recibidos</h2>
+            <input type="date" id="filterDate" class="search-input-admin" style="width:auto; margin:0; padding:6px;" onchange="loadClosings()">
+        </div>
+        <div id="closingsList"><div class="loading-state">Buscando cierres...</div></div>
+    </div>
+
+    <div id="view-stock" style="display:none;">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Stock Librería</h2>
+                <p style="font-size:10px; color:#666;">Rollos, Precintos, Librería</p>
+            </div>
+            <button onclick="openRequestModal()" class="btn-refresh" style="background:var(--mc-accent-green); color:#000;">+ PEDIR</button>
+        </div>
+        
+        <div class="dash-card" style="height:auto; padding:0; overflow:hidden;">
+            <div id="suppliesList"></div>
+        </div>
+        <button onclick="saveStock()" class="btn-primary" style="width:100%; margin-top:15px; padding:15px;">GUARDAR CONTEO</button>
+    </div>
+
+    <div id="view-novedades" style="display:none;">
+        <div class="dash-card" style="height:auto;">
+            <h3 class="dash-title" style="margin-bottom:15px; color:var(--mc-red);">REPORTAR INCIDENTE</h3>
+            <label class="input-label">TIPO</label>
+            <select id="incType" class="modal-select">
+                <option value="DIFERENCIA_CAJA">💰 Diferencia de Caja</option>
+                <option value="SISTEMA">💻 Error de Sistema</option>
+                <option value="SEGURIDAD">🛡️ Seguridad / Robo</option>
+                <option value="PERSONAL">👥 Conducta Personal</option>
+            </select>
+            <label class="input-label">DETALLE</label>
+            <textarea id="incDesc" class="modal-input" placeholder="Describa la situación..." style="height:100px;"></textarea>
+            <button onclick="sendIncident()" class="btn-primary" style="width:100%; margin-top:10px; background:var(--mc-red); color:#fff;">ENVIAR REPORTE</button>
+        </div>
+        <div style="margin-top:20px;">
+            <h3 style="font-size:12px; color:#666; text-transform:uppercase;">Historial Reciente</h3>
+            <div id="incHistory"></div>
+        </div>
+    </div>
+
+  </div>
+
+  <div id="reqModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Solicitar Insumos</h3>
+        <p style="color:#666; font-size:11px; margin-bottom:15px;">Pedido a Depósito / Compras</p>
+        <label class="input-label">DETALLE DEL PEDIDO</label>
+        <textarea id="reqDetail" class="modal-input" placeholder="Ej: 2 Cajas Rollos Térmicos 80mm..."></textarea>
+        <div class="modal-btns">
+            <button onclick="document.getElementById('reqModal').style.display='none'" class="btn-modal-cancel">CANCELAR</button>
+            <button onclick="sendRequest()" class="btn-modal-save">ENVIAR</button>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let supplies = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        document.getElementById('userDisplay').innerText = currentUser.username.toUpperCase();
+        document.getElementById('filterDate').valueAsDate = new Date();
+        
+        // Carga inicial
+        loadClosings();
+    });
+
+    function switchTab(view, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        document.getElementById('view-validar').style.display = 'none';
+        document.getElementById('view-stock').style.display = 'none';
+        document.getElementById('view-novedades').style.display = 'none';
+        
+        document.getElementById('view-' + view).style.display = 'block';
+
+        if(view === 'stock') loadSupplies();
+        if(view === 'novedades') loadHistory();
+    }
+
+    // === 1. LÓGICA DE VALIDACIÓN (Visor de Cajas) ===
+    async function loadClosings() {
+        const date = document.getElementById('filterDate').value;
+        const container = document.getElementById('closingsList');
+        container.innerHTML = '<div class="loading-state">Cargando...</div>';
+
+        // 1. Obtener ID del cierre global de la fecha
+        const { data: head } = await client.from('cash_closings').select('id, status').eq('event_date', date).maybeSingle();
+        
+        if (!head) {
+            container.innerHTML = '<div class="empty-state">No hay apertura de caja para esta fecha.</div>';
+            return;
+        }
+
+        // 2. Traer los detalles de las terminales
+        const { data: terms } = await client.from('closing_terminals')
+            .select('*')
+            .eq('closing_id', head.id)
+            .order('terminal_name');
+
+        if (!terms || terms.length === 0) {
+            container.innerHTML = '<div class="empty-state">Nadie ha cerrado caja aún.</div>';
+            return;
+        }
+
+        container.innerHTML = terms.map(t => {
+            const efvo = parseFloat(t.final_count_cash)||0;
+            const zoco = parseFloat(t.zoco_digital)||0;
+            const retiro = parseFloat(t.cash_withdrawals)||0;
+            const total = efvo + zoco; // Total rendido
+
+            return `
+            <div class="validation-card">
+                <div class="val-header">
+                    <span class="val-title">${t.terminal_name}</span>
+                    <span class="val-badge">ENVIADO</span>
+                </div>
+                <div class="val-data">
+                    <div>
+                        <div style="color:#888;">DECLARADO (Efvo)</div>
+                        <div class="val-value" style="color:var(--mc-accent-green);">$${efvo.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="color:#888;">LOTE (Zoco)</div>
+                        <div class="val-value" style="color:var(--mc-accent-blue);">$${zoco.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="color:#888;">RETIROS</div>
+                        <div class="val-value" style="color:var(--mc-red);">$${retiro.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="color:#888;">TOTAL RENDICIÓN</div>
+                        <div class="val-value">$${total.toLocaleString()}</div>
+                    </div>
+                </div>
+                <button onclick="reportDiff('${t.terminal_name}')" style="background:#222; border:1px solid #444; color:#fff; padding:8px; border-radius:4px; font-size:10px; cursor:pointer; margin-top:5px;">⚠️ REPORTAR DIFERENCIA</button>
+            </div>`;
+        }).join('');
+    }
+
+    function reportDiff(termName) {
+        switchTab('novedades', document.querySelectorAll('.tab-btn')[2]);
+        document.getElementById('incType').value = 'DIFERENCIA_CAJA';
+        document.getElementById('incDesc').value = `Diferencia detectada en ${termName}: `;
+        document.getElementById('incDesc').focus();
+    }
+
+    // === 2. LÓGICA STOCK LIBRERÍA ===
+    async function loadSupplies() {
+        // Buscamos SKUs con categoría LIBRERIA u OFICINA
+        const { data } = await client.from('inventory_skus')
+            .select('*')
+            .in('category', ['LIBRERIA', 'OFICINA', 'INSUMOS_CAJA'])
+            .eq('is_active', true)
+            .order('name');
+        
+        supplies = data || [];
+        const container = document.getElementById('suppliesList');
+        
+        if (supplies.length === 0) {
+            container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">No hay artículos de librería configurados.<br>Pide al Admin que cree SKUs con categoría LIBRERIA.</div>';
+            return;
+        }
+
+        container.innerHTML = supplies.map(s => `
+            <div class="stock-row">
+                <div style="flex:1;">
+                    <div style="color:#fff; font-size:13px; font-weight:700;">${s.name}</div>
+                    <div style="font-size:10px; color:#666;">Actual: ${s.stock_current}</div>
+                </div>
+                <input type="number" id="stk_${s.id}" class="stock-input" placeholder="${s.stock_current}">
+            </div>
+        `).join('');
+    }
+
+    async function saveStock() {
+        const updates = [];
+        let count = 0;
+
+        for (const s of supplies) {
+            const inp = document.getElementById(`stk_${s.id}`);
+            if (inp && inp.value !== '') {
+                const val = parseFloat(inp.value);
+                updates.push(client.from('inventory_skus').update({ stock_current: val }).eq('id', s.id));
+                
+                // Opcional: Registrar movimiento de ajuste si quisieras historial
+                count++;
+            }
+        }
+
+        if (count === 0) return alert("No ingresaste cambios.");
+        
+        await Promise.all(updates);
+        alert(`✅ Stock actualizado (${count} items).`);
+        loadSupplies();
+    }
+
+    function openRequestModal() { document.getElementById('reqModal').style.display='flex'; document.getElementById('reqDetail').value=''; }
+
+    async function sendRequest() {
+        const detail = document.getElementById('reqDetail').value;
+        if(!detail) return;
+        
+        await client.from('incident_reports').insert({
+            reporter_id: currentUser.id,
+            area: 'CAJA',
+            type: 'PEDIDO',
+            description: detail,
+            severity: 'BAJA',
+            status: 'open'
+        });
+        
+        document.getElementById('reqModal').style.display='none';
+        alert("Pedido enviado.");
+    }
+
+    // === 3. LÓGICA NOVEDADES ===
+    async function sendIncident() {
+        const type = document.getElementById('incType').value;
+        const desc = document.getElementById('incDesc').value;
+        if(!desc) return alert("Escriba el detalle.");
+
+        const { error } = await client.from('incident_reports').insert({
+            reporter_id: currentUser.id,
+            area: 'CAJA',
+            type: type,
+            description: desc,
+            severity: type === 'DIFERENCIA_CAJA' ? 'ALTA' : 'MEDIA',
+            status: 'open'
+        });
+
+        if(error) alert(error.message);
+        else {
+            alert("Reporte guardado.");
+            document.getElementById('incDesc').value = '';
+            loadHistory();
+        }
+    }
+
+    async function loadHistory() {
+        const { data } = await client.from('incident_reports')
+            .select('created_at, type, description, status')
+            .eq('area', 'CAJA')
+            .order('created_at', {ascending:false})
+            .limit(5);
+        
+        const c = document.getElementById('incHistory');
+        if(!data || !data.length) { c.innerHTML='Sin reportes recientes.'; return; }
+
+        c.innerHTML = data.map(i => `
+            <div style="border-bottom:1px solid #222; padding:8px 0; font-size:11px;">
+                <div style="display:flex; justify-content:space-between; color:#fff;">
+                    <strong>${i.type}</strong>
+                    <span>${new Date(i.created_at).toLocaleDateString()}</span>
+                </div>
+                <div style="color:#888; margin-top:2px;">${i.description}</div>
+            </div>
+        `).join('');
+    }
+  </script>
+</body>
+</html>

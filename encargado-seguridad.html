@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Midnight — Seguridad</title>
+  
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Botones de Acción Rápida */
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    
+    .btn-incident {
+        background: #111; border: 1px solid #333; border-radius: 8px;
+        padding: 20px; text-align: center; color: #fff; cursor: pointer;
+        display: flex; flex-direction: column; align-items: center; gap: 10px;
+        transition: 0.2s;
+    }
+    .btn-incident:active, .btn-incident.selected { 
+        background: #fff; color: #000; border-color: #fff; transform: scale(0.98); 
+    }
+    .btn-incident i { font-size: 24px; }
+
+    /* Formulario */
+    .report-form { background: #1a1a1a; border: 1px solid #333; padding: 20px; border-radius: 12px; }
+    
+    /* Historial */
+    .log-item { 
+        padding: 12px; border-bottom: 1px solid #222; display: flex; 
+        justify-content: space-between; align-items: flex-start; 
+    }
+    .badge-severity { 
+        font-size: 9px; padding: 3px 6px; border-radius: 4px; font-weight: 800; text-transform: uppercase; 
+    }
+    .sev-ALTA { background: var(--mc-red); color: #fff; }
+    .sev-MEDIA { background: orange; color: #000; }
+    .sev-BAJA { background: #333; color: #ccc; }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-red);">SEGURIDAD</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700;">ENCARGADO</span>
+        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    </div>
+  </header>
+
+  <div class="admin-container" style="max-width:600px; margin-top:20px;">
+    
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+        <a href="modulo-qr.html" class="btn-action" style="flex:1; text-align:center; padding:12px;">📍 FICHAR ENTRADA/SALIDA</a>
+    </div>
+
+    <div style="display:flex; border-bottom:1px solid #333; margin-bottom:20px;">
+        <button class="tab-btn active" onclick="showTab('report')" style="flex:1; background:none; border:none; border-bottom:2px solid var(--mc-red); color:#fff; padding:10px;">NUEVO REPORTE</button>
+        <button class="tab-btn" onclick="showTab('history')" style="flex:1; background:none; border:none; border-bottom:2px solid transparent; color:#666; padding:10px;">HISTORIAL</button>
+    </div>
+
+    <div id="tab-report">
+        <h3 class="section-title" style="margin-bottom:15px; font-size:14px; color:#888;">SELECCIONA TIPO DE INCIDENTE</h3>
+        
+        <div class="action-grid">
+            <div class="btn-incident" onclick="selectType('PELEA', this)">
+                <i>👊</i><span>PELEA</span>
+            </div>
+            <div class="btn-incident" onclick="selectType('DERECHO_ADMISION', this)">
+                <i>🚫</i><span>EXPULSIÓN</span>
+            </div>
+            <div class="btn-incident" onclick="selectType('ROBO', this)">
+                <i>🕵️</i><span>ROBO / HURTO</span>
+            </div>
+            <div class="btn-incident" onclick="selectType('ASISTENCIA_MEDICA', this)">
+                <i>🚑</i><span>MÉDICO</span>
+            </div>
+            <div class="btn-incident" onclick="selectType('OBJETO_PERDIDO', this)">
+                <i>🎒</i><span>OBJ. PERDIDO</span>
+            </div>
+            <div class="btn-incident" onclick="selectType('OTRO', this)">
+                <i>📝</i><span>OTRO</span>
+            </div>
+        </div>
+
+        <div id="formContainer" class="report-form" style="display:none;">
+            <input type="hidden" id="incType">
+            
+            <label class="input-label" style="color:var(--mc-red);">SEVERIDAD</label>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <button type="button" class="btn-action" onclick="setSev('ALTA', this)" style="flex:1; border-color:var(--mc-red); color:var(--mc-red);">ALTA</button>
+                <button type="button" class="btn-action" onclick="setSev('MEDIA', this)" style="flex:1; border-color:orange; color:orange;">MEDIA</button>
+                <button type="button" class="btn-action" onclick="setSev('BAJA', this)" style="flex:1; border-color:#666; color:#666;">BAJA</button>
+            </div>
+            <input type="hidden" id="incSev" value="MEDIA">
+
+            <label class="input-label">¿QUIÉN? (Sujeto / Involucrado)</label>
+            <input type="text" id="incWho" class="modal-input" placeholder="Nombre, Apodo, Descripción o DNI">
+
+            <label class="input-label">MOTIVO / DETALLE</label>
+            <textarea id="incDesc" class="modal-input" placeholder="Describa brevemente lo sucedido..." style="height:80px;"></textarea>
+
+            <button onclick="submitReport()" id="btnSend" class="btn-primary" style="width:100%; margin-top:15px; padding:15px; font-size:16px;">REGISTRAR INCIDENTE 🚨</button>
+        </div>
+    </div>
+
+    <div id="tab-history" style="display:none;">
+        <div id="logList"><div class="loading-state">Cargando reportes...</div></div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        document.getElementById('userDisplay').innerText = currentUser.username.toUpperCase();
+        loadHistory();
+    });
+
+    // === UI Logic ===
+    function showTab(tab) {
+        document.getElementById('tab-report').style.display = tab === 'report' ? 'block' : 'none';
+        document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
+        
+        // Update header styles
+        const btns = document.querySelectorAll('.tab-btn');
+        btns[0].style.borderBottomColor = tab === 'report' ? 'var(--mc-red)' : 'transparent';
+        btns[0].style.color = tab === 'report' ? '#fff' : '#666';
+        btns[1].style.borderBottomColor = tab === 'history' ? 'var(--mc-red)' : 'transparent';
+        btns[1].style.color = tab === 'history' ? '#fff' : '#666';
+
+        if(tab === 'history') loadHistory();
+    }
+
+    function selectType(type, btn) {
+        document.querySelectorAll('.btn-incident').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        
+        document.getElementById('incType').value = type;
+        document.getElementById('formContainer').style.display = 'block';
+        
+        // Auto-scroll al formulario
+        document.getElementById('formContainer').scrollIntoView({behavior: 'smooth'});
+    }
+
+    function setSev(val, btn) {
+        // Reset visual simple
+        const siblings = btn.parentElement.querySelectorAll('button');
+        siblings.forEach(b => b.style.background = 'transparent');
+        
+        // Active visual
+        if(val === 'ALTA') btn.style.background = 'rgba(232, 55, 47, 0.2)';
+        if(val === 'MEDIA') btn.style.background = 'rgba(255, 165, 0, 0.2)';
+        if(val === 'BAJA') btn.style.background = '#222';
+        
+        document.getElementById('incSev').value = val;
+    }
+
+    // === Database Logic ===
+    async function submitReport() {
+        const type = document.getElementById('incType').value;
+        const sev = document.getElementById('incSev').value;
+        const who = document.getElementById('incWho').value.trim();
+        const desc = document.getElementById('incDesc').value.trim();
+
+        if (!who || !desc) return alert("Por favor completa 'Quién' y 'Motivo'.");
+
+        const btn = document.getElementById('btnSend');
+        btn.disabled = true; btn.innerText = "GUARDANDO...";
+
+        // Estructuramos la data para que sea legible en el Log General
+        // Formato: "[SUJETO: Juan Perez] Detalle del motivo..."
+        const fullDescription = `[SUJETO: ${who.toUpperCase()}] ${desc}`;
+
+        const { error } = await client.from('incident_reports').insert({
+            reporter_id: currentUser.id,
+            area: 'SEGURIDAD',
+            type: type,
+            severity: sev,
+            description: fullDescription,
+            status: 'closed' // Los reportes de seguridad suelen ser informativos inmediatos
+        });
+
+        if (error) {
+            alert("Error: " + error.message);
+            btn.disabled = false; btn.innerText = "REGISTRAR INCIDENTE 🚨";
+        } else {
+            alert("✅ Reporte registrado correctamente.");
+            // Reset form
+            document.getElementById('incWho').value = '';
+            document.getElementById('incDesc').value = '';
+            document.getElementById('formContainer').style.display = 'none';
+            document.querySelectorAll('.btn-incident').forEach(b => b.classList.remove('selected'));
+            btn.disabled = false; btn.innerText = "REGISTRAR INCIDENTE 🚨";
+            showTab('history');
+        }
+    }
+
+    async function loadHistory() {
+        const c = document.getElementById('logList');
+        c.innerHTML = '<div class="loading-state">Cargando...</div>';
+
+        // Traemos reportes de Seguridad
+        const { data } = await client.from('incident_reports')
+            .select('created_at, type, severity, description, profiles(username)')
+            .eq('area', 'SEGURIDAD')
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (!data || data.length === 0) {
+            c.innerHTML = '<div class="empty-state">Sin actividad reciente.</div>';
+            return;
+        }
+
+        c.innerHTML = data.map(r => {
+            const time = new Date(r.created_at).toLocaleString('es-AR', { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
+            return `
+            <div class="log-item">
+                <div style="flex:1;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                        <span class="badge-severity sev-${r.severity}">${r.severity}</span>
+                        <span style="font-weight:700; color:#fff; font-size:13px;">${r.type}</span>
+                    </div>
+                    <div style="color:#ccc; font-size:12px; line-height:1.4;">${r.description}</div>
+                    <div style="color:#666; font-size:10px; margin-top:5px;">Reportado por: ${r.profiles?.username || 'Admin'} • ${time}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+  </script>
+</body>
+</html>
