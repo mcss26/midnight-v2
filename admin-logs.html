@@ -4,92 +4,215 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Logs</title>
+
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
-  
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--color-danger);">LOGS</span></div>
-    <button onclick="window.location.href='panel-master.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span class="logo-accent">LOGS</span></div>
+    <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-        <div>
-            <h2 class="section-title">Auditoría de Seguridad</h2>
-            <p class="section-desc">Historial de movimientos, accesos y cambios críticos</p>
-        </div>
-        <button onclick="loadLogs()" class="btn-refresh">REFRESCAR</button>
+      <div>
+        <h2 class="section-title">Registro de actividad</h2>
+        <p class="section-desc">Bitácora automática de cambios y acciones en el ERP.</p>
+      </div>
+      <button class="btn-secondary" onclick="reloadLogs()">REFRESCAR</button>
     </div>
 
-    <div class="table-container">
-        <table class="sku-table">
-            <thead>
-                <tr>
-                    <th style="width: 180px;">FECHA</th>
-                    <th style="width: 220px;">USUARIO</th>
-                    <th style="width: 140px;">ACCIÓN</th>
-                    <th>DETALLE</th>
-                </tr>
-            </thead>
-            <tbody id="logsBody">
-                <tr><td colspan="4" style="text-align:center; padding:40px; color:var(--text-secondary);">Cargando registros...</td></tr>
-            </tbody>
-        </table>
+    <input
+      type="text"
+      id="searchLogs"
+      class="search-input-admin"
+      placeholder="Buscar por usuario, acción o detalle..."
+      oninput="filterLogs()"
+    >
+
+    <div class="table-container" style="margin-top:18px;">
+      <table class="sku-table">
+        <thead>
+          <tr>
+            <th style="width:170px;">FECHA / HORA</th>
+            <th style="width:160px;">USUARIO</th>
+            <th style="width:180px;">ACCIÓN</th>
+            <th>DETALLE</th>
+          </tr>
+        </thead>
+        <tbody id="logsList">
+          <tr>
+            <td colspan="4" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              Cargando logs recientes...
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
   <script>
-    window.onload = async () => { await loadLogs(); };
+    let logs = [];
+    let profilesMap = {};
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadLogs();
+    });
+
+    async function reloadLogs() {
+      await loadLogs();
+    }
 
     async function loadLogs() {
-        const tbody = document.getElementById('logsBody');
-        
-        try {
-            const { data, error } = await client
-                .from('admin_logs')
-                .select('created_at, action, details, profiles(username, full_name)')
-                .order('created_at', { ascending: false })
-                .limit(100);
+      const tbody = document.getElementById('logsList');
+      try {
+        const { data, error } = await client
+          .from('admin_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(200);
 
-            if (error) throw error;
-            
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:40px; color:var(--text-secondary);">Sin registros recientes.</td></tr>';
-                return;
-            }
+        if (error) throw error;
 
-            tbody.innerHTML = data.map(log => {
-                const date = new Date(log.created_at).toLocaleString('es-AR', { 
-                    day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' 
-                });
-                
-                const actor = log.profiles ? (log.profiles.full_name || log.profiles.username) : 'Sistema';
-                
-                // Badges Sutiles
-                let badgeClass = 'tag-gray';
-                let style = '';
-                
-                if (log.action.includes('DELETE') || log.action.includes('ERROR')) style = 'color:var(--color-danger); background:rgba(255, 69, 58, 0.1);';
-                if (log.action.includes('LOGIN')) style = 'color:var(--color-info); background:rgba(10, 132, 255, 0.1);';
-                if (log.action.includes('IMPORT') || log.action.includes('UPDATE')) style = 'color:var(--color-success); background:rgba(204, 255, 0, 0.1);';
+        logs = data || [];
+        await hydrateProfiles();
+        renderLogs(logs);
+      } catch (err) {
+        console.error('Error cargando logs:', err);
+        tbody.innerHTML =
+          '<tr><td colspan="4" style="text-align:center; padding:40px; color:var(--state-error);">Error al cargar logs.</td></tr>';
+      }
+    }
 
-                return `
-                <tr>
-                    <td style="font-family:'Inter', monospace; color:var(--text-secondary); font-size:12px;">${date}</td>
-                    <td style="font-weight:600; color:var(--text-primary);">${actor}</td>
-                    <td><span class="tag" style="${style}">${log.action}</span></td>
-                    <td style="color:var(--text-secondary);">${log.details || '-'}</td>
-                </tr>`;
-            }).join('');
+    async function hydrateProfiles() {
+      profilesMap = {};
 
-        } catch (e) {
-            console.error(e);
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--color-danger); padding:20px;">Error de carga</td></tr>`;
+      const ids = Array.from(
+        new Set(
+          logs
+            .map(l => l.admin_id)
+            .filter(v => !!v)
+        )
+      );
+
+      if (!ids.length) return;
+
+      try {
+        const { data, error } = await client
+          .from('profiles')
+          .select('id, full_name, username')
+          .in('id', ids);
+
+        if (error) {
+          console.warn('No se pudieron resolver perfiles en logs:', error);
+          return;
         }
+
+        (data || []).forEach(p => {
+          profilesMap[p.id] = p;
+        });
+      } catch (err) {
+        console.warn('Error resolviendo perfiles de logs:', err);
+      }
+    }
+
+    function formatDateTime(iso) {
+      if (!iso) return '-';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '-';
+      return d.toLocaleString('es-AR', {
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function renderLogs(list) {
+      const tbody = document.getElementById('logsList');
+
+      if (!list.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="4" style="text-align:center; padding:40px; color:var(--text-secondary);">Sin actividad registrada.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(log => {
+        const date = formatDateTime(log.created_at);
+        let actor = 'Sistema';
+        if (log.admin_id && profilesMap[log.admin_id]) {
+          const p = profilesMap[log.admin_id];
+          actor = p.full_name || p.username || actor;
+        }
+
+        const action = log.action || '-';
+        const details = log.details || '-';
+
+        let tagClass = 'tag-gray';
+        const upper = action.toUpperCase();
+
+        if (upper.includes('LOGIN') || upper.includes('SESSION')) {
+          tagClass = 'tag-gray';
+        } else if (
+          upper.includes('CREATE') ||
+          upper.includes('INSERT') ||
+          upper.includes('NUEVO') ||
+          upper.includes('ALTA')
+        ) {
+          tagClass = 'tag-green';
+        } else if (
+          upper.includes('DELETE') ||
+          upper.includes('REMOVE') ||
+          upper.includes('BAJA') ||
+          upper.includes('ERROR')
+        ) {
+          tagClass = 'tag-red';
+        }
+
+        return `
+          <tr>
+            <td style="font-family:'Inter', monospace; color:var(--text-secondary); font-size:12px;">
+              ${date}
+            </td>
+            <td style="font-size:13px; font-weight:500;">${actor}</td>
+            <td>
+              <span class="tag ${tagClass}">${action}</span>
+            </td>
+            <td style="color:var(--text-secondary); font-size:13px;">
+              ${details}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterLogs() {
+      const t = document.getElementById('searchLogs').value.toLowerCase();
+
+      const filtered = logs.filter(log => {
+        const date = formatDateTime(log.created_at).toLowerCase();
+        let actor = '';
+        if (log.admin_id && profilesMap[log.admin_id]) {
+          const p = profilesMap[log.admin_id];
+          actor = (p.full_name || p.username || '').toLowerCase();
+        }
+        const action = (log.action || '').toLowerCase();
+        const details = (log.details || '').toLowerCase();
+
+        return (
+          date.includes(t) ||
+          actor.includes(t) ||
+          action.includes(t) ||
+          details.includes(t)
+        );
+      });
+
+      renderLogs(filtered);
     }
   </script>
 </body>

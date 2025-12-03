@@ -4,167 +4,287 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Cargos</title>
+
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
-  
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-purple);">ROLES</span></div>
-    <button onclick="window.location.href='panel-master.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span class="logo-accent">STAFF</span></div>
+    <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-        <div>
-            <h2 class="section-title">Cargos & Jornales</h2>
-            <p class="section-desc">Estructura de RRHH y pagos base</p>
-        </div>
-        <button onclick="openModal()" class="btn-primary">+ NUEVO CARGO</button>
+      <div>
+        <h2 class="section-title">Cargos & Roles</h2>
+        <p class="section-desc">Jornales base y condición de facturación del personal.</p>
+      </div>
+      <button class="btn-primary" onclick="openRoleModal()">+ NUEVO CARGO</button>
     </div>
-    
-    <div id="rolesList" class="data-list">
-        <div style="text-align:center; padding: 40px; color: var(--text-secondary);">Cargando estructura...</div>
+
+    <input
+      type="text"
+      id="searchRole"
+      class="search-input-admin"
+      placeholder="Buscar por cargo o modalidad..."
+      oninput="filterRoles()"
+    >
+
+    <div class="table-container" style="margin-top:18px;">
+      <table class="sku-table">
+        <thead>
+          <tr>
+            <th style="padding-left:25px;">CARGO</th>
+            <th style="width:140px;" class="text-right">JORNAL BASE</th>
+            <th style="width:160px;">MODALIDAD</th>
+            <th style="width:110px;">ESTADO</th>
+            <th style="width:60px;"></th>
+          </tr>
+        </thead>
+        <tbody id="rolesList">
+          <tr>
+            <td colspan="5" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              Cargando cargos...
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
+  <!-- MODAL CARGO -->
   <div id="roleModal" class="modal-overlay">
     <div class="modal-box">
-        <h3 class="section-title" style="font-size:20px; margin-bottom:25px;">Editar Cargo</h3>
-        <input type="hidden" id="rId">
-        
-        <label class="input-label">NOMBRE DEL PUESTO</label>
-        <input type="text" id="rName" class="modal-input" placeholder="Ej: Cajero Principal">
-        
-        <div style="display:flex; gap:15px; margin-top:15px;">
-            <div style="flex:1;">
-                <label class="input-label">JORNAL BASE ($)</label>
-                <input type="number" id="rPay" class="modal-input" placeholder="0">
-            </div>
-            <div style="flex:1;">
-                <label class="input-label">MODALIDAD</label>
-                <select id="rBill" class="modal-select">
-                    <option value="INFORMAL">Informal / Jornal</option>
-                    <option value="MONOTRIBUTO">Monotributo</option>
-                    <option value="RELACION_DEPENDENCIA">Rel. Dependencia</option>
-                    <option value="TERCERIZADO">Tercerizado</option>
-                </select>
-            </div>
-        </div>
+      <h3 class="section-title" style="font-size:20px; margin-bottom:18px;">Cargo</h3>
+      <input type="hidden" id="rId">
 
-        <div class="modal-btns">
-            <button onclick="closeModal()" class="btn-modal-cancel">Cancelar</button>
-            <button onclick="saveRole()" class="btn-modal-save">Guardar</button>
+      <label class="input-label">NOMBRE DEL CARGO</label>
+      <input
+        type="text"
+        id="rName"
+        class="modal-input"
+        placeholder="Ej: CAJERO PRINCIPAL, JEFE DE BARRA..."
+      >
+
+      <div style="display:flex; gap:15px; margin-top:15px;">
+        <div style="flex:1;">
+          <label class="input-label">JORNAL BASE ($)</label>
+          <input
+            type="number"
+            id="rPay"
+            class="modal-input"
+            placeholder="0"
+          >
         </div>
-        
-        <button id="btnDel" onclick="deleteRole()" style="width:100%; margin-top:20px; background:none; border:none; color:var(--color-danger); cursor:pointer; font-size:12px; font-weight:600; opacity:0.8;">ELIMINAR PUESTO</button>
+        <div style="flex:1;">
+          <label class="input-label">MODALIDAD</label>
+          <select id="rBilling" class="modal-select">
+            <option value="">Seleccionar...</option>
+            <option value="MONOTRIBUTO">Monotributo</option>
+            <option value="RELACION_DEPENDENCIA">Relación de dependencia</option>
+            <option value="FACTURA">Factura</option>
+            <option value="EVENTUAL">Eventual</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:15px;">
+        <label class="input-label">ESTADO</label>
+        <label style="font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+          <input type="checkbox" id="rActive" checked>
+          Cargo activo
+        </label>
+      </div>
+
+      <div class="modal-btns">
+        <button onclick="closeRoleModal()" class="btn-modal-cancel">Cancelar</button>
+        <button onclick="saveRole()" class="btn-modal-save">Guardar</button>
+      </div>
+
+      <div id="dangerZone" style="margin-top:10px; display:none;">
+        <hr style="border:none; border-top:1px solid var(--border-subtle); margin:10px 0;">
+        <button
+          onclick="deleteRole()"
+          class="btn-modal-cancel"
+          style="border-color:rgba(232,55,47,0.8); color:var(--accent-red);"
+        >
+          Eliminar cargo
+        </button>
+      </div>
     </div>
   </div>
 
   <script>
-    window.onload = loadRoles;
+    let roles = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadRoles();
+    });
 
     async function loadRoles() {
-        try {
-            const { data, error } = await client
-                .from('staff_roles')
-                .select('*')
-                .order('base_pay', { ascending: false });
+      const tbody = document.getElementById('rolesList');
+      try {
+        const { data, error } = await client
+          .from('staff_roles')
+          .select('*')
+          .order('role_name');
 
-            if (error) throw error;
+        if (error) throw error;
 
-            const c = document.getElementById('rolesList');
-            
-            if (!data.length) {
-                c.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">No hay cargos definidos.</div>';
-                return;
-            }
-
-            c.innerHTML = data.map(r => {
-                // Estilos según modalidad
-                let tagClass = 'tag-gray';
-                if(r.billing_condition === 'RELACION_DEPENDENCIA') tagClass = 'tag-blue';
-                if(r.billing_condition === 'MONOTRIBUTO') tagClass = 'tag-outline';
-
-                return `
-                <div class="list-row" style="opacity: ${r.is_active ? 1 : 0.5}">
-                    <div>
-                        <div class="row-main-text" style="color: ${r.is_active ? '#fff' : '#666'}">${r.role_name}</div>
-                        <div class="row-sub-text" style="margin-top:6px; display:flex; align-items:center;">
-                            <span class="tag ${tagClass}">${r.billing_condition.replace('_', ' ')}</span>
-                            <span style="margin-left:12px; color:var(--color-success); font-weight:600; font-family:'Inter'; letter-spacing:0.5px;">
-                                ${MC_UTILS.formatCurrency(r.base_pay)}
-                            </span>
-                        </div>
-                    </div>
-                    <button onclick="edit(${r.id})" class="btn-icon">✏️</button>
-                </div>`;
-            }).join('');
-
-        } catch (e) {
-            console.error(e);
-            document.getElementById('rolesList').innerHTML = '<div style="text-align:center; color:var(--color-danger);">Error de carga</div>';
-        }
+        roles = data || [];
+        renderRoles(roles);
+      } catch (err) {
+        console.error('Error cargando cargos:', err);
+        tbody.innerHTML =
+          '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--state-error);">Error al cargar cargos.</td></tr>';
+      }
     }
 
-    // --- LÓGICA DEL MODAL ---
-    function openModal() { 
-        document.getElementById('roleModal').style.display='flex'; 
-        document.getElementById('rId').value=''; 
-        document.getElementById('rName').value=''; 
-        document.getElementById('rPay').value='';
-        document.getElementById('btnDel').style.display='none'; 
+    function renderRoles(list) {
+      const tbody = document.getElementById('rolesList');
+
+      if (!list.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--text-secondary);">Sin cargos cargados.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(r => {
+        const pay = MC_UTILS.formatCurrency(r.base_pay || 0);
+        const billing = r.billing_condition || '-';
+        const active = r.is_active !== false;
+
+        const stateClass = active ? 'tag-green' : 'tag-gray';
+        const stateLabel = active ? 'ACTIVO' : 'PAUSADO';
+
+        return `
+          <tr>
+            <td style="padding-left:25px;">
+              <div class="row-title">${r.role_name}</div>
+            </td>
+            <td class="text-right">${pay}</td>
+            <td>${billing}</td>
+            <td>
+              <span class="tag ${stateClass}">${stateLabel}</span>
+            </td>
+            <td style="text-align:center;">
+              <button class="btn-icon" onclick="openRoleModal(${r.id})">✏️</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
-    
-    function closeModal() { document.getElementById('roleModal').style.display='none'; }
-    
-    async function edit(id) {
-        const { data } = await client.from('staff_roles').select('*').eq('id',id).single();
-        document.getElementById('rId').value = data.id;
-        document.getElementById('rName').value = data.role_name;
-        document.getElementById('rPay').value = data.base_pay;
-        document.getElementById('rBill').value = data.billing_condition;
-        document.getElementById('btnDel').style.display='block';
-        document.getElementById('roleModal').style.display='flex';
+
+    function filterRoles() {
+      const t = document.getElementById('searchRole').value.toLowerCase();
+      const filtered = roles.filter(r => {
+        const name = (r.role_name || '').toLowerCase();
+        const billing = (r.billing_condition || '').toLowerCase();
+        return name.includes(t) || billing.includes(t);
+      });
+      renderRoles(filtered);
+    }
+
+    function openRoleModal(id) {
+      const modal = document.getElementById('roleModal');
+      const danger = document.getElementById('dangerZone');
+
+      if (id) {
+        const r = roles.find(x => x.id === id);
+        if (!r) return;
+
+        document.getElementById('rId').value = r.id;
+        document.getElementById('rName').value = r.role_name || '';
+        document.getElementById('rPay').value = r.base_pay || 0;
+        document.getElementById('rBilling').value = r.billing_condition || '';
+        document.getElementById('rActive').checked = r.is_active !== false;
+
+        danger.style.display = 'block';
+      } else {
+        document.getElementById('rId').value = '';
+        document.getElementById('rName').value = '';
+        document.getElementById('rPay').value = '';
+        document.getElementById('rBilling').value = '';
+        document.getElementById('rActive').checked = true;
+        danger.style.display = 'none';
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeRoleModal() {
+      document.getElementById('roleModal').style.display = 'none';
     }
 
     async function saveRole() {
-        const id = document.getElementById('rId').value;
-        const payload = {
-            role_name: document.getElementById('rName').value.toUpperCase(),
-            base_pay: parseFloat(document.getElementById('rPay').value) || 0,
-            billing_condition: document.getElementById('rBill').value
-        };
+      const id = document.getElementById('rId').value;
+      const name = document.getElementById('rName').value.trim();
+      const payVal = document.getElementById('rPay').value;
+      const billing = document.getElementById('rBilling').value || null;
+      const active = document.getElementById('rActive').checked;
 
-        if(!payload.role_name) return alert("El nombre es obligatorio");
+      if (!name) {
+        alert('El nombre del cargo es obligatorio.');
+        return;
+      }
 
-        let error;
-        if(id) {
-            ({ error } = await client.from('staff_roles').update(payload).eq('id', id));
+      const basePay = parseFloat(payVal);
+      const payload = {
+        role_name: name,
+        base_pay: isNaN(basePay) ? 0 : basePay,
+        billing_condition: billing,
+        is_active: active
+      };
+
+      try {
+        if (id) {
+          const { error } = await client
+            .from('staff_roles')
+            .update(payload)
+            .eq('id', id);
+          if (error) throw error;
         } else {
-            ({ error } = await client.from('staff_roles').insert(payload));
+          const { error } = await client
+            .from('staff_roles')
+            .insert(payload);
+          if (error) throw error;
         }
 
-        if(error) alert("Error: " + error.message);
-        else {
-            closeModal();
-            loadRoles();
-        }
+        closeRoleModal();
+        await loadRoles();
+      } catch (err) {
+        console.error('Error guardando cargo:', err);
+        alert('Error al guardar cargo: ' + err.message);
+      }
     }
 
     async function deleteRole() {
-        if(confirm("⚠ ¿Eliminar este cargo?\nSi hay personal asignado, esto podría generar errores.")) {
-            const id = document.getElementById('rId').value;
-            const { error } = await client.from('staff_roles').delete().eq('id', id);
-            
-            if(error) alert("No se puede eliminar: Probablemente hay personal asignado.");
-            else {
-                closeModal();
-                loadRoles();
-            }
-        }
+      const id = document.getElementById('rId').value;
+      if (!id) return;
+
+      const confirmDelete = confirm(
+        '¿Eliminar este cargo?\nSi existe personal asignado manualmente con este rol en planillas externas, deberás actualizarlo.'
+      );
+      if (!confirmDelete) return;
+
+      try {
+        const { error } = await client
+          .from('staff_roles')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        closeRoleModal();
+        await loadRoles();
+      } catch (err) {
+        console.error('Error eliminando cargo:', err);
+        alert('No se pudo eliminar el cargo: ' + err.message);
+      }
     }
   </script>
 </body>

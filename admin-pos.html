@@ -3,134 +3,288 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Midnight - POS Link</title>
+  <title>Midnight - POS</title>
+
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
-  
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--color-info);">POS</span></div>
-    <button onclick="window.location.href='panel-master.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span class="logo-accent">POS</span></div>
+    <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-        <div>
-            <h2 class="section-title">Mapeo de Terminales</h2>
-            <p class="section-desc">Conexión con sistemas externos (GBol / Zoco)</p>
-        </div>
-        <button onclick="openModal()" class="btn-primary">+ MANUAL</button>
+      <div>
+        <h2 class="section-title">POS & Terminales</h2>
+        <p class="section-desc">Terminales de cobro vinculadas al sistema.</p>
+      </div>
+      <button class="btn-primary" onclick="openPosModal()">+ NUEVA TERMINAL</button>
     </div>
-    
-    <div id="posList" class="data-list">
-        <div style="text-align:center; padding: 40px; color: var(--text-secondary);">Cargando configuración...</div>
+
+    <input
+      type="text"
+      id="searchPos"
+      class="search-input-admin"
+      placeholder="Buscar por nombre, proveedor o ID..."
+      oninput="filterPos()"
+    >
+
+    <div class="table-container" style="margin-top:18px;">
+      <table class="sku-table">
+        <thead>
+          <tr>
+            <th style="padding-left:25px;">TERMINAL</th>
+            <th style="width:140px;">PROVEEDOR</th>
+            <th style="width:180px;">ID EXTERNO</th>
+            <th style="width:110px;">ESTADO</th>
+            <th style="width:60px;"></th>
+          </tr>
+        </thead>
+        <tbody id="posList">
+          <tr>
+            <td colspan="5" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              Cargando terminales...
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
+  <!-- MODAL POS -->
   <div id="posModal" class="modal-overlay">
     <div class="modal-box">
-        <h3 class="section-title" style="font-size:20px; margin-bottom:25px;">Configurar Terminal</h3>
-        <input type="hidden" id="pId">
-        
-        <label class="input-label">NOMBRE INTERNO</label>
-        <input type="text" id="pName" class="modal-input" placeholder="Ej: CAJA 1">
-        
-        <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; margin-top:15px;">
-            <div>
-                <label class="input-label">SISTEMA</label>
-                <select id="pProv" class="modal-select">
-                    <option value="GBOL">GBOL</option>
-                    <option value="ZOCO">ZOCO</option>
-                </select>
-            </div>
-            <div>
-                <label class="input-label">ID EXTERNO</label>
-                <input type="text" id="pExtId" class="modal-input" placeholder="ID del sistema">
-            </div>
-        </div>
+      <h3 class="section-title" style="font-size:20px; margin-bottom:16px;">Terminal POS</h3>
+      <input type="hidden" id="pId">
 
-        <div class="modal-btns">
-            <button onclick="closeModal()" class="btn-modal-cancel">Cancelar</button>
-            <button onclick="savePos()" class="btn-modal-save">Guardar</button>
+      <label class="input-label">NOMBRE AMIGABLE</label>
+      <input
+        type="text"
+        id="pName"
+        class="modal-input"
+        placeholder="Ej: CAJA BARRA 1, CAJA VIP..."
+      >
+
+      <div style="display:flex; gap:15px; margin-top:15px;">
+        <div style="flex:1;">
+          <label class="input-label">PROVEEDOR</label>
+          <select id="pProvider" class="modal-select">
+            <option value="">Seleccionar...</option>
+            <option value="MERCADO PAGO">Mercado Pago</option>
+            <option value="GETNET">Getnet</option>
+            <option value="POS BANCO">POS Banco</option>
+            <option value="OTRO">Otro</option>
+          </select>
         </div>
-        <button id="btnDel" onclick="deletePos()" style="width:100%; margin-top:15px; background:none; border:none; color:var(--color-danger); cursor:pointer; font-size:12px; font-weight:600;">ELIMINAR CONEXIÓN</button>
+        <div style="flex:1;">
+          <label class="input-label">ID / ALIAS EXTERNO</label>
+          <input
+            type="text"
+            id="pExternal"
+            class="modal-input"
+            placeholder="ID de terminal, alias o referencia"
+          >
+        </div>
+      </div>
+
+      <div style="margin-top:15px;">
+        <label class="input-label">ESTADO</label>
+        <label style="font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+          <input type="checkbox" id="pActive" checked>
+          Terminal activa
+        </label>
+      </div>
+
+      <div class="modal-btns">
+        <button onclick="closePosModal()" class="btn-modal-cancel">Cancelar</button>
+        <button onclick="savePos()" class="btn-modal-save">Guardar</button>
+      </div>
+
+      <div id="posDanger" style="margin-top:10px; display:none;">
+        <hr style="border:none; border-top:1px solid var(--border-subtle); margin:10px 0;">
+        <button
+          onclick="deletePos()"
+          class="btn-modal-cancel"
+          style="border-color:rgba(232,55,47,0.8); color:var(--accent-red);"
+        >
+          Eliminar terminal
+        </button>
+      </div>
     </div>
   </div>
 
   <script>
-    window.onload = loadData;
+    let posTerminals = [];
 
-    async function loadData() {
-        const { data } = await client.from('pos_terminals').select('*').order('friendly_name').order('provider');
-        const c = document.getElementById('posList');
-        
-        if(!data || !data.length) { 
-            c.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Sin terminales configuradas.</div>'; 
-            return; 
-        }
+    document.addEventListener('DOMContentLoaded', () => {
+      loadPos();
+    });
 
-        c.innerHTML = data.map(t => {
-            const tagClass = t.provider === 'ZOCO' ? 'tag-blue' : 'tag-red';
-            return `
-            <div class="list-row">
-                <div>
-                    <div class="row-main-text">${t.friendly_name}</div>
-                    <div class="row-sub-text" style="margin-top:6px;">
-                        <span class="tag ${tagClass}">${t.provider}</span>
-                        <span style="font-family:'Inter', monospace; margin-left:10px; color:var(--text-secondary);">ID: ${t.external_id}</span>
-                    </div>
-                </div>
-                <button onclick="edit(${t.id})" class="btn-icon">✏️</button>
-            </div>
-        `;}).join('');
+    async function loadPos() {
+      const tbody = document.getElementById('posList');
+      try {
+        const { data, error } = await client
+          .from('pos_terminals')
+          .select('*')
+          .order('friendly_name');
+
+        if (error) throw error;
+
+        posTerminals = data || [];
+        renderPos(posTerminals);
+      } catch (err) {
+        console.error('Error cargando POS:', err);
+        tbody.innerHTML =
+          '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--state-error);">Error al cargar terminales.</td></tr>';
+      }
     }
 
-    function openModal() { 
-        document.getElementById('posModal').style.display='flex'; 
-        document.getElementById('pId').value=''; 
-        document.getElementById('pName').value=''; 
-        document.getElementById('pExtId').value='';
-        document.getElementById('btnDel').style.display='none'; 
+    function renderPos(list) {
+      const tbody = document.getElementById('posList');
+
+      if (!list.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--text-secondary);">Sin terminales cargadas.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(t => {
+        const active = t.is_active !== false;
+        const stateClass = active ? 'tag-green' : 'tag-gray';
+        const stateLabel = active ? 'ACTIVA' : 'PAUSADA';
+        const provider = t.provider || '-';
+        const name = t.friendly_name || '(sin nombre)';
+        const ext = t.external_id || '-';
+
+        return `
+          <tr>
+            <td style="padding-left:25px;">
+              <div class="row-title">${name}</div>
+            </td>
+            <td>${provider}</td>
+            <td>${ext}</td>
+            <td>
+              <span class="tag ${stateClass}">${stateLabel}</span>
+            </td>
+            <td style="text-align:center;">
+              <button class="btn-icon" onclick="openPosModal(${t.id})">✏️</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
-    
-    function closeModal() { document.getElementById('posModal').style.display='none'; }
-    
-    async function edit(id) {
-        const { data } = await client.from('pos_terminals').select('*').eq('id',id).single();
-        document.getElementById('pId').value = data.id;
-        document.getElementById('pProv').value = data.provider;
-        document.getElementById('pExtId').value = data.external_id;
-        document.getElementById('pName').value = data.friendly_name;
-        document.getElementById('btnDel').style.display='block';
-        document.getElementById('posModal').style.display='flex';
+
+    function filterPos() {
+      const t = document.getElementById('searchPos').value.toLowerCase();
+      const filtered = posTerminals.filter(p => {
+        const name = (p.friendly_name || '').toLowerCase();
+        const provider = (p.provider || '').toLowerCase();
+        const ext = (p.external_id || '').toLowerCase();
+        return name.includes(t) || provider.includes(t) || ext.includes(t);
+      });
+      renderPos(filtered);
+    }
+
+    function openPosModal(id) {
+      const modal = document.getElementById('posModal');
+      const danger = document.getElementById('posDanger');
+
+      if (id) {
+        const t = posTerminals.find(x => x.id === id);
+        if (!t) return;
+
+        document.getElementById('pId').value = t.id;
+        document.getElementById('pName').value = t.friendly_name || '';
+        document.getElementById('pProvider').value = t.provider || '';
+        document.getElementById('pExternal').value = t.external_id || '';
+        document.getElementById('pActive').checked = t.is_active !== false;
+
+        danger.style.display = 'block';
+      } else {
+        document.getElementById('pId').value = '';
+        document.getElementById('pName').value = '';
+        document.getElementById('pProvider').value = '';
+        document.getElementById('pExternal').value = '';
+        document.getElementById('pActive').checked = true;
+
+        danger.style.display = 'none';
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closePosModal() {
+      document.getElementById('posModal').style.display = 'none';
     }
 
     async function savePos() {
-        const id = document.getElementById('pId').value;
-        const d = {
-            provider: document.getElementById('pProv').value,
-            external_id: document.getElementById('pExtId').value,
-            friendly_name: document.getElementById('pName').value.toUpperCase()
-        };
+      const id = document.getElementById('pId').value;
+      const name = document.getElementById('pName').value.trim();
+      const provider = document.getElementById('pProvider').value || null;
+      const externalId = document.getElementById('pExternal').value.trim() || null;
+      const active = document.getElementById('pActive').checked;
 
-        if(!d.external_id || !d.friendly_name) return alert("Completa todos los datos.");
+      if (!name) {
+        alert('El nombre amigable es obligatorio.');
+        return;
+      }
 
-        const { error } = id 
-            ? await client.from('pos_terminals').update(d).eq('id', id)
-            : await client.from('pos_terminals').insert(d);
-        
-        if(error) alert(error.message);
-        else { closeModal(); loadData(); }
+      const payload = {
+        friendly_name: name,
+        provider: provider,
+        external_id: externalId,
+        is_active: active
+      };
+
+      try {
+        if (id) {
+          const { error } = await client
+            .from('pos_terminals')
+            .update(payload)
+            .eq('id', id);
+          if (error) throw error;
+        } else {
+          const { error } = await client
+            .from('pos_terminals')
+            .insert(payload);
+          if (error) throw error;
+        }
+
+        closePosModal();
+        await loadPos();
+      } catch (err) {
+        console.error('Error guardando POS:', err);
+        alert('Error al guardar terminal: ' + err.message);
+      }
     }
 
     async function deletePos() {
-        if(!confirm("¿Eliminar esta conexión?")) return;
-        const id = document.getElementById('pId').value;
-        await client.from('pos_terminals').delete().eq('id', id);
-        closeModal(); loadData();
+      const id = document.getElementById('pId').value;
+      if (!id) return;
+
+      const confirmDelete = confirm(
+        '¿Eliminar esta terminal POS?\nAsegurate de actualizar cualquier referencia en cierres de caja o reportes.'
+      );
+      if (!confirmDelete) return;
+
+      try {
+        const { error } = await client
+          .from('pos_terminals')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+
+        closePosModal();
+        await loadPos();
+      } catch (err) {
+        console.error('Error eliminando POS:', err);
+        alert('No se pudo eliminar la terminal: ' + err.message);
+      }
     }
   </script>
 </body>

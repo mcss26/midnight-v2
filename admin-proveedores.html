@@ -4,185 +4,298 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Proveedores</title>
+
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
-  
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--text-secondary);">AGENDA</span></div>
-    <button onclick="window.location.href='panel-master.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span class="logo-accent">AGENDA</span></div>
+    <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-        <div>
-            <h2 class="section-title">Directorio</h2>
-            <p class="section-desc">Gestión de proveedores y acreedores</p>
-        </div>
-        <button onclick="openModal()" class="btn-primary">+ NUEVO</button>
+      <div>
+        <h2 class="section-title">Proveedores</h2>
+        <p class="section-desc">Directorio comercial y condiciones de pago.</p>
+      </div>
+      <button class="btn-primary" onclick="openSupplierModal()">+ NUEVO PROVEEDOR</button>
     </div>
 
-    <div class="filter-bar">
-        <div class="filter-chip active" onclick="filter('ALL', this)">Todos</div>
-        <div class="filter-chip" onclick="filter('COD', this)">Directos (COD)</div>
-        <div class="filter-chip" onclick="filter('OPEX', this)">Operativos (OPEX)</div>
-        <div class="filter-chip" onclick="filter('G&A', this)">Admin (G&A)</div>
-    </div>
+    <input
+      type="text"
+      id="searchSupplier"
+      class="search-input-admin"
+      placeholder="Buscar por nombre, categoría o centro de costo..."
+      oninput="filterSuppliers()"
+    >
 
-    <input type="text" id="search" class="search-input-admin" placeholder="🔍 Buscar proveedor, CUIT o servicio..." oninput="filter()">
-    
-    <div id="listContainer" class="data-list" style="margin-top: 20px;">
-        <div style="text-align:center; padding: 40px; color: var(--text-secondary);">Cargando agenda...</div>
+    <div class="table-container" style="margin-top: 18px;">
+      <table class="sku-table">
+        <thead>
+          <tr>
+            <th style="padding-left:25px;">PROVEEDOR / CATEGORÍA</th>
+            <th style="width:140px;">CENTRO DE COSTO</th>
+            <th style="width:130px;">FACTURACIÓN</th>
+            <th>CONDICIONES DE PAGO</th>
+            <th style="width:110px;">ESTADO</th>
+            <th style="width:60px;"></th>
+          </tr>
+        </thead>
+        <tbody id="suppliersList">
+          <tr>
+            <td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              Cargando proveedores...
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
-  <div id="suppModal" class="modal-overlay">
+  <!-- MODAL PROVEEDOR -->
+  <div id="supplierModal" class="modal-overlay">
     <div class="modal-box">
-        <h3 class="section-title" style="font-size:20px; margin-bottom:25px;">Datos Proveedor</h3>
-        <input type="hidden" id="sId">
-        
-        <label class="input-label">RAZÓN SOCIAL</label>
-        <input type="text" id="sName" class="modal-input" placeholder="Nombre de la empresa">
+      <h3 class="section-title" style="font-size:20px; margin-bottom:14px;">Proveedor</h3>
+      <input type="hidden" id="supId">
 
-        <div style="display:flex; gap:15px; margin-top:15px;">
-            <div style="flex:1;">
-                <label class="input-label">CATEGORÍA</label>
-                <select id="sCat" class="modal-select">
-                    <option value="INSUMOS">Insumos</option>
-                    <option value="SERVICIOS">Servicios</option>
-                    <option value="MANTENIMIENTO">Mantenimiento</option>
-                    <option value="LEGALES">Legales</option>
-                    <option value="MARKETING">Marketing</option>
-                    <option value="SISTEMAS / IT">Sistemas / IT</option>
-                    <option value="HONORARIOS">Honorarios</option>
-                    <option value="RRHH EXTERNO">RRHH Externo</option>
-                    <option value="LICENCIAS & DERECHOS">Licencias</option>
-                </select>
-            </div>
-            <div style="flex:1;">
-                <label class="input-label">CENTRO DE COSTOS</label>
-                <select id="sCC" class="modal-select">
-                    <option value="COD">COD (Directo)</option>
-                    <option value="OPEX">OPEX (Operativo)</option>
-                    <option value="G&A">G&A (Admin)</option>
-                </select>
-            </div>
+      <label class="input-label">NOMBRE</label>
+      <input type="text" id="supName" class="modal-input" placeholder="Ej: DISTRIBUIDORA LOS AMIGOS">
+
+      <div style="display:flex; gap:15px; margin-top:15px;">
+        <div style="flex:1;">
+          <label class="input-label">CATEGORÍA</label>
+          <select id="supCat" class="modal-select">
+            <option value="">Seleccionar...</option>
+            <option value="BEBIDAS">BEBIDAS</option>
+            <option value="ALIMENTOS">ALIMENTOS</option>
+            <option value="SERVICIOS">SERVICIOS</option>
+            <option value="VARIOS">VARIOS</option>
+          </select>
         </div>
-
-        <div style="display:flex; gap:15px; margin-top:15px;">
-            <div style="flex:1;">
-                <label class="input-label">FACTURACIÓN</label>
-                <select id="sBill" class="modal-select">
-                    <option value="FACTURA_A">Factura A</option>
-                    <option value="FACTURA_C">Factura C</option>
-                    <option value="SIN_FACTURA">Sin Factura</option>
-                </select>
-            </div>
-            <div style="flex:1;">
-                <label class="input-label">CUIT</label>
-                <input type="text" id="sCuit" class="modal-input" placeholder="Solo números">
-            </div>
+        <div style="flex:1;">
+          <label class="input-label">CENTRO DE COSTO</label>
+          <input type="text" id="supCostCenter" class="modal-input" placeholder="Ej: BARRA, OPERATIVO...">
         </div>
+      </div>
 
-        <label class="input-label">DATOS BANCARIOS (CBU/ALIAS)</label>
-        <input type="text" id="sCbu" class="modal-input">
-
-        <label class="input-label">CONTACTO</label>
-        <input type="text" id="sContact" class="modal-input">
-
-        <div class="modal-btns">
-            <button onclick="closeModal()" class="btn-modal-cancel">Cancelar</button>
-            <button onclick="save()" class="btn-modal-save">Guardar Cambios</button>
+      <div style="display:flex; gap:15px; margin-top:15px;">
+        <div style="flex:1;">
+          <label class="input-label">FACTURACIÓN</label>
+          <select id="supBilling" class="modal-select">
+            <option value="">Seleccionar...</option>
+            <option value="FACTURA_A">Factura A</option>
+            <option value="FACTURA_C">Factura C</option>
+            <option value="MONOTRIBUTO">Monotributo</option>
+            <option value="SIN_FACTURA">Sin Factura</option>
+          </select>
         </div>
+        <div style="flex:1;">
+          <label class="input-label">CUIT / TAX ID</label>
+          <input type="text" id="supCuit" class="modal-input" placeholder="CUIT / DNI / ID fiscal">
+        </div>
+      </div>
+
+      <label class="input-label" style="margin-top:15px;">CONDICIONES DE PAGO</label>
+      <input
+        type="text"
+        id="supTerms"
+        class="modal-input"
+        placeholder="Ej: 7 días, contra entrega, 50% anticipado..."
+      >
+
+      <label class="input-label" style="margin-top:15px;">CBU / ALIAS / DATOS DE PAGO</label>
+      <input
+        type="text"
+        id="supCbu"
+        class="modal-input"
+        placeholder="CBU, alias, billetera virtual, etc."
+      >
+
+      <label class="input-label" style="margin-top:15px;">CONTACTO</label>
+      <textarea
+        id="supContact"
+        class="modal-input"
+        style="min-height:70px; resize:vertical;"
+        placeholder="Teléfono, mail, contacto comercial..."
+      ></textarea>
+
+      <div style="margin-top:15px;">
+        <label class="input-label">ESTADO</label>
+        <label style="font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+          <input type="checkbox" id="supActive" checked>
+          Proveedor activo
+        </label>
+      </div>
+
+      <div class="modal-btns">
+        <button onclick="closeSupplierModal()" class="btn-modal-cancel">Cancelar</button>
+        <button onclick="saveSupplier()" class="btn-modal-save">Guardar</button>
+      </div>
     </div>
   </div>
 
   <script>
-    let allData = [];
+    let suppliers = [];
 
-    window.onload = async () => {
-        try {
-            const { data, error } = await client.from('suppliers').select('*').order('name');
-            if (error) throw error;
-            allData = data || [];
-            render(allData);
-        } catch (e) {
-            console.error(e);
-            document.getElementById('listContainer').innerHTML = '<div style="text-align:center; color:var(--color-danger);">Error de conexión</div>';
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSuppliers();
+    });
+
+    async function loadSuppliers() {
+      const tbody = document.getElementById('suppliersList');
+      try {
+        const { data, error } = await client
+          .from('suppliers')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+
+        suppliers = data || [];
+        renderSuppliers(suppliers);
+      } catch (err) {
+        console.error('Error cargando proveedores:', err);
+        tbody.innerHTML =
+          '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--state-error);">Error al cargar proveedores.</td></tr>';
+      }
+    }
+
+    function renderSuppliers(list) {
+      const tbody = document.getElementById('suppliersList');
+
+      if (!list.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">Sin proveedores cargados.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(s => {
+        const cat = s.category || 'VARIOS';
+        const costCenter = s.cost_center || '-';
+        const billing = s.billing_condition || '-';
+        const payTerms = s.payment_terms || '-';
+        const active = s.is_active !== false;
+
+        const stateClass = active ? 'tag-green' : 'tag-gray';
+        const stateLabel = active ? 'ACTIVO' : 'PAUSADO';
+
+        return `
+          <tr>
+            <td style="padding-left:25px;">
+              <div class="row-title">${s.name}</div>
+              <div class="row-sub-text">
+                <span class="tag tag-gray">${cat}</span>
+              </div>
+            </td>
+            <td>${costCenter}</td>
+            <td>${billing}</td>
+            <td>${payTerms}</td>
+            <td>
+              <span class="tag ${stateClass}">${stateLabel}</span>
+            </td>
+            <td style="text-align:center;">
+              <button class="btn-icon" onclick="openSupplierModal(${s.id})">✏️</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterSuppliers() {
+      const t = document.getElementById('searchSupplier').value.toLowerCase();
+      const filtered = suppliers.filter(s => {
+        const name = (s.name || '').toLowerCase();
+        const cat = (s.category || '').toLowerCase();
+        const cc = (s.cost_center || '').toLowerCase();
+        return name.includes(t) || cat.includes(t) || cc.includes(t);
+      });
+      renderSuppliers(filtered);
+    }
+
+    function openSupplierModal(id) {
+      const modal = document.getElementById('supplierModal');
+      const supId = document.getElementById('supId');
+
+      if (id) {
+        const s = suppliers.find(x => x.id === id);
+        if (!s) return;
+
+        supId.value = s.id;
+        document.getElementById('supName').value = s.name || '';
+        document.getElementById('supCat').value = s.category || '';
+        document.getElementById('supCostCenter').value = s.cost_center || '';
+        document.getElementById('supBilling').value = s.billing_condition || '';
+        document.getElementById('supCuit').value = s.tax_id || '';
+        document.getElementById('supTerms').value = s.payment_terms || '';
+        document.getElementById('supCbu').value = s.cbu_alias || '';
+        document.getElementById('supContact').value = s.contact_info || '';
+        document.getElementById('supActive').checked = s.is_active !== false;
+      } else {
+        supId.value = '';
+        document.getElementById('supName').value = '';
+        document.getElementById('supCat').value = '';
+        document.getElementById('supCostCenter').value = '';
+        document.getElementById('supBilling').value = '';
+        document.getElementById('supCuit').value = '';
+        document.getElementById('supTerms').value = '';
+        document.getElementById('supCbu').value = '';
+        document.getElementById('supContact').value = '';
+        document.getElementById('supActive').checked = true;
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeSupplierModal() {
+      document.getElementById('supplierModal').style.display = 'none';
+    }
+
+    async function saveSupplier() {
+      const id = document.getElementById('supId').value;
+      const name = document.getElementById('supName').value.trim();
+
+      if (!name) {
+        alert('El nombre del proveedor es obligatorio.');
+        return;
+      }
+
+      const payload = {
+        name: name,
+        category: document.getElementById('supCat').value || null,
+        cost_center: document.getElementById('supCostCenter').value || null,
+        billing_condition: document.getElementById('supBilling').value || null,
+        tax_id: document.getElementById('supCuit').value || null,
+        payment_terms: document.getElementById('supTerms').value || null,
+        cbu_alias: document.getElementById('supCbu').value || null,
+        contact_info: document.getElementById('supContact').value || null,
+        is_active: document.getElementById('supActive').checked
+      };
+
+      try {
+        if (id) {
+          const { error } = await client
+            .from('suppliers')
+            .update(payload)
+            .eq('id', id);
+          if (error) throw error;
+        } else {
+          const { error } = await client
+            .from('suppliers')
+            .insert(payload);
+          if (error) throw error;
         }
-    };
 
-    function render(list) {
-        const c = document.getElementById('listContainer');
-        if(!list.length) { c.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Sin resultados.</div>'; return; }
-
-        c.innerHTML = list.map(s => `
-            <div class="list-row">
-                <div>
-                    <div class="row-main-text">${s.name}</div>
-                    <div class="row-sub-text" style="display:flex; align-items:center; gap:8px; margin-top:6px;">
-                        <span class="tag tag-gray">${s.category || 'Gral'}</span>
-                        <span class="tag tag-outline">${s.cost_center || '-'}</span>
-                        <span style="color:var(--text-tertiary); font-size:12px;">
-                            ${(s.billing_condition || '').replace('_',' ')} 
-                            ${s.contact_info ? ' • ' + s.contact_info : ''}
-                        </span>
-                    </div>
-                </div>
-                <button onclick="edit(${s.id})" class="btn-icon">✏️</button>
-            </div>
-        `).join('');
-    }
-
-    function filter(type, btn) {
-        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        if(type === 'ALL') render(allData);
-        else render(allData.filter(x => x.cost_center === type));
-    }
-
-    document.getElementById('search').oninput = (e) => {
-        const t = e.target.value.toLowerCase();
-        render(allData.filter(x => x.name.toLowerCase().includes(t) || (x.tax_id && x.tax_id.includes(t))));
-    };
-
-    function openModal() { document.getElementById('suppModal').style.display='flex'; document.getElementById('sId').value=''; }
-    function closeModal() { document.getElementById('suppModal').style.display='none'; }
-
-    async function edit(id) {
-        const s = allData.find(x => x.id === id);
-        document.getElementById('sId').value = s.id;
-        document.getElementById('sName').value = s.name;
-        document.getElementById('sCat').value = s.category;
-        document.getElementById('sCC').value = s.cost_center;
-        document.getElementById('sBill').value = s.billing_condition;
-        document.getElementById('sCuit').value = s.tax_id || '';
-        document.getElementById('sCbu').value = s.cbu_alias || '';
-        document.getElementById('sContact').value = s.contact_info || '';
-        document.getElementById('suppModal').style.display = 'flex';
-    }
-
-    async function save() {
-        const id = document.getElementById('sId').value;
-        const d = {
-            name: document.getElementById('sName').value.toUpperCase(),
-            category: document.getElementById('sCat').value,
-            cost_center: document.getElementById('sCC').value,
-            billing_condition: document.getElementById('sBill').value,
-            tax_id: document.getElementById('sCuit').value,
-            cbu_alias: document.getElementById('sCbu').value,
-            contact_info: document.getElementById('sContact').value
-        };
-
-        const { error } = id 
-            ? await client.from('suppliers').update(d).eq('id', id)
-            : await client.from('suppliers').insert(d);
-
-        if(error) alert(error.message);
-        else { closeModal(); window.location.reload(); }
+        closeSupplierModal();
+        await loadSuppliers();
+      } catch (err) {
+        console.error('Error guardando proveedor:', err);
+        alert('Error al guardar proveedor: ' + err.message);
+      }
     }
   </script>
 </body>
