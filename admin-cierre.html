@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight - Cierre de Noche</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Estilos Específicos para el Módulo */
+    .tab-nav { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 1px solid var(--border-light); padding-bottom: 0; }
+    .tab-btn { 
+        background: none; border: none; color: var(--txt-secondary); padding: 15px 10px; 
+        font-family: var(--font-main); font-size: 13px; font-weight: 600; cursor: pointer; 
+        border-bottom: 3px solid transparent; transition: 0.2s;
+    }
+    .tab-btn:hover { color: #fff; }
+    .tab-btn.active { color: #fff; border-bottom-color: var(--accent-gold); }
+
+    .audit-box { 
+        background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius);
+        padding: 30px; margin-bottom: 25px; 
+    }
+
+    .diff-negative { color: var(--accent-red); font-weight: 700; }
+    .diff-positive { color: var(--accent-green); font-weight: 700; }
+    .diff-ok { color: var(--txt-secondary); }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--accent-gold);">CIERRE</span></div>
+    <button onclick="window.location.href='administracion-index.html'" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    
+    <div class="section-header" style="align-items:center;">
+        <div>
+            <h2 class="section-title">Asistente de Conciliación</h2>
+            <p class="section-desc">Cruce de datos de campo vs. Facturación Electrónica</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <input type="date" id="eventDate" class="modal-input" style="width:160px;" onchange="loadData()">
+            <button onclick="saveAll()" class="btn-primary">💾 CERRAR JORNADA</button>
+        </div>
+    </div>
+
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('cajas', this)">💵 CAJAS & VENTA</button>
+        <button class="tab-btn" onclick="switchTab('acceso', this)">🎫 ACCESO & SERVICIOS</button>
+        <button class="tab-btn" onclick="switchTab('tesoreria', this)">🏦 ARQUEO CAJA MADRE</button>
+    </div>
+
+    <div id="view-cajas" class="audit-box">
+        <div class="section-header" style="margin-bottom:20px;">
+            <h3 class="section-title" style="font-size:18px;">Cruce de Efectivo Declarado</h3>
+            <div style="display:flex; gap:10px;">
+                <input type="file" id="fileFacturas" hidden accept=".xlsx,.xls,.csv" onchange="importFacturas(this)">
+                <button onclick="document.getElementById('fileFacturas').click()" class="btn-refresh" style="background:var(--accent-blue); color:#fff;">📥 IMPORTAR FACTURACIÓN (GBOL)</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="sku-table">
+                <thead>
+                    <tr>
+                        <th>TERMINAL</th>
+                        <th style="text-align:right;">TEÓRICO EFVO (GBOL)</th>
+                        <th style="text-align:right;">DECLARADO EFVO (STAFF)</th>
+                        <th style="text-align:right;">DIFERENCIA EFVO</th>
+                        <th style="text-align:right;">DIFERENCIA DIGITAL</th>
+                    </tr>
+                </thead>
+                <tbody id="conciliacionBody">
+                    <tr><td colspan="5" style="text-align:center; padding:30px; color:var(--txt-secondary);">Cargue las facturas electrónicas para conciliar.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="view-acceso" class="audit-box" style="display:none;">
+        <h3 class="section-title" style="font-size:18px; margin-bottom:25px;">Ingresos Secundarios</h3>
+
+        <div style="border:1px solid var(--border-light); padding:20px; border-radius:var(--radius); margin-bottom:30px;">
+            <div class="section-header" style="margin-bottom:15px; padding-bottom:10px;">
+                <h4 style="font-size:16px; margin:0; color:var(--accent-purple);">Passline (Venta de Acceso)</h4>
+                <input type="file" id="filePassline" hidden accept=".csv" onchange="importPassline(this)">
+                <button onclick="document.getElementById('filePassline').click()" class="btn-refresh">📥 IMPORTAR TICKETS</button>
+            </div>
+            
+            <div id="passlineSummary" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:15px;">
+                <div style="background:#000; padding:15px; border-radius:var(--radius); text-align:center;">
+                    <div class="val-lbl">COMPRADOS</div><div class="val-num" id="plTotal" style="color:#fff;">0</div>
+                </div>
+                <div style="background:#000; padding:15px; border-radius:var(--radius); text-align:center;">
+                    <div class="val-lbl">ACREDITADOS</div><div class="val-num" id="plValidated" style="color:var(--accent-green);">0</div>
+                </div>
+                <div style="background:#000; padding:15px; border-radius:var(--radius); text-align:center;">
+                    <div class="val-lbl">REMANENTE</div><div class="val-num" id="plRemanente" style="color:var(--accent-red);">0</div>
+                </div>
+                <div style="grid-column:1/-1; text-align:center; margin-top:10px;">
+                    <span class="val-lbl">INGRESO BRUTO ESTIMADO:</span> <span class="val-num" id="plIngresoBruto" style="color:var(--accent-gold); font-size:18px;">$ 0</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="border:1px solid var(--border-light); padding:20px; border-radius:var(--radius);">
+            <label class="input-label">INGRESO GUARDARROPAS (Efectivo Contado)</label>
+            <input type="number" id="totalWardrobe" class="modal-input" value="0" placeholder="0">
+        </div>
+    </div>
+
+    <div id="view-tesoreria" class="audit-box" style="display:none;">
+        <h3 class="section-title" style="font-size:18px; margin-bottom:20px;">Arqueo y Cierre Tesorería</h3>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:30px;">
+            <div class="val-card">
+                <div class="val-lbl">INGRESO TOTAL EFECTIVO (TEÓRICO)</div>
+                <div class="val-num" id="tIngreso" style="font-size:24px; color:var(--accent-green);">$ 0</div>
+                <div class="val-lbl" style="margin-top:15px;">EGRESOS CONFIRMADOS</div>
+                <div class="val-num" id="tEgreso" style="color:var(--accent-red);">$ 0</div>
+                <div class="val-lbl" style="margin-top:20px; border-top:1px solid var(--border-light); padding-top:10px;">SALDO FINAL TEÓRICO</div>
+                <div class="val-num" id="tSaldoFinal" style="font-size:28px;">$ 0</div>
+            </div>
+
+            <div class="val-card" style="background:#000;">
+                <label class="input-label" style="color:#fff;">CONTEO FÍSICO (CAJA FUERTE)</label>
+                <input type="number" id="tConteoFinal" class="modal-input" placeholder="0" oninput="calculateTesoroDiff()">
+                
+                <div class="input-label" style="margin-top:30px;">DIFERENCIA FINAL</div>
+                <div class="val-num" id="tDiferencia" style="font-size:24px;">$ 0</div>
+                <p class="section-desc" id="tNovedad" style="color:var(--accent-red); font-weight:600; margin-top:10px;"></p>
+            </div>
+        </div>
+
+        <button onclick="saveAll()" class="btn-primary" style="width:100%; padding:15px;">FINALIZAR ARQUEO Y CERRAR JORNADA</button>
+    </div>
+
+  </div>
+
+  <script>
+    let currentClosingId = null;
+    let terminals = {}; // { 'CAJA 1': { declared_cash: 0, system_cash: 0, ... } }
+    let passlineData = { validated: 0, total: 0, ingreso: 0 };
+    let tesoroData = { egresos: 0 };
+    let posMapping = {};
+
+    window.onload = async () => {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('eventDate').value = today;
+        await loadMapping();
+        await loadData();
+    };
+
+    function switchTab(view, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        ['cajas', 'acceso', 'tesoreria'].forEach(v => document.getElementById('view-'+v).style.display='none');
+        document.getElementById('view-'+view).style.display='block';
+    }
+
+    async function loadMapping() {
+        // Carga el mapeo POS para cruzar el ID de GBol/Zoco con el nombre amigable
+        const { data } = await client.from('pos_terminals').select('*');
+        if(data) data.forEach(p => posMapping[p.provider+'_'+p.external_id] = p.friendly_name);
+    }
+    
+    async function loadData() {
+        const date = document.getElementById('eventDate').value;
+
+        // 1. Cargar Cabecera y Detalles de Cierre (Lo que reportó Staff)
+        const { data: closing } = await client.from('cash_closings').select('id, total_wardrobe').eq('event_date', date).maybeSingle();
+        currentClosingId = closing?.id;
+
+        // Limpiar/Reinicializar terminales con los datos reportados por Staff
+        terminals = {};
+        if (currentClosingId) {
+            const { data: details } = await client.from('closing_terminals').select('*').eq('closing_id', currentClosingId);
+            details.forEach(d => {
+                terminals[d.terminal_name] = { 
+                    declared_cash: parseFloat(d.final_count_cash) || 0,
+                    declared_digital: parseFloat(d.zoco_digital) || 0,
+                    withdrawals: parseFloat(d.cash_withdrawals) || 0,
+                    system_cash: 0, // Se llenan con importación
+                    system_digital: 0, // Se llenan con importación
+                    ...d // Mantener todos los campos
+                };
+            });
+            document.getElementById('totalWardrobe').value = closing.total_wardrobe || 0;
+        }
+
+        // 2. Cargar Movimientos de Egreso (Cash Movements)
+        const { data: movements } = await client.from('cash_movements').select('amount').eq('event_date', date).eq('status', 'CONFIRMED');
+        tesoroData.egresos = movements ? movements.reduce((sum, m) => sum + parseFloat(m.amount), 0) : 0;
+        
+        renderConciliation();
+        calculateTesoroDiff();
+    }
+
+    function renderConciliation() {
+        const tbody = document.getElementById('conciliacionBody');
+        const keys = Object.keys(terminals).sort();
+
+        if (keys.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--txt-secondary);">Aún no hay declaraciones de venta.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = keys.map(key => {
+            const t = terminals[key];
+            
+            // CONCILIACIÓN DE EFECTIVO
+            const diffCash = t.declared_cash - t.system_cash;
+            const diffCashClass = diffCash === 0 ? 'diff-ok' : (diffCash < 0 ? 'diff-negative' : 'diff-positive');
+            
+            // CONCILIACIÓN DIGITAL
+            const diffDigital = t.declared_digital - t.system_digital;
+            const diffDigitalClass = diffDigital === 0 ? 'diff-ok' : (diffDigital < 0 ? 'diff-negative' : 'diff-positive');
+
+            return `
+            <tr>
+                <td style="font-weight:600; padding-left:20px;">${key}</td>
+                <td style="text-align:right;">${MC_UTILS.formatCurrency(t.system_cash)}</td>
+                <td style="text-align:right;">${MC_UTILS.formatCurrency(t.declared_cash)}</td>
+                <td class="${diffCashClass}" style="text-align:right;">${MC_UTILS.formatCurrency(diffCash)}</td>
+                <td class="${diffDigitalClass}" style="text-align:right;">${MC_UTILS.formatCurrency(diffDigital)}</td>
+            </tr>`;
+        }).join('');
+
+        renderTesoroSummary();
+    }
+
+    // === IMPORTADORES EXTERNOS ===
+
+    // IMPORTAR FACTURAS ELECTRÓNICAS (GBOL)
+    async function importFacturas(input) {
+        const file = input.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                
+                // Buscar cabecera
+                const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                let hIdx = raw.findIndex(r => r.some(cell => String(cell).toLowerCase().includes('cajanom') && String(cell).toLowerCase().includes('efectivo')));
+                if(hIdx === -1) throw new Error("Formato inválido. Se requieren 'cajanom' y 'efectivo'.");
+                
+                const rows = XLSX.utils.sheet_to_json(ws, { range: hIdx });
+                
+                // Limpiar valores de sistema antes de importar
+                Object.keys(terminals).forEach(k => { terminals[k].system_cash = 0; terminals[k].system_digital = 0; });
+
+                rows.forEach(r => {
+                    const boxName = String(r['cajanom']).trim().toUpperCase();
+                    const efectivo = parseFloat(r['efectivo'] || 0);
+                    const tarjetas = parseFloat(r['tarjetas'] || 0);
+                    const merpag = parseFloat(r['merpag'] || 0);
+                    
+                    const digitalTotal = tarjetas + merpag;
+
+                    if (terminals[boxName]) {
+                        terminals[boxName].system_cash += efectivo;
+                        terminals[boxName].system_digital += digitalTotal;
+                    }
+                });
+
+                // Registrar evento
+                await client.from('admin_logs').insert({ action: 'IMPORT_FACTURA', details: `Importadas ventas de ${rows.length} facturas.` });
+                alert("Ventas Teóricas (GBol) Importadas y conciliadas.");
+                renderConciliation();
+                input.value = '';
+            } catch (err) { alert("Error GBol: " + err.message); }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    
+    // IMPORTAR PASSLINE (Control de Acceso)
+    async function importPassline(input) {
+        const file = input.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const csvData = e.target.result;
+                // Parseo manual CSV con delimitador ;
+                const lines = csvData.split('\n').map(line => line.split(';'));
+                
+                if (lines.length < 2) throw new Error("Archivo Passline vacío.");
+                
+                const headerIndex = lines.findIndex(row => row.some(cell => cell.includes("Estado del eticket")));
+                if (headerIndex === -1) throw new Error("No se encontró el encabezado 'Estado del eticket'.");
+
+                const header = lines[headerIndex];
+                const statusCol = header.findIndex(h => h.includes("Estado del eticket"));
+                const totalCol = header.findIndex(h => h.includes("Total"));
+                
+                if (statusCol === -1 || totalCol === -1) throw new Error("Columnas Estado/Total no encontradas.");
+                
+                let totalTickets = 0;
+                let validatedTickets = 0;
+                let ingresoBruto = 0;
+                
+                for (let i = headerIndex + 1; i < lines.length; i++) {
+                    const row = lines[i];
+                    if (row.length > statusCol) {
+                        totalTickets++;
+                        const status = row[statusCol].replace(/"/g, '').trim();
+                        const totalStr = row[totalCol].replace(/"/g, '').replace(',', '.'); // Manejar comas decimales
+                        const total = parseFloat(totalStr) || 0;
+
+                        if (status === 'Validada') {
+                            validatedTickets++;
+                            ingresoBruto += total;
+                        }
+                    }
+                }
+
+                passlineData.total = totalTickets;
+                passlineData.validated = validatedTickets;
+                passlineData.ingreso = ingresoBruto;
+
+                document.getElementById('plTotal').innerText = totalTickets;
+                document.getElementById('plValidated').innerText = validatedTickets;
+                document.getElementById('plRemanente').innerText = totalTickets - validatedTickets;
+                document.getElementById('plIngresoBruto').innerText = MC_UTILS.formatCurrency(ingresoBruto);
+
+                alert("Reporte Passline importado.");
+                input.value = '';
+                renderTesoroSummary();
+            } catch (err) { alert("Error Passline: " + err.message); }
+        };
+        reader.readAsText(file, 'utf-8');
+    }
+    
+    // === VISTA TESORERÍA (Cálculos Blindados) ===
+
+    function renderTesoroSummary() {
+        // Ingreso Consolidado (Efectivo de Cajas + Guardarropas + Passline)
+        const efectivoCajas = Object.values(terminals).reduce((sum, t) => sum + t.declared_cash, 0);
+        const ingresoGuardarropas = parseFloat(document.getElementById('totalWardrobe').value) || 0;
+        const ingresoPassline = passlineData.ingreso; // Passline Bruto - asumimos que es efectivo o se concilia aparte
+        
+        // Suma de todos los ingresos de la noche (en efectivo o a recibir)
+        const ingresoConsolidado = efectivoCajas + ingresoGuardarropas + ingresoPassline; 
+        
+        const egresoConfirmado = tesoroData.egresos;
+
+        const saldoFinalTeorico = ingresoConsolidado - egresoConfirmado;
+        
+        document.getElementById('tIngreso').innerText = MC_UTILS.formatCurrency(ingresoConsolidado);
+        document.getElementById('tEgreso').innerText = MC_UTILS.formatCurrency(egresoConfirmado);
+        document.getElementById('tSaldoFinal').innerText = MC_UTILS.formatCurrency(saldoFinalTeorico);
+
+        calculateTesoroDiff();
+    }
+
+    function calculateTesoroDiff() {
+        const saldoFinalTeorico = parseFloat(document.getElementById('tSaldoFinal').innerText.replace(/[$,]/g, '')) || 0;
+        const conteoFisico = parseFloat(document.getElementById('tConteoFinal').value) || 0;
+        const diferencia = conteoFisico - saldoFinalTeorico;
+        
+        document.getElementById('tDiferencia').innerText = MC_UTILS.formatCurrency(diferencia);
+
+        const novelty = document.getElementById('tNovedad');
+        if (diferencia > 1000) {
+            novelty.innerText = "¡SOBRANTE! Audite la procedencia.";
+            novelty.style.color = 'var(--accent-green)';
+        } else if (diferencia < -1000) {
+            novelty.innerText = "¡FALTANTE! Se requiere justificación.";
+            novelty.style.color = 'var(--accent-red)';
+        } else {
+            novelty.innerText = "Cuadrado (Diferencia menor a $1000)";
+            novelty.style.color = 'var(--txt-secondary)';
+        }
+    }
+
+    // --- ACCIÓN FINAL: GUARDAR CIERRE ---
+    async function saveAll() {
+        if (!currentClosingId) {
+            // Se debe ejecutar la lógica de guardar cabecera (cierre) para tener un ID
+            const date = document.getElementById('eventDate').value;
+            const pass = passlineData.ingreso;
+            const ward = parseFloat(document.getElementById('totalWardrobe').value) || 0;
+
+            const { data: head, error } = await client.from('cash_closings')
+                .upsert({ event_date: date, total_passline: pass, total_wardrobe: ward, status: 'closed' }, { onConflict: 'event_date' })
+                .select().single();
+            
+            if (error) return alert("Error al crear cierre: " + error.message);
+            currentClosingId = head.id;
+        }
+
+        if (confirm("¿Confirmar y cerrar la jornada de forma definitiva?")) {
+            // Guardar el estado actual de las terminales (con los system_cash/digital actualizados por las importaciones)
+            await client.from('closing_terminals').delete().eq('closing_id', currentClosingId);
+            const details = Object.values(terminals).map(t => ({
+                closing_id: currentClosingId,
+                terminal_name: t.terminal_name,
+                final_count_cash: t.declared_cash,
+                system_cash: t.system_cash,
+                system_digital: t.system_digital,
+                zoco_digital: t.declared_digital,
+                cash_withdrawals: t.withdrawals,
+                // Mantener otros campos si existen
+            }));
+            await client.from('closing_terminals').insert(details);
+            
+            alert("Cierre de Noche V2.1 Finalizado.");
+            window.location.href = 'administracion-index.html';
+        }
+    }
+  </script>
+</body>
+</html>
