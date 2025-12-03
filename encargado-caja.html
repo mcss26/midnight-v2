@@ -6,99 +6,148 @@
   <title>Midnight — Encargado Caja</title>
   
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 
   <style>
-    /* Tabs Superiores */
-    .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+    /* Tabs Navegación */
+    .tab-nav { display: flex; gap: 15px; margin-bottom: 30px; border-bottom: 1px solid var(--mc-border); padding-bottom: 0; }
     .tab-btn { 
-        background: #111; border: 1px solid #333; color: #666; padding: 10px 15px; 
-        border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer;
+        background: none; border: none; color: var(--text-secondary); padding: 15px 10px; 
+        font-family: var(--font-main); font-size: 13px; font-weight: 600; cursor: pointer; 
+        border-bottom: 3px solid transparent; transition: 0.2s;
     }
-    .tab-btn.active { background: #fff; color: #000; border-color: #fff; }
+    .tab-btn:hover { color: #fff; }
+    .tab-btn.active { color: #fff; border-bottom-color: var(--color-gold); }
 
-    /* Cards de Validación */
-    .validation-card {
-        background: #111; border: 1px solid #333; border-radius: 8px; padding: 15px; margin-bottom: 10px;
-        display: flex; flex-direction: column; gap: 10px;
+    /* Tarjetas de Validación */
+    .val-card {
+        background: var(--mc-surface); border: 1px solid var(--mc-border); border-radius: var(--radius-md);
+        padding: 20px; margin-bottom: 15px; transition: 0.2s;
     }
-    .val-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #333; padding-bottom: 10px; }
-    .val-title { font-family: 'Outfit'; color: #fff; font-size: 16px; }
-    .val-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: #222; color: #888; }
-    .val-data { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; }
-    .val-value { font-family: monospace; font-size: 14px; font-weight: 700; color: #fff; }
+    .val-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed var(--mc-border); }
+    .val-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: #fff; }
+    
+    .val-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .val-item { text-align: center; }
+    .val-lbl { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px; }
+    .val-num { font-family: monospace; font-size: 14px; font-weight: 700; color: #fff; }
 
     /* Stock Librería */
     .stock-row { 
         display: flex; justify-content: space-between; align-items: center; 
-        padding: 12px; background: #080808; border-bottom: 1px solid #222;
+        padding: 12px 15px; background: var(--mc-surface); border-bottom: 1px solid var(--mc-border);
     }
-    .stock-input { 
-        width: 60px; background: #1a1a1a; border: 1px solid #333; color: #fff; 
-        text-align: center; padding: 5px; border-radius: 4px; font-weight: 700;
+    .stock-row:first-child { border-top-left-radius: var(--radius-sm); border-top-right-radius: var(--radius-sm); }
+    .stock-row:last-child { border-bottom-left-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); border-bottom: none; }
+    .stock-inp { 
+        width: 70px; background: #000; border: 1px solid var(--mc-border); color: #fff; 
+        padding: 8px; text-align: center; border-radius: 6px; font-weight: 700; outline: none;
+    }
+    .stock-inp:focus { border-color: var(--color-success); }
+
+    /* Retiros */
+    .withdrawal-item {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 15px; background: rgba(255, 214, 10, 0.05); border: 1px solid rgba(255, 214, 10, 0.2);
+        border-radius: 8px; margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
 
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-gold);">LÍDER</span></div>
-    <div style="display:flex; align-items:center; gap:10px;">
-        <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700;">ENCARGADO</span>
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--color-gold);">LÍDER</span></div>
+    <div style="display:flex; align-items:center; gap:15px;">
+        <div class="user-badge-container">
+            <div id="userDisplay" class="user-name">ENCARGADO</div>
+            <div class="user-role" style="color:var(--color-gold);">CAJA</div>
+        </div>
         <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
     </div>
   </header>
 
-  <div class="admin-container" style="max-width:600px; margin-top:20px;">
+  <div class="admin-container">
     
     <div class="tab-nav">
         <button class="tab-btn active" onclick="switchTab('validar', this)">🔍 VALIDAR CAJAS</button>
+        <button class="tab-btn" onclick="switchTab('retiros', this)">💸 GESTIÓN RETIROS</button>
         <button class="tab-btn" onclick="switchTab('stock', this)">✏️ LIBRERÍA</button>
         <button class="tab-btn" onclick="switchTab('novedades', this)">📢 NOVEDADES</button>
     </div>
 
     <div id="view-validar">
         <div class="section-header">
-            <h2 class="section-title">Cierres Recibidos</h2>
-            <input type="date" id="filterDate" class="search-input-admin" style="width:auto; margin:0; padding:6px;" onchange="loadClosings()">
+            <div>
+                <h2 class="section-title">Cierres Recibidos</h2>
+                <p class="section-desc">Monitoreo de declaraciones en tiempo real</p>
+            </div>
+            <input type="date" id="filterDate" class="search-input-admin" style="width:auto; margin:0;" onchange="loadClosings()">
         </div>
         <div id="closingsList"><div class="loading-state">Buscando cierres...</div></div>
+    </div>
+
+    <div id="view-retiros" style="display:none;">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Solicitar Retiro</h2>
+                <p class="section-desc">Autorizar salida de dinero para que entregue la cajera</p>
+            </div>
+        </div>
+
+        <div class="dash-card" style="margin-bottom:30px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                <div>
+                    <label class="input-label">ORIGEN (CAJA)</label>
+                    <select id="wTerm" class="modal-select"></select>
+                </div>
+                <div>
+                    <label class="input-label">MONTO A RETIRAR</label>
+                    <input type="number" id="wAmount" class="modal-input" placeholder="$ 0">
+                </div>
+            </div>
+            <label class="input-label">MOTIVO / DESTINO</label>
+            <input type="text" id="wDesc" class="modal-input" placeholder="Ej: Pago Hielo, Retiro Gerencia...">
+            
+            <button onclick="createWithdrawal()" class="btn-primary" style="background:var(--color-gold); color:#000; width:100%; margin-top:10px;">GENERAR ORDEN DE RETIRO 🚀</button>
+        </div>
+
+        <h3 class="section-title" style="font-size:16px; margin-bottom:15px;">Estado de Solicitudes (Hoy)</h3>
+        <div id="withdrawalList"></div>
     </div>
 
     <div id="view-stock" style="display:none;">
         <div class="section-header">
             <div>
-                <h2 class="section-title">Stock Librería</h2>
-                <p style="font-size:10px; color:#666;">Rollos, Precintos, Librería</p>
+                <h2 class="section-title">Insumos de Librería</h2>
+                <p class="section-desc">Rollos, precintos y oficina</p>
             </div>
-            <button onclick="openRequestModal()" class="btn-refresh" style="background:var(--mc-accent-green); color:#000;">+ PEDIR</button>
+            <button onclick="openRequestModal()" class="btn-refresh">+ PEDIR A COMPRAS</button>
         </div>
         
-        <div class="dash-card" style="height:auto; padding:0; overflow:hidden;">
-            <div id="suppliesList"></div>
-        </div>
-        <button onclick="saveStock()" class="btn-primary" style="width:100%; margin-top:15px; padding:15px;">GUARDAR CONTEO</button>
+        <div id="suppliesList" style="margin-bottom:20px;"></div>
+        <button onclick="saveStock()" class="btn-primary" style="width:100%;">GUARDAR CONTEO ✅</button>
     </div>
 
     <div id="view-novedades" style="display:none;">
-        <div class="dash-card" style="height:auto;">
-            <h3 class="dash-title" style="margin-bottom:15px; color:var(--mc-red);">REPORTAR INCIDENTE</h3>
+        <div class="dash-card">
+            <h3 class="dash-title" style="margin-bottom:20px;">Reportar Incidente</h3>
             <label class="input-label">TIPO</label>
             <select id="incType" class="modal-select">
                 <option value="DIFERENCIA_CAJA">💰 Diferencia de Caja</option>
                 <option value="SISTEMA">💻 Error de Sistema</option>
-                <option value="SEGURIDAD">🛡️ Seguridad / Robo</option>
                 <option value="PERSONAL">👥 Conducta Personal</option>
+                <option value="INFRAESTRUCTURA">🔧 Mantenimiento Caja</option>
             </select>
             <label class="input-label">DETALLE</label>
             <textarea id="incDesc" class="modal-input" placeholder="Describa la situación..." style="height:100px;"></textarea>
-            <button onclick="sendIncident()" class="btn-primary" style="width:100%; margin-top:10px; background:var(--mc-red); color:#fff;">ENVIAR REPORTE</button>
+            <button onclick="sendIncident()" class="btn-primary" style="background:var(--color-danger); color:#fff; width:100%; margin-top:15px;">REGISTRAR INCIDENTE</button>
         </div>
-        <div style="margin-top:20px;">
-            <h3 style="font-size:12px; color:#666; text-transform:uppercase;">Historial Reciente</h3>
-            <div id="incHistory"></div>
+        
+        <div style="margin-top:30px;">
+            <h3 class="section-title" style="font-size:16px; margin-bottom:15px;">Historial Reciente</h3>
+            <div id="incHistory" class="data-list"></div>
         </div>
     </div>
 
@@ -106,13 +155,13 @@
 
   <div id="reqModal" class="modal-overlay">
     <div class="modal-box">
-        <h3>Solicitar Insumos</h3>
-        <p style="color:#666; font-size:11px; margin-bottom:15px;">Pedido a Depósito / Compras</p>
-        <label class="input-label">DETALLE DEL PEDIDO</label>
-        <textarea id="reqDetail" class="modal-input" placeholder="Ej: 2 Cajas Rollos Térmicos 80mm..."></textarea>
+        <h3 class="section-title" style="font-size:20px;">Solicitar Insumos</h3>
+        <p class="section-desc">Este pedido irá al Depto. de Compras</p>
+        <label class="input-label">DETALLE</label>
+        <textarea id="reqDetail" class="modal-input" placeholder="Ej: 5 Cajas Rollos 80mm..." style="height:100px;"></textarea>
         <div class="modal-btns">
-            <button onclick="document.getElementById('reqModal').style.display='none'" class="btn-modal-cancel">CANCELAR</button>
-            <button onclick="sendRequest()" class="btn-modal-save">ENVIAR</button>
+            <button onclick="document.getElementById('reqModal').style.display='none'" class="btn-modal-cancel">Cancelar</button>
+            <button onclick="sendRequest()" class="btn-modal-save">Enviar Pedido</button>
         </div>
     </div>
   </div>
@@ -125,49 +174,48 @@
         const session = localStorage.getItem('mc_user');
         if (!session) { window.location.href = 'index.html'; return; }
         currentUser = JSON.parse(session);
-        document.getElementById('userDisplay').innerText = currentUser.username.toUpperCase();
+        document.getElementById('userDisplay').innerText = (currentUser.full_name || currentUser.username).toUpperCase();
         document.getElementById('filterDate').valueAsDate = new Date();
         
         // Carga inicial
         loadClosings();
+        loadTerminals(); // Para el select de retiros
     });
 
     function switchTab(view, btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         
-        document.getElementById('view-validar').style.display = 'none';
-        document.getElementById('view-stock').style.display = 'none';
-        document.getElementById('view-novedades').style.display = 'none';
-        
-        document.getElementById('view-' + view).style.display = 'block';
+        ['validar','retiros','stock','novedades'].forEach(v => document.getElementById('view-'+v).style.display='none');
+        document.getElementById('view-'+view).style.display='block';
 
+        if(view === 'retiros') loadWithdrawals();
         if(view === 'stock') loadSupplies();
         if(view === 'novedades') loadHistory();
     }
 
-    // === 1. LÓGICA DE VALIDACIÓN (Visor de Cajas) ===
+    // === 1. VALIDACIÓN (Monitor) ===
     async function loadClosings() {
         const date = document.getElementById('filterDate').value;
         const container = document.getElementById('closingsList');
-        container.innerHTML = '<div class="loading-state">Cargando...</div>';
+        container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-secondary);">Cargando datos...</div>';
 
-        // 1. Obtener ID del cierre global de la fecha
-        const { data: head } = await client.from('cash_closings').select('id, status').eq('event_date', date).maybeSingle();
+        // Buscar Cierre Global
+        const { data: head } = await client.from('cash_closings').select('id').eq('event_date', date).maybeSingle();
         
         if (!head) {
-            container.innerHTML = '<div class="empty-state">No hay apertura de caja para esta fecha.</div>';
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">No hay apertura de caja registrada para esta fecha.</div>';
             return;
         }
 
-        // 2. Traer los detalles de las terminales
+        // Buscar Detalles
         const { data: terms } = await client.from('closing_terminals')
             .select('*')
             .eq('closing_id', head.id)
             .order('terminal_name');
 
         if (!terms || terms.length === 0) {
-            container.innerHTML = '<div class="empty-state">Nadie ha cerrado caja aún.</div>';
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Esperando declaraciones de venta...</div>';
             return;
         }
 
@@ -175,47 +223,91 @@
             const efvo = parseFloat(t.final_count_cash)||0;
             const zoco = parseFloat(t.zoco_digital)||0;
             const retiro = parseFloat(t.cash_withdrawals)||0;
-            const total = efvo + zoco; // Total rendido
+            const total = efvo + zoco + retiro;
 
             return `
-            <div class="validation-card">
+            <div class="val-card">
                 <div class="val-header">
                     <span class="val-title">${t.terminal_name}</span>
-                    <span class="val-badge">ENVIADO</span>
+                    <span class="tag tag-green">RECIBIDO</span>
                 </div>
-                <div class="val-data">
-                    <div>
-                        <div style="color:#888;">DECLARADO (Efvo)</div>
-                        <div class="val-value" style="color:var(--mc-accent-green);">$${efvo.toLocaleString()}</div>
+                <div class="val-grid">
+                    <div class="val-item">
+                        <div class="val-lbl">EFECTIVO</div>
+                        <div class="val-num" style="color:var(--color-success);">${MC_UTILS.formatCurrency(efvo)}</div>
                     </div>
-                    <div>
-                        <div style="color:#888;">LOTE (Zoco)</div>
-                        <div class="val-value" style="color:var(--mc-accent-blue);">$${zoco.toLocaleString()}</div>
+                    <div class="val-item">
+                        <div class="val-lbl">ZOCO</div>
+                        <div class="val-num" style="color:var(--color-info);">${MC_UTILS.formatCurrency(zoco)}</div>
                     </div>
-                    <div>
-                        <div style="color:#888;">RETIROS</div>
-                        <div class="val-value" style="color:var(--mc-red);">$${retiro.toLocaleString()}</div>
-                    </div>
-                    <div>
-                        <div style="color:#888;">TOTAL RENDICIÓN</div>
-                        <div class="val-value">$${total.toLocaleString()}</div>
+                    <div class="val-item">
+                        <div class="val-lbl">RETIROS</div>
+                        <div class="val-num" style="color:var(--color-danger);">${MC_UTILS.formatCurrency(retiro)}</div>
                     </div>
                 </div>
-                <button onclick="reportDiff('${t.terminal_name}')" style="background:#222; border:1px solid #444; color:#fff; padding:8px; border-radius:4px; font-size:10px; cursor:pointer; margin-top:5px;">⚠️ REPORTAR DIFERENCIA</button>
             </div>`;
         }).join('');
     }
 
-    function reportDiff(termName) {
-        switchTab('novedades', document.querySelectorAll('.tab-btn')[2]);
-        document.getElementById('incType').value = 'DIFERENCIA_CAJA';
-        document.getElementById('incDesc').value = `Diferencia detectada en ${termName}: `;
-        document.getElementById('incDesc').focus();
+    // === 2. GESTIÓN RETIROS ===
+    async function loadTerminals() {
+        const { data } = await client.from('pos_terminals').select('friendly_name').eq('is_active', true).order('friendly_name');
+        const unique = [...new Set(data.map(i => i.friendly_name))];
+        document.getElementById('wTerm').innerHTML = unique.map(n => `<option value="${n}">${n}</option>`).join('');
     }
 
-    // === 2. LÓGICA STOCK LIBRERÍA ===
+    async function createWithdrawal() {
+        const term = document.getElementById('wTerm').value;
+        const amount = document.getElementById('wAmount').value;
+        const desc = document.getElementById('wDesc').value;
+
+        if(!amount || !desc) return alert("Complete monto y motivo.");
+
+        const { error } = await client.from('cash_movements').insert({
+            requested_by: currentUser.id,
+            terminal_name: term,
+            amount: amount,
+            description: desc,
+            event_date: new Date(),
+            status: 'PENDING'
+        });
+
+        if(error) alert(error.message);
+        else {
+            alert("Solicitud enviada a la caja.");
+            document.getElementById('wAmount').value = '';
+            document.getElementById('wDesc').value = '';
+            loadWithdrawals();
+        }
+    }
+
+    async function loadWithdrawals() {
+        const today = new Date().toISOString().split('T')[0];
+        const { data } = await client.from('cash_movements')
+            .select('*')
+            .eq('event_date', today)
+            .order('created_at', {ascending:false});
+
+        const list = document.getElementById('withdrawalList');
+        if(!data.length) { list.innerHTML='<div style="text-align:center; padding:20px; color:#666;">Sin movimientos hoy.</div>'; return; }
+
+        list.innerHTML = data.map(w => {
+            let statusBadge = `<span class="tag tag-gray">PENDIENTE</span>`;
+            if(w.status === 'CONFIRMED') statusBadge = `<span class="tag tag-green">ENTREGADO</span>`;
+            
+            return `
+            <div class="withdrawal-item" style="opacity:${w.status==='CONFIRMED'?0.6:1}">
+                <div>
+                    <div style="font-weight:700; color:#fff;">${w.terminal_name}: ${MC_UTILS.formatCurrency(w.amount)}</div>
+                    <div style="font-size:12px; color:var(--text-secondary);">${w.description}</div>
+                </div>
+                ${statusBadge}
+            </div>`;
+        }).join('');
+    }
+
+    // === 3. STOCK LIBRERÍA ===
     async function loadSupplies() {
-        // Buscamos SKUs con categoría LIBRERIA u OFICINA
         const { data } = await client.from('inventory_skus')
             .select('*')
             .in('category', ['LIBRERIA', 'OFICINA', 'INSUMOS_CAJA'])
@@ -226,102 +318,80 @@
         const container = document.getElementById('suppliesList');
         
         if (supplies.length === 0) {
-            container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">No hay artículos de librería configurados.<br>Pide al Admin que cree SKUs con categoría LIBRERIA.</div>';
+            container.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-secondary);">No hay artículos configurados.</div>';
             return;
         }
 
         container.innerHTML = supplies.map(s => `
             <div class="stock-row">
                 <div style="flex:1;">
-                    <div style="color:#fff; font-size:13px; font-weight:700;">${s.name}</div>
-                    <div style="font-size:10px; color:#666;">Actual: ${s.stock_current}</div>
+                    <div style="color:#fff; font-size:14px; font-weight:600;">${s.name}</div>
+                    <div style="font-size:11px; color:var(--text-tertiary);">Actual: ${s.stock_current}</div>
                 </div>
-                <input type="number" id="stk_${s.id}" class="stock-input" placeholder="${s.stock_current}">
+                <input type="number" id="stk_${s.id}" class="stock-inp" placeholder="${s.stock_current}">
             </div>
         `).join('');
     }
 
     async function saveStock() {
-        const updates = [];
-        let count = 0;
-
+        let updates = [];
         for (const s of supplies) {
             const inp = document.getElementById(`stk_${s.id}`);
             if (inp && inp.value !== '') {
-                const val = parseFloat(inp.value);
-                updates.push(client.from('inventory_skus').update({ stock_current: val }).eq('id', s.id));
-                
-                // Opcional: Registrar movimiento de ajuste si quisieras historial
-                count++;
+                updates.push(client.from('inventory_skus').update({ stock_current: parseFloat(inp.value) }).eq('id', s.id));
             }
         }
-
-        if (count === 0) return alert("No ingresaste cambios.");
-        
+        if (updates.length === 0) return alert("No ingresaste cambios.");
         await Promise.all(updates);
-        alert(`✅ Stock actualizado (${count} items).`);
+        alert("Stock actualizado.");
         loadSupplies();
     }
 
     function openRequestModal() { document.getElementById('reqModal').style.display='flex'; document.getElementById('reqDetail').value=''; }
-
     async function sendRequest() {
-        const detail = document.getElementById('reqDetail').value;
-        if(!detail) return;
-        
-        await client.from('incident_reports').insert({
-            reporter_id: currentUser.id,
-            area: 'CAJA',
-            type: 'PEDIDO',
-            description: detail,
-            severity: 'BAJA',
-            status: 'open'
-        });
-        
+        const desc = document.getElementById('reqDetail').value;
+        if(!desc) return;
+        await client.from('incident_reports').insert({ reporter_id: currentUser.id, area: 'CAJA', type: 'PEDIDO', description: desc, severity: 'BAJA', status: 'open' });
         document.getElementById('reqModal').style.display='none';
         alert("Pedido enviado.");
     }
 
-    // === 3. LÓGICA NOVEDADES ===
+    // === 4. NOVEDADES ===
     async function sendIncident() {
         const type = document.getElementById('incType').value;
         const desc = document.getElementById('incDesc').value;
-        if(!desc) return alert("Escriba el detalle.");
+        if(!desc) return alert("Detalle requerido.");
 
         const { error } = await client.from('incident_reports').insert({
             reporter_id: currentUser.id,
             area: 'CAJA',
             type: type,
             description: desc,
-            severity: type === 'DIFERENCIA_CAJA' ? 'ALTA' : 'MEDIA',
+            severity: 'MEDIA',
             status: 'open'
         });
 
         if(error) alert(error.message);
         else {
-            alert("Reporte guardado.");
+            alert("Novedad registrada.");
             document.getElementById('incDesc').value = '';
             loadHistory();
         }
     }
 
     async function loadHistory() {
-        const { data } = await client.from('incident_reports')
-            .select('created_at, type, description, status')
-            .eq('area', 'CAJA')
-            .order('created_at', {ascending:false})
-            .limit(5);
-        
+        const { data } = await client.from('incident_reports').select('*').eq('area', 'CAJA').order('created_at', {ascending:false}).limit(10);
         const c = document.getElementById('incHistory');
-        if(!data || !data.length) { c.innerHTML='Sin reportes recientes.'; return; }
+        
+        if(!data.length) { c.innerHTML='<div style="text-align:center; padding:20px; color:#666;">Sin reportes.</div>'; return; }
 
         c.innerHTML = data.map(i => `
-            <div style="border-bottom:1px solid #222; padding:8px 0; font-size:11px;">
-                <div style="display:flex; justify-content:space-between; color:#fff;">
-                    <strong>${i.type}</strong>
-                    <span>${new Date(i.created_at).toLocaleDateString()}</span>
+            <div class="list-row">
+                <div>
+                    <div class="row-title">${i.type}</div>
+                    <div class="row-subtitle">${i.description}</div>
                 </div>
-                <div style="color:#888; margin-top:2px;">${i.description}</div>
+                <div style="font-size:10px; color:var(--text-tertiary);">${new Date(i.created_at).toLocaleDateString()}</div>
             </div>
         `).join('');
     }

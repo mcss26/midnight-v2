@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight - Gerencia</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--color-info);">CEO</span></div>
+    <button onclick="window.location.href='index.html'" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    <div class="section-header">
+        <h2 class="section-title">Dirección General</h2>
+    </div>
+
+    <div class="dashboard-grid">
+        <a href="reporte-pnl.html" class="dash-card">
+            <div class="dash-icon" style="color:var(--color-success);">📈</div>
+            <h3 class="dash-title">Reporte P&L</h3>
+            <div class="dash-desc">Rentabilidad mensual.</div>
+        </a>
+        <a href="admin-pagos.html" class="dash-card">
+            <div class="dash-icon">📅</div>
+            <h3 class="dash-title">Calendario Pagos</h3>
+            <div class="dash-desc">Visión financiera.</div>
+        </a>
+        <a href="admin-logs.html" class="dash-card">
+            <div class="dash-icon">🛡️</div>
+            <h3 class="dash-title">Auditoría</h3>
+            <div class="dash-desc">Logs de seguridad.</div>
+        </a>
+        <a href="panel-operativo.html" class="dash-card">
+            <div class="dash-icon">👁️</div>
+            <h3 class="dash-title">Vista Global</h3>
+            <div class="dash-desc">Acceso al tablero operativo.</div>
+        </a>
+    </div>
+  </div>
+</body>
+</html>

@@ -5,21 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Master SKUs</title>
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
   
   <style>
-    .table-input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-family: monospace; font-size: 13px; }
-    .table-input:focus { background: #111; outline: 1px solid var(--mc-accent-green); }
-    .table-select { background: transparent; border: none; color: #aaa; width: 100%; font-size: 11px; }
+    /* Inputs "Stealth" para la tabla */
+    .table-input { 
+        background: transparent; border: 1px solid transparent; color: var(--text-primary); 
+        width: 100%; text-align: center; font-family: 'Inter', monospace; font-size: 13px; 
+        padding: 6px; border-radius: 4px; transition: all 0.2s;
+    }
+    .table-input:focus { background: #000; border-color: var(--color-info); outline: none; }
+    .table-input:hover { background: rgba(255,255,255,0.05); }
+    
+    .table-select {
+        background: transparent; border: 1px solid transparent; color: var(--text-secondary); 
+        width: 100%; font-size: 12px; padding: 6px; border-radius: 4px; cursor: pointer;
+    }
+    .table-select:hover { color: #fff; background: rgba(255,255,255,0.05); }
+    .table-select:focus { background: #000; border-color: var(--color-info); outline: none; color:#fff; }
   </style>
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-green);">DATA</span></div>
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--color-success);">DATA</span></div>
     <button onclick="window.location.href='panel-master.html'" class="btn-logout">VOLVER</button>
   </header>
 
@@ -27,51 +39,82 @@
     <div class="section-header">
         <div>
             <h2 class="section-title">Maestro de Insumos</h2>
-            <p style="color:#666; font-size:12px;">Base de datos de artículos y costos</p>
+            <p class="section-desc">Base de datos de artículos, costos y stock ideal</p>
         </div>
         <div style="display:flex; gap:10px;">
             <input type="file" id="fileInput" hidden accept=".xlsx,.xls,.csv" onchange="handleFile(this)">
-            <button onclick="document.getElementById('fileInput').click()" class="btn-refresh" style="background:#222; border-color:#666;">📥 IMPORTAR COSTOS + ML</button>
-            <button onclick="openModal()" class="btn-refresh">+ NUEVO SKU</button>
+            <button onclick="document.getElementById('fileInput').click()" class="btn-refresh">📂 IMPORTAR PRECIOS</button>
+            <button onclick="openModal()" class="btn-primary">+ NUEVO SKU</button>
         </div>
     </div>
 
-    <input type="text" id="searchInput" class="search-input-admin" placeholder="🔍 Buscar insumo..." oninput="filterList()">
+    <input type="text" id="searchInput" class="search-input-admin" placeholder="🔍 Buscar insumo por nombre o código..." oninput="filterList()">
 
-    <div class="table-responsive">
+    <div class="table-container" style="margin-top: 20px;">
         <table class="sku-table">
             <thead>
                 <tr>
-                    <th>Nombre / Categoría</th>
-                    <th style="text-align:center; width: 100px;">Unidad</th>
-                    <th style="text-align:center; width: 120px;">Stock Ideal</th>
-                    <th>Proveedor</th>
-                    <th style="text-align:right;">Costo (Precio)</th>
-                    <th style="width: 50px;"></th>
+                    <th style="padding-left: 25px;">INSUMO / CATEGORÍA</th>
+                    <th style="text-align:center; width: 100px;">UNIDAD</th>
+                    <th style="text-align:center; width: 120px;">STOCK IDEAL</th>
+                    <th style="width: 220px;">PROVEEDOR</th>
+                    <th style="text-align:right; width: 120px;">COSTO</th>
+                    <th style="width: 60px;"></th>
                 </tr>
             </thead>
-            <tbody id="skuList"><tr><td colspan="6" style="text-align:center;">Cargando...</td></tr></tbody>
+            <tbody id="skuList">
+                <tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-secondary);">Cargando inventario...</td></tr>
+            </tbody>
         </table>
     </div>
   </div>
 
   <div id="skuModal" class="modal-overlay">
     <div class="modal-box">
-        <h3>Datos del Insumo</h3>
+        <h3 class="section-title" style="font-size:20px; margin-bottom:25px;">Datos del Insumo</h3>
         <input type="hidden" id="skuId">
-        <label class="input-label">NOMBRE</label><input type="text" id="skuName" class="modal-input">
-        <div style="display:flex; gap:10px;">
-            <div style="flex:1;"><label class="input-label">CATEGORÍA</label><select id="skuCat" class="modal-select"><option value="BEBIDAS">BEBIDAS</option><option value="INSUMOS">INSUMOS</option><option value="LIMPIEZA">LIMPIEZA</option></select></div>
-            <div style="flex:1;"><label class="input-label">FAMILIA</label><input type="text" id="skuFam" class="modal-input"></div>
+        
+        <label class="input-label">NOMBRE DEL PRODUCTO</label>
+        <input type="text" id="skuName" class="modal-input" placeholder="Ej: VODKA ABSOLUT">
+
+        <div style="display:flex; gap:15px; margin-top:15px;">
+            <div style="flex:1;">
+                <label class="input-label">CATEGORÍA</label>
+                <select id="skuCat" class="modal-select">
+                    <option value="BEBIDAS">BEBIDAS</option>
+                    <option value="INSUMOS">INSUMOS BARRA</option>
+                    <option value="LIMPIEZA">LIMPIEZA</option>
+                    <option value="LIBRERIA">LIBRERIA / OFICINA</option>
+                    <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+                </select>
+            </div>
+            <div style="flex:1;">
+                <label class="input-label">FAMILIA / TIPO</label>
+                <input type="text" id="skuFam" class="modal-input" placeholder="Ej: VODKA">
+            </div>
         </div>
-        <div style="display:flex; gap:10px;">
-            <div style="flex:1;"><label class="input-label">UNIDAD</label><select id="skuUnit" class="modal-select"><option value="UNIDAD">UNIDAD</option><option value="LITRO">LITRO</option></select></div>
-            <div style="flex:1;"><label class="input-label">VOLUMEN (ml)</label><input type="number" id="skuVol" class="modal-input" value="0"></div>
+
+        <div style="display:flex; gap:15px; margin-top:15px;">
+            <div style="flex:1;">
+                <label class="input-label">UNIDAD</label>
+                <select id="skuUnit" class="modal-select">
+                    <option value="UNIDAD">UNIDAD</option>
+                    <option value="LITRO">LITRO</option>
+                    <option value="KG">KG</option>
+                </select>
+            </div>
+            <div style="flex:1;">
+                <label class="input-label">VOLUMEN (ml)</label>
+                <input type="number" id="skuVol" class="modal-input" value="0">
+            </div>
         </div>
-        <label class="input-label">COSTO ($)</label><input type="number" id="skuCost" class="modal-input">
+
+        <label class="input-label">COSTO REFERENCIA ($)</label>
+        <input type="number" id="skuCost" class="modal-input">
+
         <div class="modal-btns">
-            <button onclick="closeModal()" class="btn-modal-cancel">CANCELAR</button>
-            <button onclick="saveSku()" class="btn-modal-save">GUARDAR</button>
+            <button onclick="closeModal()" class="btn-modal-cancel">Cancelar</button>
+            <button onclick="saveSku()" class="btn-modal-save">Guardar</button>
         </div>
     </div>
   </div>
@@ -94,37 +137,62 @@
 
     function renderList(list) {
         const tbody = document.getElementById('skuList');
-        if (list.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Sin insumos.</td></tr>'; return; }
+        if (!list.length) { 
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">Sin insumos cargados.</td></tr>'; 
+            return; 
+        }
 
         tbody.innerHTML = list.map(i => {
-            const suppOpts = `<option value="">-</option>` + allSupps.map(s => `<option value="${s.id}" ${i.preferred_supplier_id == s.id ? 'selected' : ''}>${s.name}</option>`).join('');
-            
-            // Info Volumen
-            let volInfo = '';
-            if(i.volume_ml > 0) volInfo = `<br><span style="color:#00eaff;">${i.volume_ml} ml</span>`;
+            const suppOpts = `<option value="">-- Sin Asignar --</option>` + 
+                allSupps.map(s => `<option value="${s.id}" ${i.preferred_supplier_id == s.id ? 'selected' : ''}>${s.name}</option>`).join('');
+
+            // Estilos Tags
+            let catClass = 'tag-gray';
+            if(i.category === 'BEBIDAS') catClass = 'tag-blue'; 
+            if(i.category === 'LIMPIEZA') catClass = 'tag-outline';
 
             return `
             <tr>
-                <td><div style="font-weight:700; color:#fff;">${i.name}</div><div style="font-size:10px; color:#666;">${i.external_id ? 'ID: '+i.external_id : ''} • ${i.category||'-'}</div></td>
-                <td style="text-align:center; font-size:11px; color:#888;">${i.unit_type}${volInfo}</td>
-                <td><input type="number" class="table-input" value="${i.stock_ideal}" onchange="updateField(${i.id}, 'stock_ideal', this.value)" placeholder="0"></td>
-                <td><select class="table-select" onchange="updateField(${i.id}, 'preferred_supplier_id', this.value)">${suppOpts}</select></td>
-                <td class="col-costo">$ ${i.cost_price ? i.cost_price.toLocaleString() : '0'}</td>
-                <td style="text-align:right;"><button onclick="editSku(${i.id})" style="border:none; background:none; cursor:pointer;">✏️</button></td>
+                <td style="padding-left: 25px;">
+                    <div style="font-weight:600; color:#fff; font-size:14px;">${i.name}</div>
+                    <div style="margin-top:6px;">
+                        <span class="tag ${catClass}">${i.category || 'GRAL'}</span>
+                        <span style="font-family:monospace; color:var(--text-tertiary); font-size:11px; margin-left:8px;">ID: ${i.external_id || '-'}</span>
+                    </div>
+                </td>
+                <td style="text-align:center;">
+                    <div style="color:var(--text-secondary); font-size:12px;">${i.unit_type}</div>
+                    ${i.volume_ml > 0 ? `<div style="color:var(--color-info); font-size:11px; font-weight:600;">${i.volume_ml} ml</div>` : ''}
+                </td>
+                <td>
+                    <input type="number" class="table-input" value="${i.stock_ideal}" 
+                           onchange="updateField(${i.id}, 'stock_ideal', this.value)" placeholder="-">
+                </td>
+                <td>
+                    <select class="table-select" onchange="updateField(${i.id}, 'preferred_supplier_id', this.value)">
+                        ${suppOpts}
+                    </select>
+                </td>
+                <td class="col-costo">
+                    ${MC_UTILS.formatCurrency(i.cost_price)}
+                </td>
+                <td style="text-align:center;">
+                    <button onclick="editSku(${i.id})" class="btn-icon">✏️</button>
+                </td>
             </tr>`;
         }).join('');
     }
 
     function filterList() {
         const t = document.getElementById('searchInput').value.toLowerCase();
-        renderList(allSkus.filter(i => i.name.toLowerCase().includes(t)));
+        renderList(allSkus.filter(i => i.name.toLowerCase().includes(t) || (i.external_id && i.external_id.toLowerCase().includes(t))));
     }
 
     async function updateField(id, field, val) {
         await client.from('inventory_skus').update({ [field]: val === "" ? null : val }).eq('id', id);
     }
 
-    // === IMPORTADOR DEFINITIVO "COSTOS + ML" ===
+    // === IMPORTADOR INTELIGENTE (Formato "COSTOS + ML") ===
     async function handleFile(input) {
         const file = input.files[0];
         if (!file) return;
@@ -137,20 +205,19 @@
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 });
                 
-                // 1. Buscar cabecera correcta
+                // 1. Buscar cabecera
                 let headerRowIndex = -1;
                 for (let i = 0; i < rawData.length; i++) {
                     const rowStr = JSON.stringify(rawData[i]);
-                    // Buscamos las columnas clave de tu archivo: Articulo, Detalle, Precio, Litros
+                    // Claves del archivo definitivo
                     if (rowStr.includes("Articulo") && rowStr.includes("Detalle") && rowStr.includes("Precio")) {
-                        headerRowIndex = i;
-                        break;
+                        headerRowIndex = i; break;
                     }
                 }
 
-                if (headerRowIndex === -1) throw new Error("No se encontró cabecera válida (Articulo, Detalle, Precio).");
+                if (headerRowIndex === -1) throw new Error("Formato inválido. Se busca: Articulo, Detalle, Precio.");
 
-                // 2. Procesar Datos
+                // 2. Parsear
                 const json = XLSX.utils.sheet_to_json(ws, { range: headerRowIndex });
                 let processed = 0, updated = 0;
 
@@ -159,19 +226,17 @@
                     const nombre = row['Detalle'] ? String(row['Detalle']).trim().toUpperCase() : null;
                     const precio = row['Precio'] ? parseFloat(row['Precio']) : 0;
                     
-                    // Cálculo de Volumen (Litros -> ML)
+                    // Conversión inteligente de Litros a ML
                     let litros = row['Litros'] ? parseFloat(row['Litros']) : 0;
                     let volume_ml = litros > 0 ? litros * 1000 : 0;
 
-                    // Mapeo de Unidad
-                    let unidad = 'UNIDAD'; // Default
+                    let unidad = 'UNIDAD';
                     const uMedida = row['U.Medida'] ? String(row['U.Medida']).toUpperCase() : '';
                     if(uMedida.includes('LITRO')) unidad = 'LITRO';
                     if(uMedida.includes('KG')) unidad = 'KG';
 
                     if (nombre && codigo) {
                         processed++;
-                        
                         const payload = {
                             name: nombre,
                             cost_price: precio,
@@ -181,7 +246,6 @@
                             is_active: true
                         };
                         
-                        // Upsert
                         const { error } = await client.from('inventory_skus')
                             .upsert({ ...payload, external_id: codigo }, { onConflict: 'external_id' });
                             
@@ -192,10 +256,10 @@
                 await client.from('admin_logs').insert({
                     admin_id: (await MC_UTILS.getCurrentUser())?.id,
                     action: 'IMPORT_SKU',
-                    details: `Carga Masiva: ${updated} items actualizados.`
+                    details: `Excel Costos: ${updated} items actualizados.`
                 });
 
-                alert(`Importación Exitosa.\nLeídos: ${processed}\nActualizados: ${updated}`);
+                alert(`Importación completada.\nLeídos: ${processed}\nActualizados: ${updated}`);
                 loadData(); 
                 input.value = '';
 

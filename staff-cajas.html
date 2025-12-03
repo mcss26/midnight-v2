@@ -2,208 +2,278 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Midnight Staff — Caja</title>
   
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 
   <style>
-    /* Estilos exclusivos para la Calculadora de Caja */
-    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+    /* === ESTILOS ESPECÍFICOS POS === */
+    body { background-color: #050505; }
+    .admin-container { padding: 20px 15px; max-width: 480px; }
+
+    /* Inputs Gigantes */
+    .pos-input-group { margin-bottom: 25px; }
+    .pos-label { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: block; letter-spacing: 1px; text-transform: uppercase; }
+    .pos-big-input {
+        width: 100%; background: #111; border: 2px solid #2a2a2a;
+        color: #fff; font-size: 28px; font-weight: 700; padding: 15px;
+        text-align: center; border-radius: 12px; outline: none; transition: border-color 0.2s;
+        font-family: 'Outfit', sans-serif;
+    }
+    .pos-big-input:focus { border-color: var(--accent-blue); }
+    .pos-big-input.cash { color: var(--accent-green); border-color: rgba(190, 242, 100, 0.3); }
+    .pos-big-input.zoco { color: var(--accent-blue); border-color: rgba(56, 189, 248, 0.3); }
+
+    /* Botonera */
+    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
     .calc-btn { 
-        background: #222; border: 1px solid #444; color: #fff; padding: 10px 5px; 
-        border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.1s;
+        background: #222; border: 1px solid #333; color: #ddd; padding: 12px 0;
+        border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.1s;
     }
-    .calc-btn:active { background: var(--mc-accent-green); color: #000; transform: scale(0.95); }
+    .calc-btn:active { background: var(--accent-green); color: #000; transform: scale(0.98); }
+
+    /* Tarjeta Retiro Pendiente (Alerta) */
+    .alert-card {
+        background: rgba(250, 204, 21, 0.1); border: 1px solid var(--accent-gold);
+        padding: 20px; border-radius: 12px; margin-bottom: 25px;
+        animation: pulse-gold 2s infinite ease-in-out;
+    }
+    @keyframes pulse-gold { 0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+    .btn-confirm-w { 
+        background: var(--accent-gold); color: #000; border: none; padding: 12px; 
+        border-radius: 8px; font-weight: 800; cursor: pointer; width: 100%; margin-top: 15px;
+    }
+
+    /* Caja de Resumen Retiros (Solo Lectura) */
+    .read-only-box {
+        background: #151515; border: 1px solid #222; padding: 15px; border-radius: 10px; margin-bottom: 25px;
+        display: flex; justify-content: space-between; align-items: center;
+    }
     
+    /* Ticket */
     .receipt-box { 
-        background: #fff; color: #000; padding: 30px; border-radius: 8px; 
-        text-align: center; display: none; animation: popIn 0.3s ease;
+        background: #fff; color: #000; padding: 30px; border-radius: 16px; 
+        text-align: center; display: none; margin-top: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
     }
-    .receipt-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 10px 0; font-family: monospace; }
-    
-    @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    .receipt-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 10px 0; font-family: monospace; font-size: 14px; }
   </style>
 </head>
 <body>
-  <header class="admin-header" style="background:#000;">
-    <div class="admin-logo">MIDNIGHT<span style="color: #fff;">CAJA</span></div>
+
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--accent-green);">CAJA</span></div>
     <div style="display:flex; align-items:center; gap:10px;">
-        <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700; text-transform:uppercase;"></span>
+        <span id="userDisplay" class="user-name" style="font-size:12px;">STAFF</span>
         <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
     </div>
   </header>
 
-  <div class="admin-container" style="max-width:400px; margin-top:20px;">
+  <div class="admin-container">
     
+    <div style="margin-bottom: 25px;">
+        <label class="pos-label" style="color: var(--txt-secondary);">TU POSICIÓN HOY</label>
+        <select id="termSelect" class="modal-select" style="padding: 15px; font-size: 16px;" onchange="loadPendingWithdrawals()">
+            <option value="">Cargando terminales...</option>
+        </select>
+    </div>
+
+    <div id="withdrawalSection" style="display:none;">
+        <div id="pendingList"></div>
+    </div>
+
     <div id="closingForm">
-        <h2 class="section-title" style="text-align:center;">DECLARACIÓN CIEGA</h2>
-        <div class="dash-card" style="height:auto; padding:20px; border:1px solid #333;">
-            
-            <label class="input-label">1. TU POSICIÓN</label>
-            <select id="termSelect" class="modal-select" style="margin-bottom:20px;">
-                <option value="">Cargando terminales...</option>
-            </select>
-
-            <div style="border-top:1px dashed #333; margin-bottom:20px;"></div>
-
-            <label class="input-label" style="color:var(--mc-accent-green);">2. EFECTIVO (BILLETES)</label>
-            <input type="number" id="cashInput" class="modal-input" placeholder="$ 0" style="font-size:24px; text-align:center; font-weight:700; color:var(--mc-accent-green); margin-bottom:10px; border-color:var(--mc-accent-green);">
+        
+        <div class="section-header">
+            <h2 class="section-title">Declaración de Venta</h2>
+            <p class="section-desc">Ingresa los totales de tu turno.</p>
+        </div>
+        
+        <div class="pos-input-group">
+            <label class="pos-label" style="color:var(--accent-green);">TOTAL EFECTIVO (BILLETES)</label>
+            <input type="number" id="cashInput" class="pos-big-input cash" placeholder="$ 0" inputmode="numeric">
             
             <div class="calc-grid">
-                <button class="calc-btn" onclick="addCash(10000)">+$10k</button>
-                <button class="calc-btn" onclick="addCash(5000)">+$5k</button>
-                <button class="calc-btn" onclick="addCash(1000)">+$1k</button>
+                <button class="calc-btn" onclick="addCash(10000)">+$10.000</button>
+                <button class="calc-btn" onclick="addCash(5000)">+$5.000</button>
+                <button class="calc-btn" onclick="addCash(1000)">+$1.000</button>
                 <button class="calc-btn" onclick="addCash(500)">+$500</button>
             </div>
-
-            <label class="input-label" style="color:var(--mc-accent-blue);">3. LOTE ZOCO (TOTAL TARJETAS)</label>
-            <input type="number" id="zocoInput" class="modal-input" placeholder="$ 0" style="font-size:18px; text-align:center; font-weight:700; color:var(--mc-accent-blue); margin-bottom:20px; border-color:var(--mc-accent-blue);">
-
-            <label class="input-label" style="color:var(--mc-red);">4. VALES / RETIROS (TOTAL)</label>
-            <input type="number" id="withdrawInput" class="modal-input" placeholder="$ 0" style="font-size:18px; text-align:center; font-weight:700; color:var(--mc-red); margin-bottom:5px; border-color:var(--mc-red);">
-            <p style="font-size:10px; color:#666; margin-bottom:20px;">Suma todos los tickets de gastos o retiros de socios.</p>
-
-            <button onclick="submitClose()" id="btnSend" class="btn-primary" style="width:100%; padding:15px; font-size:16px;">CONFIRMAR CIERRE 🔒</button>
         </div>
+
+        <div class="pos-input-group">
+            <label class="pos-label" style="color:var(--accent-blue);">LOTE ZOCO (DIGITAL)</label>
+            <input type="number" id="zocoInput" class="pos-big-input zoco" placeholder="$ 0" inputmode="numeric">
+        </div>
+
+        <div class="read-only-box">
+            <div>
+                <label class="pos-label" style="color:var(--accent-red); margin:0;">RETIROS AUTORIZADOS</label>
+                <div style="font-size:11px; color:var(--txt-secondary); margin-top:4px;">Gestionados por Encargado/Admin</div>
+            </div>
+            <div style="text-align:right;">
+                <div id="autoWithdrawals" style="font-size:20px; font-weight:800; color:#fff;">$ 0</div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <button onclick="openIncidentModal()" class="btn-refresh" style="flex:1; padding: 15px;">⚠️ REPORTAR PROBLEMA</button>
+        </div>
+
+        <button onclick="submitClose()" id="btnSend" class="btn-primary" style="width:100%; padding:18px; font-size:18px; font-weight:800; letter-spacing: 1px;">CONFIRMAR Y CERRAR TURNO 🔒</button>
     </div>
 
     <div id="successTicket" class="receipt-box">
-        <div style="font-size:40px; margin-bottom:10px;">✅</div>
-        <h2 style="margin:0 0 5px 0; font-family:'Outfit';">CIERRE ENVIADO</h2>
-        <p style="font-size:12px; color:#666; margin-bottom:20px;">Tu declaración ha sido registrada.</p>
+        <div style="font-size:50px; margin-bottom:10px;">✅</div>
+        <h2 style="margin:0 0 10px 0; font-family:'Outfit'; font-weight:800; font-size: 24px;">DECLARACIÓN ENVIADA</h2>
+        <p style="font-size:14px; color:#666; margin-bottom:30px;">Tu caja ha sido registrada correctamente.</p>
         
-        <div class="receipt-line"><span>CAJA</span><span id="recTerm">--</span></div>
+        <div class="receipt-line"><span>CAJA</span><span id="recTerm" style="font-weight:700;">--</span></div>
         <div class="receipt-line"><span>EFECTIVO</span><span id="recCash">$0</span></div>
         <div class="receipt-line"><span>ZOCO</span><span id="recZoco">$0</span></div>
         <div class="receipt-line"><span>RETIROS</span><span id="recWith">$0</span></div>
         
-        <div style="margin-top:20px; font-size:10px; color:#888;">ID DE REFERENCIA: <span id="recRef">--</span></div>
-        <button onclick="window.location.href='index.html'" class="btn-primary" style="margin-top:20px; width:100%;">VOLVER AL INICIO</button>
+        <div style="margin-top:30px; font-size:11px; color:#888; font-family:monospace;">REF OPERACIÓN: <span id="recRef">--</span></div>
+        <button onclick="window.location.href='index.html'" class="btn-primary" style="margin-top:30px; width:100%; background:#000; color:#fff; padding: 15px;">VOLVER AL INICIO</button>
     </div>
 
   </div>
 
+  <div id="incModal" class="modal-overlay">
+      <div class="modal-box">
+          <h3 class="section-title" style="font-size:20px;">Reportar Novedad</h3>
+          <p class="section-desc">Describe el problema para el encargado.</p>
+          
+          <label class="input-label">TIPO DE PROBLEMA</label>
+          <select id="incType" class="modal-select">
+              <option value="ERROR_COBRO">Error de Cobro / Diferencia</option>
+              <option value="SISTEMA">Falla de Sistema / Internet</option>
+              <option value="ANULACION">Anulación de Ticket</option>
+              <option value="OTRO">Otro motivo</option>
+          </select>
+          
+          <label class="input-label">DETALLE BREVE</label>
+          <textarea id="incDesc" class="modal-input" placeholder="Ej: Se cobraron $500 de menos en Zoco..." style="height:100px; resize:none;"></textarea>
+          
+          <div class="modal-btns">
+              <button onclick="closeIncidentModal()" class="btn-modal-cancel">Volver</button>
+              <button onclick="submitIncident()" class="btn-modal-save" style="background:var(--accent-red); color:#fff; border:none;">ENVIAR REPORTE</button>
+          </div>
+      </div>
+  </div>
+
   <script>
     let currentUser = null;
+    let confirmedAmount = 0;
 
     document.addEventListener('DOMContentLoaded', async () => {
-        // 1. Validar Sesión V2
         const session = localStorage.getItem('mc_user');
         if (!session) { window.location.href = 'index.html'; return; }
         currentUser = JSON.parse(session);
-        document.getElementById('userDisplay').innerText = currentUser.username;
-
-        // 2. Cargar Terminales
-        loadTerminals();
+        document.getElementById('userDisplay').innerText = currentUser.username.toUpperCase();
+        await loadTerminals();
     });
 
     async function loadTerminals() {
-        const { data, error } = await client
-            .from('pos_terminals')
-            .select('friendly_name')
-            .eq('is_active', true)
-            .order('friendly_name');
-        
+        const { data } = await client.from('pos_terminals').select('friendly_name').eq('is_active', true).order('friendly_name');
         const sel = document.getElementById('termSelect');
         if (data && data.length > 0) {
-            // Eliminar duplicados si hubiera
             const unique = [...new Set(data.map(i => i.friendly_name))];
-            sel.innerHTML = unique.map(n => `<option value="${n}">${n}</option>`).join('');
-        } else {
-            sel.innerHTML = '<option value="">Sin terminales activas</option>';
-        }
+            sel.innerHTML = '<option value="">Selecciona tu caja...</option>' + unique.map(n => `<option value="${n}">${n}</option>`).join('');
+        } else { sel.innerHTML = '<option value="">Sin terminales activas</option>'; }
     }
 
-    // Función Calculadora
+    async function loadPendingWithdrawals() {
+        const term = document.getElementById('termSelect').value;
+        if(!term) { document.getElementById('withdrawalSection').style.display='none'; return; }
+        const today = new Date().toISOString().split('T')[0];
+        
+        // 1. Pendientes
+        const { data: pending } = await client.from('cash_movements').select('*').eq('terminal_name', term).eq('event_date', today).eq('status', 'PENDING');
+        
+        // 2. Confirmados (Para mostrar el total acumulado)
+        const { data: confirmed } = await client.from('cash_movements').select('amount').eq('terminal_name', term).eq('event_date', today).eq('status', 'CONFIRMED');
+
+        confirmedAmount = confirmed ? confirmed.reduce((sum, item) => sum + parseFloat(item.amount), 0) : 0;
+        document.getElementById('autoWithdrawals').innerText = MC_UTILS.formatCurrency(confirmedAmount);
+
+        // Render Pendientes
+        const container = document.getElementById('pendingList');
+        if(pending && pending.length > 0) {
+            document.getElementById('withdrawalSection').style.display = 'block';
+            container.innerHTML = pending.map(w => `
+                <div class="alert-card" id="w-${w.id}">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                        <span style="font-size:24px;">💸</span>
+                        <div>
+                            <div style="font-weight:800; color:var(--accent-gold); font-size:16px; text-transform:uppercase;">Solicitud de Retiro</div>
+                            <div style="font-size:13px; color:var(--txt-primary);">${w.description}</div>
+                        </div>
+                    </div>
+                    <div style="font-size:32px; font-weight:800; color:#fff; text-align:center; margin:15px 0; font-family:'Outfit';">${MC_UTILS.formatCurrency(w.amount)}</div>
+                    <button class="btn-confirm-w" onclick="confirmWithdrawal(${w.id})">CONFIRMAR ENTREGA</button>
+                    <div style="text-align:center; font-size:11px; color:var(--accent-gold); margin-top:10px;">Al confirmar, certificas que entregaste el dinero.</div>
+                </div>
+            `).join('');
+        } else { document.getElementById('withdrawalSection').style.display = 'none'; }
+    }
+
+    async function confirmWithdrawal(id) {
+        if(!confirm("⚠️ ¿Confirmas que has entregado el dinero físicamente?")) return;
+        const { error } = await client.from('cash_movements').update({ status: 'CONFIRMED', confirmed_by: currentUser.id, confirmed_at: new Date() }).eq('id', id);
+        if(error) alert("Error: " + error.message); else { document.getElementById(`w-${id}`).style.display = 'none'; loadPendingWithdrawals(); }
+    }
+
     function addCash(amount) {
         const input = document.getElementById('cashInput');
-        let current = parseFloat(input.value) || 0;
-        input.value = current + amount;
-        // Efecto visual simple
-        input.style.borderColor = '#fff';
-        setTimeout(() => input.style.borderColor = 'var(--mc-accent-green)', 100);
+        input.value = (parseFloat(input.value) || 0) + amount;
     }
 
-    // Envío del Cierre
+    function openIncidentModal() { document.getElementById('incModal').style.display='flex'; }
+    function closeIncidentModal() { document.getElementById('incModal').style.display='none'; }
+    
+    async function submitIncident() {
+        const type = document.getElementById('incType').value;
+        const desc = document.getElementById('incDesc').value;
+        const term = document.getElementById('termSelect').value;
+        if(!desc || !term) return alert("Completa la descripción y selecciona caja.");
+        const { error } = await client.from('incident_reports').insert({ reporter_id: currentUser.id, area: 'CAJA', type: type, description: `[${term}] ${desc}`, severity: 'MEDIA', status: 'open' });
+        if(error) alert(error.message); else { alert("Novedad registrada."); closeIncidentModal(); }
+    }
+
     async function submitClose() {
         const term = document.getElementById('termSelect').value;
         const cash = parseFloat(document.getElementById('cashInput').value) || 0;
         const zoco = parseFloat(document.getElementById('zocoInput').value) || 0;
-        const withdr = parseFloat(document.getElementById('withdrawInput').value) || 0;
+        const totalWithdraw = confirmedAmount; // Solo lo confirmado por sistema
 
-        // Validaciones
-        if (!term) return alert("Selecciona una terminal.");
-        
-        const confirmMsg = `¿CONFIRMAS EL CIERRE?\n\n📍 Caja: ${term}\n💵 Efectivo: $${cash}\n💳 Zoco: $${zoco}\n📤 Retiros: $${withdr}`;
-        if (!confirm(confirmMsg)) return;
+        if(!term) return alert("Selecciona una terminal.");
+        if(!confirm(`CONFIRMAR DECLARACIÓN:\n\nCaja: ${term}\nEfvo: $${cash}\nZoco: $${zoco}\nRetiros Totales: $${totalWithdraw}`)) return;
 
-        // UI Loading
-        const btn = document.getElementById('btnSend');
-        btn.disabled = true; 
-        btn.innerText = "PROCESANDO...";
+        const btn = document.getElementById('btnSend'); btn.disabled = true; btn.innerText = "ENVIANDO...";
 
         try {
             const today = new Date().toISOString().split('T')[0];
-
-            // 1. Verificar si existe la cabecera del día (Cash Closing Global)
-            let closingId = null;
             let { data: head } = await client.from('cash_closings').select('id').eq('event_date', today).maybeSingle();
-            
-            if (!head) {
-                // Crear cabecera si es el primer cierre de la noche
-                const { data: newHead, error: errHead } = await client
-                    .from('cash_closings')
-                    .insert({ event_date: today, status: 'open' })
-                    .select()
-                    .single();
-                
-                if (errHead) throw new Error("Error iniciando la noche: " + errHead.message);
-                closingId = newHead.id;
-            } else {
-                closingId = head.id;
+            let closingId = head?.id;
+            if (!closingId) {
+                const { data: newHead, error: e1 } = await client.from('cash_closings').insert({ event_date: today, status: 'open' }).select().single();
+                if(e1) throw e1; closingId = newHead.id;
             }
 
-            // 2. Insertar/Actualizar el detalle de la terminal
-            const payload = {
-                closing_id: closingId,
-                terminal_name: term,
-                final_count_cash: cash,
-                zoco_digital: zoco,
-                cash_withdrawals: withdr,
-                // starting_cash y system_cash se llenan desde el Admin o importación GBOL
-            };
+            const { error: e2 } = await client.from('closing_terminals').upsert({ closing_id: closingId, terminal_name: term, final_count_cash: cash, zoco_digital: zoco, cash_withdrawals: totalWithdraw }, { onConflict: 'closing_id, terminal_name' });
+            if(e2) throw e2;
 
-            const { error: errDetail } = await client
-                .from('closing_terminals')
-                .upsert(payload, { onConflict: 'closing_id, terminal_name' });
+            document.getElementById('closingForm').style.display = 'none'; document.getElementById('successTicket').style.display = 'block';
+            document.getElementById('recTerm').innerText = term; document.getElementById('recCash').innerText = MC_UTILS.formatCurrency(cash);
+            document.getElementById('recZoco').innerText = MC_UTILS.formatCurrency(zoco); document.getElementById('recWith').innerText = MC_UTILS.formatCurrency(totalWithdraw);
+            document.getElementById('recRef').innerText = `#${closingId}-${Date.now().toString().slice(-4)}`;
 
-            if (errDetail) throw new Error("Error guardando cierre: " + errDetail.message);
-
-            // 3. Éxito: Mostrar Ticket
-            showReceipt(term, cash, zoco, withdr, closingId);
-
-        } catch (e) {
-            console.error(e);
-            alert("❌ Error: " + e.message);
-            btn.disabled = false;
-            btn.innerText = "CONFIRMAR CIERRE 🔒";
-        }
-    }
-
-    function showReceipt(term, cash, zoco, withdr, id) {
-        document.getElementById('closingForm').style.display = 'none';
-        document.getElementById('successTicket').style.display = 'block';
-        
-        document.getElementById('recTerm').innerText = term;
-        document.getElementById('recCash').innerText = '$' + cash.toLocaleString();
-        document.getElementById('recZoco').innerText = '$' + zoco.toLocaleString();
-        document.getElementById('recWith').innerText = '$' + withdr.toLocaleString();
-        document.getElementById('recRef').innerText = `#${id}-${Date.now().toString().slice(-4)}`;
+        } catch (e) { console.error(e); alert("Error: " + e.message); btn.disabled = false; btn.innerText = "REINTENTAR"; }
     }
   </script>
 </body>
