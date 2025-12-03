@@ -7,40 +7,50 @@
   <link rel="stylesheet" href="admin-styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
+  
   <style>
-    .sku-table input, .sku-table select { background: transparent; border: none; color: #fff; width: 100%; text-align: center; }
-    .sku-table input:focus, .sku-table select:focus { outline: 1px solid var(--mc-accent-green); background: #000; }
-    .col-ideal { width: 80px; background: #111; border-radius: 4px; }
+    /* Inputs "Inline" para edición rápida */
+    .table-input { 
+        background: transparent; border: none; color: #fff; width: 100%; 
+        text-align: center; font-family: monospace; font-size: 13px;
+    }
+    .table-input:focus { background: #111; outline: 1px solid var(--mc-accent-green); }
+    
+    .table-select {
+        background: transparent; border: none; color: #aaa; width: 100%; font-size: 11px;
+    }
   </style>
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-green);">SKU</span></div>
-    <button onclick="window.history.back()" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-green);">DATA</span></div>
+    <button onclick="window.location.href='panel-master.html'" class="btn-logout">VOLVER</button>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-        <div><h2 class="section-title">Maestro de Insumos</h2><p class="dash-desc">Inventario base y Costos</p></div>
+        <div>
+            <h2 class="section-title">Maestro de Insumos</h2>
+            <p style="color:#666; font-size:12px;">Base de datos de artículos comprables</p>
+        </div>
         <button onclick="openModal()" class="btn-refresh">+ NUEVO SKU</button>
     </div>
 
-    <input type="text" id="searchInput" class="search-input-admin" placeholder="🔍 Buscar insumo por nombre o categoría..." oninput="filterList()">
+    <input type="text" id="searchInput" class="search-input-admin" placeholder="🔍 Buscar insumo..." oninput="filterList()">
 
     <div class="table-responsive">
         <table class="sku-table">
             <thead>
                 <tr>
-                    <th>Nombre</th>
-                    <th>Categoría</th>
-                    <th>Unidad</th>
-                    <th style="text-align:center;">Stock Ideal</th>
-                    <th>Proveedor</th>
-                    <th style="text-align:right;">Costo</th>
-                    <th></th>
+                    <th>Nombre / Categoría</th>
+                    <th style="text-align:center; width: 100px;">Unidad</th>
+                    <th style="text-align:center; width: 120px;">Stock Ideal</th>
+                    <th>Proveedor Habitual</th>
+                    <th style="text-align:right;">Costo Último</th>
+                    <th style="width: 50px;"></th>
                 </tr>
             </thead>
-            <tbody id="skuList"><tr><td colspan="7">Cargando...</td></tr></tbody>
+            <tbody id="skuList"><tr><td colspan="6" style="text-align:center;">Cargando...</td></tr></tbody>
         </table>
     </div>
   </div>
@@ -49,16 +59,45 @@
     <div class="modal-box">
         <h3>Datos del Insumo</h3>
         <input type="hidden" id="skuId">
-        <label class="input-label">Nombre</label><input type="text" id="skuName" class="modal-input">
+        
+        <label class="input-label">NOMBRE DEL PRODUCTO</label>
+        <input type="text" id="skuName" class="modal-input" placeholder="Ej: VODKA ABSOLUT">
+
         <div style="display:flex; gap:10px;">
-            <div style="flex:1;"><label class="input-label">Categoría</label><input type="text" id="skuCat" class="modal-input" placeholder="Ej: VODKA"></div>
-            <div style="flex:1;"><label class="input-label">Familia</label><input type="text" id="skuFam" class="modal-input" placeholder="Ej: BEBIDAS"></div>
+            <div style="flex:1;">
+                <label class="input-label">CATEGORÍA</label>
+                <select id="skuCat" class="modal-select">
+                    <option value="BEBIDAS">BEBIDAS</option>
+                    <option value="INSUMOS">INSUMOS BARRA</option>
+                    <option value="LIMPIEZA">LIMPIEZA</option>
+                    <option value="LIBRERIA">LIBRERIA / OFICINA</option>
+                    <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+                </select>
+            </div>
+            <div style="flex:1;">
+                <label class="input-label">FAMILIA / TIPO</label>
+                <input type="text" id="skuFam" class="modal-input" placeholder="Ej: VODKA / GIN">
+            </div>
         </div>
+
         <div style="display:flex; gap:10px;">
-            <div style="flex:1;"><label class="input-label">Unidad</label><select id="skuUnit" class="modal-select"><option value="UNIDAD">UNIDAD</option><option value="LITRO">LITRO</option><option value="KG">KG</option></select></div>
-            <div style="flex:1;"><label class="input-label">Volumen (ml)</label><input type="number" id="skuVol" class="modal-input" value="0"></div>
+            <div style="flex:1;">
+                <label class="input-label">UNIDAD DE MEDIDA</label>
+                <select id="skuUnit" class="modal-select">
+                    <option value="UNIDAD">UNIDAD (Botella/Paq)</option>
+                    <option value="LITRO">LITRO (Granel)</option>
+                    <option value="KG">KILOGRAMO</option>
+                </select>
+            </div>
+            <div style="flex:1;">
+                <label class="input-label">CONTENIDO (ML/GR)</label>
+                <input type="number" id="skuVol" class="modal-input" value="0" placeholder="750">
+            </div>
         </div>
-        <label class="input-label">Costo ($)</label><input type="number" id="skuCost" class="modal-input">
+
+        <label class="input-label">COSTO DE REFERENCIA ($)</label>
+        <input type="number" id="skuCost" class="modal-input">
+
         <div class="modal-btns">
             <button onclick="closeModal()" class="btn-modal-cancel">CANCELAR</button>
             <button onclick="saveSku()" class="btn-modal-save">GUARDAR</button>
@@ -67,44 +106,60 @@
   </div>
 
   <script>
-    let allSkus = [], allSupps = [];
+    let allSkus = [];
+    let allSupps = [];
 
-    window.addEventListener('DOMContentLoaded', async () => {
+    window.onload = async () => {
         await loadData();
-    });
+    };
 
     async function loadData() {
-        const [skus, supps] = await Promise.all([
+        // Carga paralela de SKUs y Proveedores para el select
+        const [skusRes, suppsRes] = await Promise.all([
             client.from('inventory_skus').select('*').order('name'),
             client.from('suppliers').select('id, name').eq('is_active', true).order('name')
         ]);
-        
-        allSkus = skus.data || [];
-        allSupps = supps.data || [];
+
+        allSkus = skusRes.data || [];
+        allSupps = suppsRes.data || [];
         renderList(allSkus);
     }
 
     function renderList(list) {
         const tbody = document.getElementById('skuList');
-        if(!list.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Sin resultados.</td></tr>'; return; }
+        if (list.length === 0) { 
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Sin insumos cargados.</td></tr>'; 
+            return; 
+        }
 
         tbody.innerHTML = list.map(i => {
-            const suppOpts = `<option value="">-</option>` + allSupps.map(s => `<option value="${s.id}" ${i.preferred_supplier_id == s.id ? 'selected' : ''}>${s.name}</option>`).join('');
-            
+            // Generador de opciones para el select de proveedor en línea
+            const suppOptions = `<option value="">-- Sin Asignar --</option>` + 
+                allSupps.map(s => `<option value="${s.id}" ${i.preferred_supplier_id == s.id ? 'selected' : ''}>${s.name}</option>`).join('');
+
             return `
             <tr>
-                <td style="font-weight:700; color:#fff;">${i.name}</td>
-                <td><span style="font-size:10px; background:#222; padding:2px 6px; border-radius:4px;">${i.category || '-'}</span></td>
-                <td style="font-size:11px; color:#666;">${i.unit_type} (${i.volume_ml}ml)</td>
-                <td style="text-align:center;">
-                    <input type="number" class="col-ideal" value="${i.stock_ideal}" onchange="quickUpdate(${i.id}, 'stock_ideal', this.value)">
+                <td>
+                    <div style="font-weight:700; color:#fff;">${i.name}</div>
+                    <div style="font-size:10px; color:#666;">${i.category} • ${i.family || '-'}</div>
+                </td>
+                <td style="text-align:center; font-size:11px; color:#888;">
+                    ${i.unit_type}<br>${i.volume_ml > 0 ? i.volume_ml+'ml' : ''}
                 </td>
                 <td>
-                    <select style="color:#888; font-size:11px;" onchange="quickUpdate(${i.id}, 'preferred_supplier_id', this.value)">${suppOpts}</select>
+                    <input type="number" class="table-input" value="${i.stock_ideal}" 
+                           onchange="updateField(${i.id}, 'stock_ideal', this.value)" placeholder="0">
                 </td>
-                <td class="col-costo">${MC_UTILS.formatCurrency(i.cost_price)}</td>
+                <td>
+                    <select class="table-select" onchange="updateField(${i.id}, 'preferred_supplier_id', this.value)">
+                        ${suppOptions}
+                    </select>
+                </td>
+                <td class="col-costo">
+                    $ ${i.cost_price ? i.cost_price.toLocaleString() : '0'}
+                </td>
                 <td style="text-align:right;">
-                    <button onclick="editSku(${i.id})" style="background:none; border:none; cursor:pointer;">✏️</button>
+                    <button onclick="editSku(${i.id})" style="border:none; background:none; cursor:pointer;">✏️</button>
                 </td>
             </tr>`;
         }).join('');
@@ -112,59 +167,66 @@
 
     function filterList() {
         const term = document.getElementById('searchInput').value.toLowerCase();
-        renderList(allSkus.filter(i => i.name.toLowerCase().includes(term) || (i.category && i.category.toLowerCase().includes(term))));
+        const filtered = allSkus.filter(i => i.name.toLowerCase().includes(term) || i.category.toLowerCase().includes(term));
+        renderList(filtered);
     }
 
-    async function quickUpdate(id, field, val) {
-        const payload = { [field]: val === "" ? null : val };
-        const { error } = await client.from('inventory_skus').update(payload).eq('id', id);
-        if(error) alert("Error actualizando: " + error.message);
+    // Edición Rápida en Tabla
+    async function updateField(id, field, value) {
+        const val = value === "" ? null : value;
+        const { error } = await client.from('inventory_skus').update({ [field]: val }).eq('id', id);
+        if (error) alert("Error al guardar: " + error.message);
     }
 
-    // Modal Logic
-    function openModal() { document.getElementById('skuModal').style.display='flex'; resetForm(); }
-    function closeModal() { document.getElementById('skuModal').style.display='none'; }
-    function resetForm() {
+    // Lógica Modal
+    function openModal() {
         document.getElementById('skuId').value = '';
         document.getElementById('skuName').value = '';
-        document.getElementById('skuCat').value = '';
         document.getElementById('skuFam').value = '';
         document.getElementById('skuVol').value = '0';
         document.getElementById('skuCost').value = '';
+        document.getElementById('skuModal').style.display = 'flex';
     }
 
+    function closeModal() { document.getElementById('skuModal').style.display = 'none'; }
+
     function editSku(id) {
-        const s = allSkus.find(x => x.id === id);
-        document.getElementById('skuId').value = s.id;
-        document.getElementById('skuName').value = s.name;
-        document.getElementById('skuCat').value = s.category;
-        document.getElementById('skuFam').value = s.family;
-        document.getElementById('skuUnit').value = s.unit_type;
-        document.getElementById('skuVol').value = s.volume_ml;
-        document.getElementById('skuCost').value = s.cost_price;
+        const item = allSkus.find(x => x.id === id);
+        document.getElementById('skuId').value = item.id;
+        document.getElementById('skuName').value = item.name;
+        document.getElementById('skuCat').value = item.category;
+        document.getElementById('skuFam').value = item.family;
+        document.getElementById('skuUnit').value = item.unit_type;
+        document.getElementById('skuVol').value = item.volume_ml;
+        document.getElementById('skuCost').value = item.cost_price;
         document.getElementById('skuModal').style.display = 'flex';
     }
 
     async function saveSku() {
         const id = document.getElementById('skuId').value;
-        const data = {
+        const payload = {
             name: document.getElementById('skuName').value.toUpperCase(),
-            category: document.getElementById('skuCat').value.toUpperCase(),
+            category: document.getElementById('skuCat').value,
             family: document.getElementById('skuFam').value.toUpperCase(),
             unit_type: document.getElementById('skuUnit').value,
             volume_ml: parseFloat(document.getElementById('skuVol').value) || 0,
             cost_price: parseFloat(document.getElementById('skuCost').value) || 0
         };
 
+        if (!payload.name) return alert("Nombre requerido");
+
         let error;
-        if(id) {
-            ({ error } = await client.from('inventory_skus').update(data).eq('id', id));
+        if (id) {
+            ({ error } = await client.from('inventory_skus').update(payload).eq('id', id));
         } else {
-            ({ error } = await client.from('inventory_skus').insert(data));
+            ({ error } = await client.from('inventory_skus').insert(payload));
         }
 
-        if(error) alert(error.message);
-        else { closeModal(); loadData(); }
+        if (error) alert(error.message);
+        else {
+            closeModal();
+            loadData();
+        }
     }
   </script>
 </body>

@@ -1,41 +1,63 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Midnight — General</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight — Master Data</title>
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-red);">GENERAL</span></div>
-    <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:10px; color:#666;">MODO AUDITORÍA</span>
-        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
-    </div>
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-purple);">MASTER</span></div>
+    <button onclick="window.location.href='index.html'" class="btn-logout">VOLVER AL MENÚ</button>
   </header>
 
-  <div class="admin-container">
+  <div class="admin-container" style="max-width:900px; margin-top:30px;">
+    
+    <div class="section-header">
+        <h2 class="section-title">CONFIGURACIÓN DEL SISTEMA</h2>
+        <p style="color:#666; font-size:12px;">Definición de parámetros globales</p>
+    </div>
+
     <div class="dashboard-grid">
-        <a href="reporte-pnl.html" class="dash-card" style="border-color:var(--mc-accent-green);">
-            <div class="dash-icon">📈</div>
-            <h3 class="dash-title">Reporte P&L</h3>
-            <div class="dash-desc">Rentabilidad Mensual</div>
+        
+        <a href="admin-skus.html" class="dash-card" style="border-left: 4px solid var(--mc-accent-green);">
+            <div class="dash-icon">🏗️</div>
+            <h3 class="dash-title">Master SKUs</h3>
+            <div class="dash-desc">Insumos, Stock Ideal y Costos</div>
         </a>
-        <a href="admin-logs.html" class="dash-card">
+
+        <a href="admin-recetas.html" class="dash-card" style="border-left: 4px solid var(--mc-accent-green);">
+            <div class="dash-icon">⚗️</div>
+            <h3 class="dash-title">Recetario</h3>
+            <div class="dash-desc">Escandallos y Márgenes</div>
+        </a>
+
+        <a href="admin-proveedores.html" class="dash-card" style="border-left: 4px solid #fff;">
+            <div class="dash-icon">🚚</div>
+            <h3 class="dash-title">Proveedores</h3>
+            <div class="dash-desc">Agenda, CUITs y Datos Bancarios</div>
+        </a>
+
+        <a href="admin-cargos.html" class="dash-card" style="border-left: 4px solid #d600ff;">
+            <div class="dash-icon">👔</div>
+            <h3 class="dash-title">Cargos & Roles</h3>
+            <div class="dash-desc">Puestos y Jornales Base</div>
+        </a>
+
+        <a href="admin-pos.html" class="dash-card" style="border-left: 4px solid var(--mc-accent-blue);">
+            <div class="dash-icon">🔗</div>
+            <h3 class="dash-title">Mapeo POS</h3>
+            <div class="dash-desc">Terminales Zoco / GBol</div>
+        </a>
+
+        <a href="admin-logs.html" class="dash-card" style="border-left: 4px solid var(--mc-red);">
             <div class="dash-icon">🛡️</div>
-            <h3 class="dash-title">Logs Seguridad</h3>
-            <div class="dash-desc">Auditoría de eventos</div>
+            <h3 class="dash-title">Logs de Auditoría</h3>
+            <div class="dash-desc">Historial de Movimientos</div>
         </a>
-        <a href="panel-master.html" class="dash-card" style="border-color:var(--mc-accent-purple);">
-            <div class="dash-icon">⚙️</div>
-            <h3 class="dash-title">Master Data</h3>
-            <div class="dash-desc">Configuración Global</div>
-        </a>
-        <a href="#" class="dash-card">
-            <div class="dash-icon">👁️</div>
-            <h3 class="dash-title">Visión Global</h3>
-            <div class="dash-desc">Acceso a módulos operativos</div>
-        </a>
+
     </div>
   </div>
 </body>

@@ -1,49 +1,334 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Midnight — Operativo</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight — Gerencia Operativa</title>
+  
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Estilos del Tablero de Comando */
+    .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+    .tab-btn { 
+        background: none; border: none; color: #666; padding: 10px 20px; 
+        font-family: 'Outfit'; font-size: 14px; cursor: pointer; border-bottom: 3px solid transparent;
+        transition: 0.2s;
+    }
+    .tab-btn:hover { color: #fff; }
+    .tab-btn.active { color: #fff; border-bottom-color: var(--mc-accent-blue); }
+
+    /* Cards de Resumen */
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .metric-card { background: #111; padding: 15px; border-radius: 8px; border: 1px solid #333; text-align: center; }
+    .metric-val { font-size: 24px; font-weight: 900; color: #fff; font-family: 'Outfit'; }
+    .metric-lbl { font-size: 10px; color: #888; text-transform: uppercase; margin-top: 5px; }
+
+    /* Listas Operativas */
+    .ops-row { 
+        display: flex; justify-content: space-between; align-items: center; 
+        padding: 12px; border-bottom: 1px solid #222; background: #0a0a0a;
+    }
+    .ops-row:hover { background: #111; }
+    
+    /* Badges */
+    .badge-role { font-size: 9px; background: #222; color: #aaa; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+    .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .dot-green { background: var(--mc-accent-green); box-shadow: 0 0 5px var(--mc-accent-green); }
+    .dot-red { background: var(--mc-red); }
+  </style>
 </head>
 <body>
+
   <header class="admin-header">
     <div class="admin-logo">MIDNIGHT<span style="color: #fff;">OPS</span></div>
-    <div style="display:flex; gap:10px;">
-        <a href="modulo-qr.html" class="btn-action" style="padding:6px 10px;">📍 FICHAR</a>
-        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700;">GERENCIA</span>
+        <button onclick="window.location.href='index.html'" class="btn-logout">VOLVER</button>
     </div>
   </header>
 
-  <div class="admin-container" style="margin-top:30px;">
+  <div class="admin-container">
     
-    <div class="dashboard-grid">
-        <a href="operativo-dotacion.html" class="dash-card" style="height:180px; justify-content:center; text-align:center;">
-            <div style="font-size:36px;">👷</div>
-            <h3 class="dash-title" style="margin-top:10px;">DOTACIÓN</h3>
-            <div class="dash-desc">Armado de Equipos</div>
-        </a>
-
-        <a href="operativo-stock.html" class="dash-card" style="height:180px; justify-content:center; text-align:center;">
-            <div style="font-size:36px;">📦</div>
-            <h3 class="dash-title" style="margin-top:10px;">STOCK ACTUAL</h3>
-            <div class="dash-desc">Consulta Inventario</div>
-        </a>
-
-        <a href="operativo-pedidos.html" class="dash-card" style="height:180px; justify-content:center; text-align:center;">
-            <div style="font-size:36px;">📝</div>
-            <h3 class="dash-title" style="margin-top:10px;">SOLICITAR COMPRA</h3>
-            <div class="dash-desc">Reposición Insumos</div>
-        </a>
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('dotacion', this)">👷 DOTACIÓN</button>
+        <button class="tab-btn" onclick="switchTab('stock', this)">🏭 STOCK GLOBAL</button>
+        <button class="tab-btn" onclick="switchTab('barras', this)">🍹 BARRAS</button>
+        <button class="tab-btn" onclick="switchTab('pedidos', this)">📝 REPOSICIÓN</button>
     </div>
 
-    <div class="dashboard-grid" style="margin-top:20px;">
-        <a href="encargado-novedades.html" class="dash-card">
-            <div class="dash-icon">📢</div>
-            <h3 class="dash-title">Libro de Novedades</h3>
-            <div class="dash-desc">Bitácora de la Noche</div>
-        </a>
+    <div id="view-dotacion">
+        <div class="section-header">
+            <h2 class="section-title">Personal Presente</h2>
+            <a href="modulo-qr.html" class="btn-action">📍 ESCANEAR QR</a>
+        </div>
+        
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-val" id="cntTotal">0</div>
+                <div class="metric-lbl">Total Activos</div>
+            </div>
+            <div class="metric-card" style="border-color:var(--mc-accent-blue);">
+                <div class="metric-val" id="cntBar" style="color:var(--mc-accent-blue);">0</div>
+                <div class="metric-lbl">Barra</div>
+            </div>
+            <div class="metric-card" style="border-color:var(--mc-accent-purple);">
+                <div class="metric-val" id="cntSec" style="color:var(--mc-accent-purple);">0</div>
+                <div class="metric-lbl">Seguridad</div>
+            </div>
+        </div>
+
+        <div class="dash-card" style="height:auto; padding:0;">
+            <div id="staffList">
+                <div class="loading-state">Cargando asistencia...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-stock" style="display:none;">
+        <div class="section-header">
+            <h2 class="section-title">Inventario Central</h2>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="searchSku" class="search-input-admin" placeholder="🔍 Buscar..." style="margin:0; width:200px;" oninput="filterStock()">
+                <button onclick="openAdjModal()" class="btn-refresh" style="background:var(--mc-red); color:#fff;">⚠ AJUSTE</button>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="sku-table">
+                <thead><tr><th>Insumo</th><th>Categoría</th><th style="text-align:right;">Stock Depósito</th></tr></thead>
+                <tbody id="stockList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="view-barras" style="display:none;">
+        <div class="section-header"><h2 class="section-title">Estado de Barras</h2></div>
+        <div id="barsGrid" class="dashboard-grid"></div>
+    </div>
+
+    <div id="view-pedidos" style="display:none;">
+        <div class="section-header">
+            <h2 class="section-title">Necesidades de Compra</h2>
+            <button onclick="loadPedidos()" class="btn-refresh">↻</button>
+        </div>
+        <div id="pedidosList"></div>
     </div>
 
   </div>
+
+  <div id="adjModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Ajuste Manual Inventario</h3>
+        <p style="color:#666; font-size:11px;">Uso exclusivo Gerencia (Robo, Rotura, RRPP)</p>
+        
+        <label class="input-label">PRODUCTO</label>
+        <select id="adjSku" class="modal-select"></select>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div><label class="input-label">CANTIDAD</label><input type="number" id="adjQty" class="modal-input" placeholder="1"></div>
+            <div><label class="input-label">TIPO</label>
+                <select id="adjType" class="modal-select">
+                    <option value="ROTURA">Rotura (-)</option>
+                    <option value="ROBO">Robo / Faltante (-)</option>
+                    <option value="RRPP">Invitación / RRPP (-)</option>
+                    <option value="HALLAZGO">Hallazgo (+)</option>
+                </select>
+            </div>
+        </div>
+        
+        <label class="input-label">OBSERVACIÓN</label>
+        <textarea id="adjNote" class="modal-input" placeholder="Detalle..."></textarea>
+
+        <div class="modal-btns">
+            <button onclick="document.getElementById('adjModal').style.display='none'" class="btn-modal-cancel">CANCELAR</button>
+            <button onclick="saveAdj()" class="btn-modal-save" style="background:var(--mc-red); color:#fff;">CONFIRMAR</button>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let allSkus = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        document.getElementById('userDisplay').innerText = currentUser.username.toUpperCase();
+        
+        loadDotacion();
+    });
+
+    function switchTab(view, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        ['dotacion','stock','barras','pedidos'].forEach(v => document.getElementById('view-'+v).style.display='none');
+        document.getElementById('view-'+view).style.display='block';
+
+        if(view === 'stock') loadStock();
+        if(view === 'barras') loadBarras();
+        if(view === 'pedidos') loadPedidos();
+    }
+
+    // === 1. DOTACIÓN (Desde Attendance) ===
+    async function loadDotacion() {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Hacemos Join con Profiles para saber quién es y su rol
+        const { data } = await client.from('staff_attendance')
+            .select('check_in, user_id, profiles(full_name, role)')
+            .eq('shift_date', today)
+            .is('check_out', null); // Solo los que siguen activos (no hicieron check-out)
+
+        const list = document.getElementById('staffList');
+        if (!data || data.length === 0) {
+            list.innerHTML = '<div class="empty-state">Nadie ha fichado hoy.</div>';
+            updateMetrics(0,0,0);
+            return;
+        }
+
+        let bars=0, secs=0;
+        
+        list.innerHTML = data.map(r => {
+            const role = r.profiles?.role || 'staff';
+            if(role.includes('barra')) bars++;
+            if(role.includes('seguridad')) secs++;
+            
+            return `
+            <div class="ops-row">
+                <div>
+                    <div style="font-weight:700; color:#fff;">${r.profiles?.full_name || 'Usuario'}</div>
+                    <span class="badge-role">${role.replace('_',' ')}</span>
+                </div>
+                <div style="font-family:monospace; color:var(--mc-accent-green);">
+                    <span class="status-dot dot-green"></span> ${new Date(r.check_in).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                </div>
+            </div>`;
+        }).join('');
+
+        updateMetrics(data.length, bars, secs);
+    }
+
+    function updateMetrics(total, b, s) {
+        document.getElementById('cntTotal').innerText = total;
+        document.getElementById('cntBar').innerText = b;
+        document.getElementById('cntSec').innerText = s;
+    }
+
+    // === 2. STOCK DEPÓSITO ===
+    async function loadStock() {
+        const { data } = await client.from('inventory_skus').select('*').order('name');
+        allSkus = data || [];
+        renderStock(allSkus);
+        
+        // Llenar select ajuste
+        const sel = document.getElementById('adjSku');
+        sel.innerHTML = allSkus.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    }
+
+    function renderStock(list) {
+        document.getElementById('stockList').innerHTML = list.map(s => `
+            <tr>
+                <td style="font-weight:700; color:#fff;">${s.name}</td>
+                <td style="font-size:10px; color:#666;">${s.category||'-'}</td>
+                <td style="text-align:right; font-family:monospace; font-size:14px;">${s.stock_current}</td>
+            </tr>
+        `).join('');
+    }
+
+    function filterStock() {
+        const t = document.getElementById('searchSku').value.toLowerCase();
+        renderStock(allSkus.filter(s => s.name.toLowerCase().includes(t)));
+    }
+
+    function openAdjModal() { document.getElementById('adjModal').style.display='flex'; }
+
+    async function saveAdj() {
+        const skuId = document.getElementById('adjSku').value;
+        const qty = parseFloat(document.getElementById('adjQty').value);
+        const type = document.getElementById('adjType').value;
+        const note = document.getElementById('adjNote').value;
+
+        if(!qty) return alert("Cantidad inválida");
+
+        const sign = type === 'HALLAZGO' ? 1 : -1;
+        const change = Math.abs(qty) * sign;
+
+        // 1. Movimiento
+        await client.from('inventory_movements').insert({
+            sku_id: skuId,
+            user_id: currentUser.id,
+            change_amount: change,
+            movement_type: 'AJUSTE_' + type,
+            notes: note,
+            event_date: new Date()
+        });
+
+        // 2. Actualizar Maestro
+        const { data: curr } = await client.from('inventory_skus').select('stock_current').eq('id', skuId).single();
+        const newStock = (curr?.stock_current || 0) + change;
+        await client.from('inventory_skus').update({ stock_current: newStock }).eq('id', skuId);
+
+        alert("Ajuste registrado.");
+        document.getElementById('adjModal').style.display='none';
+        loadStock();
+    }
+
+    // === 3. ESTADO BARRAS ===
+    async function loadBarras() {
+        // Buscamos últimos reportes de apertura/cierre de stock
+        const { data } = await client.from('incident_reports')
+            .select('created_at, description, type, details')
+            .in('type', ['APERTURA_SESION','CIERRE_SESION'])
+            .order('created_at', {ascending:false})
+            .limit(10); // Traemos los últimos para deducir estado
+
+        const c = document.getElementById('barsGrid');
+        if(!data || !data.length) { c.innerHTML='<div class="empty-state">Sin actividad registrada.</div>'; return; }
+
+        // Agrupar por barra (parseando details JSON o description)
+        // Como simplificación V2.1, mostramos el log crudo ordenado
+        c.innerHTML = data.map(r => {
+            const isClose = r.type === 'CIERRE_SESION';
+            const color = isClose ? 'var(--mc-red)' : 'var(--mc-accent-green)';
+            const icon = isClose ? '🔒' : '🔓';
+            
+            return `
+            <div class="dash-card" style="height:auto; border-left:4px solid ${color};">
+                <div style="font-size:20px;">${icon}</div>
+                <h3 class="dash-title" style="margin-top:5px;">${r.description}</h3>
+                <div class="dash-desc">${new Date(r.created_at).toLocaleString()}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // === 4. PEDIDOS ===
+    async function loadPedidos() {
+        // Traer reportes tipo PEDIDO de todas las áreas
+        const { data } = await client.from('incident_reports')
+            .select('description, area, created_at, profiles(username)')
+            .eq('type', 'PEDIDO')
+            .eq('status', 'open')
+            .order('created_at', {ascending:false});
+
+        const c = document.getElementById('pedidosList');
+        if(!data || !data.length) { c.innerHTML='<div class="empty-state">No hay pedidos pendientes.</div>'; return; }
+
+        c.innerHTML = data.map(p => `
+            <div class="ops-row">
+                <div>
+                    <div style="color:#fff; font-weight:700;">${p.description}</div>
+                    <div style="font-size:10px; color:#666;">${p.area} • ${p.profiles?.username}</div>
+                </div>
+                <button style="border:1px solid #444; background:none; color:#ccc; border-radius:4px; font-size:10px;">PENDIENTE</button>
+            </div>
+        `).join('');
+    }
+  </script>
 </body>
 </html>
