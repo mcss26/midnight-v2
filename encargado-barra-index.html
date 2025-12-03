@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight - Jefatura de Barra</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--accent-gold);">BARRA</span></div>
+    <button onclick="window.location.href='encargados-index.html'" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    
+    <div class="section-header">
+        <h2 class="section-title">Gestión de Logística y Turno</h2>
+    </div>
+
+    <div class="dashboard-grid">
+        
+        <a href="encargado-barra-stock.html" class="dash-card">
+            <div class="dash-icon" style="color:var(--accent-green);">🔄</div>
+            <h3 class="dash-title">Movimientos de Stock</h3>
+            <div class="dash-desc">Apertura de Depósito, transferencias a barras y cierre de jornada.</div>
+        </a>
+
+        <a href="encargado-barra-pedidos.html" class="dash-card">
+            <div class="dash-icon" style="color:var(--accent-blue);">📝</div>
+            <h3 class="dash-title">Pedidos y Merma</h3>
+            <div class="dash-desc">Consolidar solicitudes, declarar roturas y generar órdenes de compra.</div>
+        </a>
+
+        <a href="encargado-barra.html" class="dash-card">
+            <div class="dash-icon" style="color:var(--accent-gold);">📢</div>
+            <h3 class="dash-title">Reportes Staff</h3>
+            <div class="dash-desc">Auditoría de Staff, incidentes y novedades.</div>
+        </a>
+    </div>
+  </div>
+</body>
+</html>

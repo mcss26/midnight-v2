@@ -20,7 +20,7 @@
         border-bottom: 3px solid transparent; transition: 0.2s;
     }
     .tab-btn:hover { color: #fff; }
-    .tab-btn.active { color: #fff; border-bottom-color: var(--accent-gold); }
+    .tab-btn.active { color: var(--txt-primary); border-bottom-color: var(--accent-gold); }
 
     .audit-box { 
         background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius);
@@ -63,7 +63,7 @@
 
     <div id="view-cajas" class="audit-box">
         <div class="section-header" style="margin-bottom:20px;">
-            <h3 class="section-title" style="font-size:18px;">Cruce de Efectivo Declarado</h3>
+            <h3 class="section-title" style="font-size:18px;">Cruce de Efectivo y Digital</h3>
             <div style="display:flex; gap:10px;">
                 <input type="file" id="fileFacturas" hidden accept=".xlsx,.xls,.csv" onchange="importFacturas(this)">
                 <button onclick="document.getElementById('fileFacturas').click()" class="btn-refresh" style="background:var(--accent-blue); color:#fff;">📥 IMPORTAR FACTURACIÓN (GBOL)</button>
@@ -78,11 +78,13 @@
                         <th style="text-align:right;">TEÓRICO EFVO (GBOL)</th>
                         <th style="text-align:right;">DECLARADO EFVO (STAFF)</th>
                         <th style="text-align:right;">DIFERENCIA EFVO</th>
+                        <th style="text-align:right;">TEÓRICO DIGITAL (GBOL)</th>
+                        <th style="text-align:right;">DECLARADO DIGITAL</th>
                         <th style="text-align:right;">DIFERENCIA DIGITAL</th>
                     </tr>
                 </thead>
                 <tbody id="conciliacionBody">
-                    <tr><td colspan="5" style="text-align:center; padding:30px; color:var(--txt-secondary);">Cargue las facturas electrónicas para conciliar.</td></tr>
+                    <tr><td colspan="7" style="text-align:center; padding:30px; color:var(--txt-secondary);">Cargue las facturas electrónicas para conciliar.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -150,7 +152,7 @@
 
   <script>
     let currentClosingId = null;
-    let terminals = {}; // { 'CAJA 1': { declared_cash: 0, system_cash: 0, ... } }
+    let terminals = {}; 
     let passlineData = { validated: 0, total: 0, ingreso: 0 };
     let tesoroData = { egresos: 0 };
     let posMapping = {};
@@ -166,42 +168,76 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         ['cajas', 'acceso', 'tesoreria'].forEach(v => document.getElementById('view-'+v).style.display='none');
-        document.getElementById('view-'+v).style.display='block';
+        document.getElementById('view-'+view).style.display='block';
+        if (view === 'acceso' || view === 'tesoreria') {
+            renderTesoroSummary();
+        }
     }
 
     async function loadMapping() {
-        // Carga el mapeo POS para cruzar el ID de GBol con el nombre amigable
         const { data } = await client.from('pos_terminals').select('*');
-        if(data) data.forEach(p => posMapping[p.provider+'_'+p.external_id] = p.friendly_name);
+        // El mapa usa el nombre amigable en mayúsculas como clave
+        if(data) data.forEach(p => posMapping[p.provider+'_'+p.friendly_name.toUpperCase()] = p.friendly_name.toUpperCase());
     }
     
+    // Función de limpieza numérica global
+    function cleanNumber(str) {
+        if (!str) return 0;
+        let s = String(str);
+        // 1. Eliminar caracteres no numéricos excepto coma y punto.
+        s = s.replace(/[^\d,\.-]/g, ''); 
+        
+        // 2. Si hay más de un separador (ej: 1.000.000,00), asumimos formato español y eliminamos puntos de miles.
+        if ((s.match(/[.,]/g) || []).length > 1) {
+             s = s.replace(/\./g, ''); // Eliminar puntos de miles
+        }
+        
+        // 3. Reemplazar la coma por punto (decimal).
+        s = s.replace(/,/g, '.');
+
+        return parseFloat(s) || 0;
+    }
+
     async function loadData() {
         const date = document.getElementById('eventDate').value;
         const { data: closing } = await client.from('cash_closings').select('id, total_wardrobe').eq('event_date', date).maybeSingle();
         currentClosingId = closing?.id;
 
-        // 1. Limpiar/Inicializar terminales con los datos reportados por Staff
+        // --- 1. INICIALIZACIÓN DE TERMINALES ---
         terminals = {};
+        const friendlyNames = [...new Set(Object.values(posMapping))].sort();
+        
+        friendlyNames.forEach(name => {
+            terminals[name] = { 
+                terminal_name: name, declared_cash: 0, declared_digital: 0, withdrawals: 0, system_cash: 0, system_digital: 0,
+                starting_cash: 0, staff_payments: 0, other_expenses: 0,
+            };
+        });
+        
+        // 2. Sobrescribir con los datos reportados por Staff
         if (currentClosingId) {
             const { data: details } = await client.from('closing_terminals').select('*').eq('closing_id', currentClosingId);
             details.forEach(d => {
-                terminals[d.terminal_name] = { 
-                    declared_cash: parseFloat(d.final_count_cash) || 0,
-                    declared_digital: parseFloat(d.zoco_digital) || 0,
-                    withdrawals: parseFloat(d.cash_withdrawals) || 0,
-                    system_cash: 0, system_digital: 0, // Se llenan con importación
-                    ...d 
-                };
+                const name = d.terminal_name.toUpperCase();
+                if (terminals[name]) { 
+                    terminals[name] = { 
+                        ...terminals[name], 
+                        declared_cash: parseFloat(d.final_count_cash) || 0,
+                        declared_digital: parseFloat(d.zoco_digital) || 0,
+                        withdrawals: parseFloat(d.cash_withdrawals) || 0,
+                    };
+                }
             });
             document.getElementById('totalWardrobe').value = closing.total_wardrobe || 0;
+        } else {
+            document.getElementById('totalWardrobe').value = 0;
         }
 
-        // 2. Cargar Movimientos de Egreso (Cash Movements)
+        // 3. Cargar Movimientos de Egreso (Cash Movements)
         const { data: movements } = await client.from('cash_movements').select('amount').eq('event_date', date).eq('status', 'CONFIRMED');
         tesoroData.egresos = movements ? movements.reduce((sum, m) => sum + parseFloat(m.amount), 0) : 0;
         
         renderConciliation();
-        renderTesoroSummary();
     }
 
     function renderConciliation() {
@@ -209,20 +245,20 @@
         const keys = Object.keys(terminals).sort();
 
         if (keys.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--txt-secondary);">Aún no hay declaraciones de venta.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--txt-secondary);">No hay cajas mapeadas para iniciar la auditoría.</td></tr>';
             return;
         }
 
         tbody.innerHTML = keys.map(key => {
             const t = terminals[key];
             
-            // CONCILIACIÓN DE EFECTIVO: Declarado (Staff) - Teórico (GBol)
+            // CONCILIACIÓN DE EFECTIVO
             const diffCash = t.declared_cash - t.system_cash;
-            const diffCashClass = diffCash === 0 ? 'diff-ok' : (diffCash < 0 ? 'diff-negative' : 'diff-positive');
+            const diffCashClass = diffCash === 0 ? 'diff-ok' : (Math.abs(diffCash) < 100 ? 'diff-ok' : (diffCash < 0 ? 'diff-negative' : 'diff-positive'));
             
-            // CONCILIACIÓN DIGITAL: Declarado (Staff) - Teórico (GBol)
+            // CONCILIACIÓN DIGITAL
             const diffDigital = t.declared_digital - t.system_digital;
-            const diffDigitalClass = diffDigital === 0 ? 'diff-ok' : (diffDigital < 0 ? 'diff-negative' : 'diff-positive');
+            const diffDigitalClass = diffDigital === 0 ? 'diff-ok' : (Math.abs(diffDigital) < 100 ? 'diff-ok' : (diffDigital < 0 ? 'diff-negative' : 'diff-positive'));
 
             return `
             <tr>
@@ -230,7 +266,9 @@
                 <td style="text-align:right;">${MC_UTILS.formatCurrency(t.system_cash)}</td>
                 <td style="text-align:right;">${MC_UTILS.formatCurrency(t.declared_cash)}</td>
                 <td class="${diffCashClass}" style="text-align:right;">${MC_UTILS.formatCurrency(diffCash)}</td>
-                <td class="${diffDigitalClass}" style="text-align:right;">${MC_UTILS.formatCurrency(diffDigital)}</td>
+                <td style="text-align:right;">${MC_UTILS.formatCurrency(t.system_digital)}</td>
+                <td style="text-align:right;">${MC_UTILS.formatCurrency(t.declared_digital)}</td>
+                <td class="${diffDigitalClass}" style="text-align:right; padding-right:20px;">${MC_UTILS.formatCurrency(diffDigital)}</td>
             </tr>`;
         }).join('');
 
@@ -239,7 +277,7 @@
 
     // --- IMPORTADORES EXTERNOS ---
 
-    // IMPORTAR FACTURAS ELECTRÓNICAS (GBOL)
+    // FIX: Importación Robusta de Facturas Electrónicas (GBOL)
     async function importFacturas(input) {
         const file = input.files[0]; if(!file) return;
         const reader = new FileReader();
@@ -249,27 +287,38 @@
                 const wb = XLSX.read(data, { type: 'array' });
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 
-                // 1. Buscar cabecera
+                // 1. Buscar cabecera de forma robusta
                 const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
-                let hIdx = raw.findIndex(r => r.some(cell => String(cell).toLowerCase().includes('cajanom') && String(cell).toLowerCase().includes('efectivo')));
-                if(hIdx === -1) throw new Error("Formato inválido. Se requieren 'cajanom' y 'efectivo'.");
+                let hIdx = raw.findIndex(r => {
+                    const rowStr = JSON.stringify(r).toLowerCase();
+                    return (rowStr.includes('cajanom') || rowStr.includes('caja')) && rowStr.includes('efectivo');
+                });
                 
+                if(hIdx === -1) throw new Error("Formato inválido. Se requiere 'cajanom/caja' y 'efectivo'.");
+                
+                // 2. Procesar con la limpieza de números
                 const rows = XLSX.utils.sheet_to_json(ws, { range: hIdx });
                 
-                // 2. Limpiar valores de sistema antes de importar
                 Object.keys(terminals).forEach(k => { terminals[k].system_cash = 0; terminals[k].system_digital = 0; });
 
                 rows.forEach(r => {
-                    const boxName = String(r['cajanom']).trim().toUpperCase();
-                    const efectivo = parseFloat(r['efectivo'] || 0);
-                    // Tarjetas (sumamos tarjetas y merpag)
-                    const tarjetas = parseFloat(r['tarjetas'] || 0);
-                    const merpag = parseFloat(r['merpag'] || 0);
+                    const rawBoxName = String(r['cajanom'] || r['caja']).trim().toUpperCase();
+                    const boxName = rawBoxName.replace(/\s+/g, ' '); 
+                    
+                    const efectivo = cleanNumber(r['efectivo']);
+                    const tarjetas = cleanNumber(r['tarjetas']);
+                    const merpag = cleanNumber(r['merpag']);
                     const digitalTotal = tarjetas + merpag;
 
                     if (terminals[boxName]) {
-                        terminals[boxName].system_cash += efectivo;
+                        terminals[boxName].system_cash += efectivo; 
                         terminals[boxName].system_digital += digitalTotal;
+                    } else if (boxName.includes('BOLETERIA')) {
+                        const genericBoleteriaName = 'BOLETERIA GENERAL 1';
+                        if (terminals[genericBoleteriaName]) {
+                            terminals[genericBoleteriaName].system_cash += efectivo; 
+                            terminals[genericBoleteriaName].system_digital += digitalTotal;
+                        }
                     }
                 });
 
@@ -282,25 +331,24 @@
         reader.readAsArrayBuffer(file);
     }
     
-    // IMPORTAR PASSLINE (Control de Acceso)
+    // IMPORTAR PASSLINE (Control de Acceso) - FIX FINAL DE MAGNITUD
     async function importPassline(input) {
         const file = input.files[0]; if(!file) return;
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const csvData = e.target.result;
-                // Usamos ; como delimitador
                 const lines = csvData.split('\n').map(line => line.split(';'));
                 
                 if (lines.length < 2) throw new Error("Archivo Passline vacío.");
                 
-                // Buscar encabezados: Estado del eticket, Total
                 const headerIndex = lines.findIndex(row => row.some(cell => cell.includes("Estado del eticket")));
                 if (headerIndex === -1) throw new Error("No se encontró el encabezado de Passline.");
 
                 const statusCol = lines[headerIndex].findIndex(h => h.includes("Estado del eticket"));
                 const totalCol = lines[headerIndex].findIndex(h => h.includes("Total"));
-                const header = lines[headerIndex];
+                
+                if (statusCol === -1 || totalCol === -1) throw new Error("Columnas Estado/Total no encontradas.");
                 
                 let totalTickets = 0;
                 let validatedTickets = 0;
@@ -311,9 +359,16 @@
                     if (row.length > statusCol) {
                         totalTickets++;
                         const status = row[statusCol].replace(/"/g, '').trim();
-                        // Asumimos que total está en formato X.XX o X,XX, lo parseamos
-                        const totalStr = row[totalCol].replace(/"/g, '').replace(',', '.'); 
-                        const total = parseFloat(totalStr) || 0;
+                        
+                        // LIMPIEZA CRÍTICA
+                        const totalRaw = row[totalCol];
+                        let total = cleanNumber(totalRaw); 
+                        
+                        // FIX DE MAGNITUD: Si el número es demasiado grande y no tiene decimales, asumimos que viene en formato entero sin separador decimal
+                        if (total > 1000000 && total % 10 === 0) { 
+                             total = total / 100; 
+                        }
+
 
                         if (status === 'Validada') {
                             validatedTickets++;
@@ -342,14 +397,11 @@
     // === VISTA TESORERÍA (Cálculos Blindados) ===
 
     function renderTesoroSummary() {
-        // Recalcular si Guardarropas cambia
         const ingresoGuardarropas = parseFloat(document.getElementById('totalWardrobe').value) || 0;
         
-        // 1. Ingreso Consolidado
         const efectivoCajas = Object.values(terminals).reduce((sum, t) => sum + t.declared_cash, 0);
         const ingresoConsolidado = efectivoCajas + ingresoGuardarropas + passlineData.ingreso; 
         
-        // 2. Egreso
         const egresoConfirmado = tesoroData.egresos;
 
         const saldoFinalTeorico = ingresoConsolidado - egresoConfirmado;
@@ -362,7 +414,7 @@
     }
 
     function calculateTesoroDiff() {
-        const saldoFinalTeorico = parseFloat(document.getElementById('tSaldoFinal').innerText.replace(/[$.]/g, '').replace(',', '.')) || 0;
+        const saldoFinalTeorico = parseFloat(document.getElementById('tSaldoFinal').innerText.replace(/[$,]/g, '').replace(/[\.]/g, '').replace(/,/g, '.')) || 0;
         const conteoFisico = parseFloat(document.getElementById('tConteoFinal').value) || 0;
         const diferencia = conteoFisico - saldoFinalTeorico;
         
