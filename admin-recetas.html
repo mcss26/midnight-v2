@@ -1,65 +1,101 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Recetas</title>
   <link rel="stylesheet" href="admin-styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <style>
-    .split-layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; height: calc(100vh - 140px); }
-    @media(max-width:768px){ .split-layout { grid-template-columns: 1fr; } }
-    .menu-list { background: #111; border: 1px solid #333; overflow-y: auto; border-radius: 8px; }
-    .menu-item { padding: 15px; border-bottom: 1px solid #222; cursor: pointer; transition: 0.2s; }
-    .menu-item:hover, .menu-item.active { background: #222; border-left: 3px solid var(--mc-accent-green); }
-    .recipe-details { background: #111; border: 1px solid #333; padding: 20px; border-radius: 8px; }
-    .kpi-card { background: #000; border: 1px solid #333; padding: 10px; text-align: center; border-radius: 4px; }
+    /* Layout de Pantalla Dividida */
+    .split-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; height: calc(100vh - 140px); }
+    @media(max-width:768px){ .split-layout { grid-template-columns: 1fr; height:auto; } }
+    
+    .list-panel { background: #111; border: 1px solid #333; overflow-y: auto; border-radius: 8px; max-height: 100%; }
+    
+    .menu-item-row { padding: 15px; border-bottom: 1px solid #222; cursor: pointer; transition: 0.2s; }
+    .menu-item-row:hover, .menu-item-row.active { background: #1a1a1a; border-left: 3px solid var(--mc-accent-green); }
+    
+    .recipe-details { background: #111; border: 1px solid #333; padding: 25px; border-radius: 8px; }
+    
+    /* KPIs */
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .kpi-card { background: #000; border: 1px solid #333; padding: 15px; text-align: center; border-radius: 6px; }
+    .kpi-val { font-size: 18px; font-weight: 700; color: #fff; margin-top: 5px; }
+    .kpi-lbl { font-size: 10px; color: #888; text-transform: uppercase; }
   </style>
 </head>
 <body>
   <header class="admin-header">
     <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-green);">LAB</span></div>
-    <button onclick="window.history.back()" class="btn-logout">VOLVER</button>
+    <button onclick="window.location.href='panel-master.html'" class="btn-logout">VOLVER</button>
   </header>
 
   <div class="admin-container">
     <div class="split-layout">
         
-        <div class="menu-list">
-            <div style="padding:10px; position:sticky; top:0; background:#111; border-bottom:1px solid #333;">
-                <button onclick="createItem()" class="btn-primary" style="width:100%; font-size:10px;">+ NUEVO PRODUCTO</button>
+        <div class="list-panel">
+            <div style="padding:15px; position:sticky; top:0; background:#111; border-bottom:1px solid #333; z-index:10;">
+                <button onclick="createItem()" class="btn-primary" style="width:100%; font-size:11px;">+ NUEVO PRODUCTO</button>
+                <input type="text" id="searchMenu" class="search-input-admin" placeholder="🔍 Buscar..." style="margin-bottom:0; margin-top:10px;">
             </div>
-            <div id="itemsContainer"></div>
+            <div id="menuList"><div class="loading-state">Cargando carta...</div></div>
         </div>
 
         <div id="recipePanel" class="recipe-details" style="display:none;">
-            <input type="hidden" id="currentId">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:15px; margin-bottom:15px;">
+            <input type="hidden" id="currentItemId">
+            
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #333; padding-bottom:15px; margin-bottom:20px;">
                 <div>
-                    <h2 id="viewName" style="margin:0; font-size:20px; font-family:'Outfit';">--</h2>
-                    <input type="number" id="viewPrice" class="modal-input" style="width:100px; margin-top:5px; text-align:right;" onchange="updatePrice()">
+                    <h2 id="viewName" style="margin:0; font-family:'Outfit'; font-size:24px; color:#fff;">--</h2>
+                    <div style="margin-top:10px;">
+                        <span class="input-label" style="display:inline;">PRECIO VENTA $</span>
+                        <input type="number" id="viewPrice" class="modal-input" style="width:100px; display:inline-block; margin-left:10px; padding:8px;" onchange="updatePrice()">
+                    </div>
                 </div>
-                <button onclick="deleteItem()" style="color:#666; background:none; border:none; cursor:pointer;">Eliminar</button>
+                <button onclick="deleteItem()" style="color:#f55; background:none; border:1px solid #333; padding:8px 12px; border-radius:4px; cursor:pointer;">ELIMINAR</button>
             </div>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
-                <div class="kpi-card"><span style="font-size:9px; color:#888;">COSTO</span><div id="kpiCost" style="font-weight:700;">$0</div></div>
-                <div class="kpi-card"><span style="font-size:9px; color:#888;">MARGEN</span><div id="kpiMargin" style="font-weight:700;">$0</div></div>
-                <div class="kpi-card"><span style="font-size:9px; color:#888;">RENTABILIDAD</span><div id="kpiPerc" style="font-weight:700;">0%</div></div>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-lbl">COSTO INSUMOS</div>
+                    <div class="kpi-val" id="kpiCost" style="color:var(--mc-red);">$0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-lbl">MARGEN BRUTO</div>
+                    <div class="kpi-val" id="kpiMargin" style="color:#fff;">$0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-lbl">RENTABILIDAD</div>
+                    <div class="kpi-val" id="kpiPerc">0%</div>
+                </div>
             </div>
 
-            <h3 style="font-size:12px; color:#888;">INGREDIENTES</h3>
-            <div id="ingList" style="margin-bottom:20px;"></div>
+            <h3 style="font-size:12px; color:#888; margin-top:30px; text-transform:uppercase;">Composición (Receta)</h3>
+            <div id="ingList" style="margin-bottom:20px; border-top:1px dashed #333;"></div>
 
-            <div style="background:#222; padding:10px; border-radius:4px; display:flex; gap:10px;">
-                <select id="selSku" class="modal-select" style="flex:2;"></select>
-                <input type="number" id="newQty" class="modal-input" placeholder="Cant" style="flex:1;">
-                <button onclick="addIng()" class="btn-primary" style="padding:0 15px;">+</button>
+            <div style="background:#222; padding:15px; border-radius:6px; display:flex; gap:10px; align-items:center;">
+                <div style="flex:3;">
+                    <select id="selSku" class="modal-select"></select>
+                </div>
+                <div style="flex:1;">
+                    <input type="number" id="newQty" class="modal-input" placeholder="Cant" style="text-align:center;">
+                </div>
+                <div style="width:60px;">
+                    <select id="newUnit" class="modal-select" style="padding:12px 5px;">
+                        <option value="ml">ml</option>
+                        <option value="un">un</option>
+                        <option value="gr">gr</option>
+                    </select>
+                </div>
+                <button onclick="addIng()" class="btn-primary" style="padding:12px 20px;">+</button>
             </div>
+            <p style="font-size:10px; color:#666; margin-top:5px;">* Asegúrate de que la unidad coincida con el SKU (Líquidos en ml).</p>
         </div>
 
         <div id="emptyState" class="recipe-details" style="display:flex; justify-content:center; align-items:center; color:#666;">
-            Selecciona un producto para editar su receta.
+            <div>⬅ Selecciona un producto para ver su receta.</div>
         </div>
     </div>
   </div>
@@ -69,88 +105,108 @@
     let skus = [];
 
     window.onload = async () => {
+        await loadData();
+    };
+
+    async function loadData() {
         const [m, s] = await Promise.all([
             client.from('menu_items').select('*').order('name'),
-            client.from('inventory_skus').select('id, name').order('name')
+            client.from('inventory_skus').select('id, name, unit_type').order('name')
         ]);
         menuItems = m.data || [];
         skus = s.data || [];
         
-        // Render Lista
-        renderMenu();
+        renderMenu(menuItems);
 
-        // Cargar Select SKUs
-        document.getElementById('selSku').innerHTML = skus.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+        // Llenar Select de SKUs
+        document.getElementById('selSku').innerHTML = '<option value="">Agregar ingrediente...</option>' + 
+            skus.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+    }
+
+    function renderMenu(list) {
+        const c = document.getElementById('menuList');
+        if(!list.length) { c.innerHTML = '<div class="empty-state">Vacío</div>'; return; }
+        
+        c.innerHTML = list.map(i => `
+            <div class="menu-item-row" onclick="selectItem(${i.id}, this)">
+                <div style="font-weight:700; color:#fff;">${i.name}</div>
+                <div style="font-size:11px; color:#666; margin-top:2px;">
+                    ${i.category || 'General'} • $${i.price}
+                </div>
+            </div>`).join('');
+    }
+
+    // Filtrado
+    document.getElementById('searchMenu').oninput = (e) => {
+        const term = e.target.value.toLowerCase();
+        renderMenu(menuItems.filter(i => i.name.toLowerCase().includes(term)));
     };
 
-    function renderMenu() {
-        document.getElementById('itemsContainer').innerHTML = menuItems.map(i => `
-            <div class="menu-item" onclick="loadDetail(${i.id}, this)">
-                <div style="font-weight:700;">${i.name}</div>
-                <div style="font-size:10px; color:#666;">${i.category || '-'} • $${i.price}</div>
-            </div>
-        `).join('');
-    }
-
-    async function createItem() {
-        const name = prompt("Nombre del nuevo producto:");
-        if(!name) return;
-        const { data, error } = await client.from('menu_items').insert({ name: name, price: 0 }).select().single();
-        if(error) return alert(error.message);
-        menuItems.push(data);
-        renderMenu();
-    }
-
-    async function loadDetail(id, el) {
-        document.querySelectorAll('.menu-item').forEach(d => d.classList.remove('active'));
+    // Selección de Producto
+    async function selectItem(id, el) {
+        // UI
+        document.querySelectorAll('.menu-item-row').forEach(x => x.classList.remove('active'));
         el.classList.add('active');
-        
-        const item = menuItems.find(x => x.id === id);
-        document.getElementById('currentId').value = item.id;
-        document.getElementById('viewName').innerText = item.name;
-        document.getElementById('viewPrice').value = item.price;
-        
         document.getElementById('emptyState').style.display = 'none';
         document.getElementById('recipePanel').style.display = 'block';
+
+        const item = menuItems.find(x => x.id === id);
+        document.getElementById('currentItemId').value = item.id;
+        document.getElementById('viewName').innerText = item.name;
+        document.getElementById('viewPrice').value = item.price;
 
         loadIngredients(id);
     }
 
     async function loadIngredients(itemId) {
-        // Hacemos join para traer datos del SKU (costo y volumen)
+        // Traemos ingredientes + datos del SKU para calcular costo
         const { data } = await client.from('recipe_ingredients')
-            .select(`id, quantity_needed, unit_needed, inventory_skus(id, name, cost_price, volume_ml)`)
+            .select(`id, quantity_needed, unit_needed, inventory_skus(id, name, cost_price, volume_ml, unit_type)`)
             .eq('menu_item_id', itemId);
 
         let totalCost = 0;
-        const listHtml = (data || []).map(ing => {
-            const sku = ing.inventory_skus;
-            let ingCost = 0;
+        const c = document.getElementById('ingList');
+        
+        if(!data || !data.length) {
+            c.innerHTML = '<div style="padding:20px; text-align:center; color:#444;">Sin ingredientes definidos.</div>';
+        } else {
+            c.innerHTML = data.map(ing => {
+                const sku = ing.inventory_skus;
+                let cost = 0;
 
-            // Calculo de costo proporcional
-            // Si es por unidad, costo directo. Si es ML, regla de 3 con volumen botella.
-            if(ing.unit_needed === 'UNIDAD' || sku.volume_ml === 0) {
-                ingCost = sku.cost_price * ing.quantity_needed;
-            } else {
-                // Costo por ml = Precio Botella / ml Botella
-                ingCost = (sku.cost_price / sku.volume_ml) * ing.quantity_needed;
-            }
-            totalCost += ingCost;
+                // LÓGICA DE COSTEO
+                // 1. Si es por Unidad (ej: 1 Speed) -> Costo Directo
+                if(ing.unit_needed === 'un' || sku.unit_type === 'UNIDAD') {
+                    cost = sku.cost_price * ing.quantity_needed;
+                } 
+                // 2. Si es ml y el SKU tiene volumen (ej: 50ml de Vodka botella 750)
+                else if(ing.unit_needed === 'ml' && sku.volume_ml > 0) {
+                    cost = (sku.cost_price / sku.volume_ml) * ing.quantity_needed;
+                }
+                // Fallback (ej: Gramos o error de carga)
+                else {
+                    cost = 0; 
+                }
 
-            return `
-            <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #333; padding:8px 0;">
-                <div>
-                    <div style="color:#fff;">${sku.name}</div>
-                    <div style="font-size:10px; color:#666;">${ing.quantity_needed} ${ing.unit_needed} (Ref: ${sku.volume_ml}ml)</div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-weight:700;">${MC_UTILS.formatCurrency(ingCost)}</div>
-                    <button onclick="removeIng(${ing.id})" style="color:#f55; border:none; background:none; cursor:pointer;">×</button>
-                </div>
-            </div>`;
-        }).join('');
+                totalCost += cost;
 
-        document.getElementById('ingList').innerHTML = listHtml;
+                return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed #333;">
+                    <div>
+                        <div style="color:#fff; font-size:13px;">${sku.name}</div>
+                        <div style="font-size:10px; color:#666;">
+                            ${ing.quantity_needed}${ing.unit_needed} 
+                            <span style="color:#444;">(Base: $${sku.cost_price})</span>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:700; color:#ccc;">$${Math.round(cost)}</div>
+                        <button onclick="delIng(${ing.id})" style="background:none; border:none; color:#500; cursor:pointer; font-size:12px;">QUITAR</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
         updateKPIs(totalCost);
     }
 
@@ -161,53 +217,74 @@
 
         document.getElementById('kpiCost').innerText = MC_UTILS.formatCurrency(cost);
         document.getElementById('kpiMargin').innerText = MC_UTILS.formatCurrency(margin);
-        document.getElementById('kpiPerc').innerText = Math.round(perc) + '%';
         
-        // Color coding
-        document.getElementById('kpiPerc').style.color = perc < 30 ? 'var(--mc-red)' : 'var(--mc-accent-green)';
+        const percEl = document.getElementById('kpiPerc');
+        percEl.innerText = Math.round(perc) + '%';
+        
+        // Semáforo de Rentabilidad
+        if (perc < 30) percEl.style.color = 'var(--mc-red)';
+        else if (perc < 60) percEl.style.color = 'orange';
+        else percEl.style.color = 'var(--mc-accent-green)';
     }
 
+    // Acciones ABM
     async function addIng() {
-        const itemId = document.getElementById('currentId').value;
+        const itemId = document.getElementById('currentItemId').value;
         const skuId = document.getElementById('selSku').value;
         const qty = document.getElementById('newQty').value;
-        
-        if(!qty) return;
+        const unit = document.getElementById('newUnit').value;
 
-        // Por defecto asumimos ML, salvo lógica compleja futura
+        if(!skuId || !qty) return alert("Complete los datos.");
+
         await client.from('recipe_ingredients').insert({
             menu_item_id: itemId,
             sku_id: skuId,
             quantity_needed: qty,
-            unit_needed: 'ml' 
+            unit_needed: unit
         });
-        loadIngredients(itemId);
+
         document.getElementById('newQty').value = '';
+        loadIngredients(itemId);
     }
 
-    async function removeIng(id) {
+    async function delIng(id) {
         await client.from('recipe_ingredients').delete().eq('id', id);
-        loadIngredients(document.getElementById('currentId').value);
+        loadIngredients(document.getElementById('currentItemId').value);
     }
 
     async function updatePrice() {
-        const id = document.getElementById('currentId').value;
-        const price = document.getElementById('viewPrice').value;
-        await client.from('menu_items').update({ price: price }).eq('id', id);
+        const id = document.getElementById('currentItemId').value;
+        const val = document.getElementById('viewPrice').value;
         
-        // Actualizar array local
-        const idx = menuItems.findIndex(x => x.id == id);
-        if(idx >= 0) menuItems[idx].price = price;
-        renderMenu();
+        await client.from('menu_items').update({ price: val }).eq('id', id);
+        
+        // Actualizar lista local visualmente
+        const item = menuItems.find(x => x.id == id);
+        if(item) item.price = val;
+        renderMenu(menuItems); // Re-render para ver el precio nuevo en lista
+        
         loadIngredients(id); // Recalcular KPIs
     }
-    
-    async function deleteItem() {
-        if(confirm("¿Eliminar este producto y su receta?")) {
-            const id = document.getElementById('currentId').value;
-            await client.from('menu_items').delete().eq('id', id);
-            window.location.reload();
+
+    async function createItem() {
+        const name = prompt("Nombre del nuevo producto:");
+        if(!name) return;
+        const { data, error } = await client.from('menu_items').insert({ name: name.toUpperCase(), is_active: true }).select().single();
+        
+        if(error) alert(error.message);
+        else {
+            menuItems.push(data);
+            renderMenu(menuItems);
+            // Auto seleccionar
+            selectItem(data.id, document.querySelector('.menu-item-row:last-child') || document.body);
         }
+    }
+
+    async function deleteItem() {
+        if(!confirm("¿Eliminar este producto y su receta?")) return;
+        const id = document.getElementById('currentItemId').value;
+        await client.from('menu_items').delete().eq('id', id);
+        window.location.reload();
     }
   </script>
 </body>

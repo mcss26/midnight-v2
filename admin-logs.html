@@ -2,126 +2,88 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Midnight - Proveedores</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight - Logs</title>
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <style>
-    .supp-card { background: #111; border: 1px solid #333; border-radius: 8px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-    .tag { font-size: 9px; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; margin-right: 5px; }
-    .tag-cat { background: #222; color: #aaa; }
-    .tag-cc { background: #1a1a1a; border: 1px solid #444; color: #fff; }
-  </style>
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: #fff;">AGENDA</span></div>
-    <button onclick="window.history.back()" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-red);">LOGS</span></div>
+    <button onclick="window.location.href='panel-master.html'" class="btn-logout">VOLVER</button>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-        <h2 class="section-title">Directorio</h2>
-        <button onclick="openModal()" class="btn-refresh">+ NUEVO</button>
+        <div>
+            <h2 class="section-title">Auditoría de Seguridad</h2>
+            <p style="color:#666; font-size:12px;">Registro de movimientos y accesos</p>
+        </div>
+        <button onclick="loadLogs()" class="btn-refresh">↻ REFRESCAR</button>
     </div>
 
-    <input type="text" id="search" class="search-input-admin" placeholder="🔍 Buscar proveedor o CUIT..." oninput="filter()">
-    <div id="listContainer"></div>
-  </div>
-
-  <div id="suppModal" class="modal-overlay">
-    <div class="modal-box" style="max-width:500px;">
-        <h3>Proveedor</h3>
-        <input type="hidden" id="sId">
-        
-        <label class="input-label">Razón Social</label>
-        <input type="text" id="sName" class="modal-input">
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <div><label class="input-label">Categoría</label><select id="sCat" class="modal-select"><option value="INSUMOS">Insumos</option><option value="SERVICIOS">Servicios</option><option value="MANTENIMIENTO">Mantenimiento</option></select></div>
-            <div><label class="input-label">Centro Costos</label><select id="sCC" class="modal-select"><option value="COD">Directo (COD)</option><option value="OPEX">Operativo (OPEX)</option><option value="G&A">Admin (G&A)</option></select></div>
-        </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <div><label class="input-label">Cond. IVA</label><select id="sBill" class="modal-select"><option value="FACTURA_A">Factura A</option><option value="FACTURA_C">Factura C</option><option value="SIN_FACTURA">Sin Factura</option></select></div>
-            <div><label class="input-label">CUIT</label><input type="text" id="sCuit" class="modal-input"></div>
-        </div>
-
-        <label class="input-label">Datos Bancarios (CBU / Alias)</label>
-        <input type="text" id="sCbu" class="modal-input">
-
-        <label class="input-label">Contacto (Tel / Email)</label>
-        <input type="text" id="sContact" class="modal-input">
-
-        <div class="modal-btns">
-            <button onclick="closeModal()" class="btn-modal-cancel">CANCELAR</button>
-            <button onclick="save()" class="btn-modal-save">GUARDAR</button>
-        </div>
+    <div class="table-responsive">
+        <table class="sku-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Usuario / Actor</th>
+                    <th>Acción</th>
+                    <th>Detalle</th>
+                </tr>
+            </thead>
+            <tbody id="logsBody"><tr><td colspan="4" style="text-align:center;">Cargando...</td></tr></tbody>
+        </table>
     </div>
   </div>
 
   <script>
-    let allData = [];
-
     window.onload = async () => {
-        const { data } = await client.from('suppliers').select('*').order('name');
-        allData = data || [];
-        render(allData);
+        await loadLogs();
     };
 
-    function render(list) {
-        document.getElementById('listContainer').innerHTML = list.map(s => `
-            <div class="supp-card">
-                <div>
-                    <div style="font-weight:700; color:#fff; font-size:15px;">${s.name}</div>
-                    <div style="margin-top:5px;">
-                        <span class="tag tag-cat">${s.category}</span>
-                        <span class="tag tag-cc">${s.cost_center}</span>
-                        <span style="font-size:11px; color:#666;">${s.billing_condition.replace('_',' ')}</span>
-                    </div>
-                    ${s.contact_info ? `<div style="font-size:11px; color:#888; margin-top:5px;">📞 ${s.contact_info}</div>` : ''}
-                </div>
-                <button onclick="edit(${s.id})" style="border:none; background:none; cursor:pointer;">✏️</button>
-            </div>
-        `).join('');
-    }
+    async function loadLogs() {
+        const tbody = document.getElementById('logsBody');
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Cargando registros...</td></tr>';
 
-    function filter() {
-        const t = document.getElementById('search').value.toLowerCase();
-        render(allData.filter(x => x.name.toLowerCase().includes(t) || (x.tax_id && x.tax_id.includes(t))));
-    }
+        const { data, error } = await client
+            .from('admin_logs')
+            .select('created_at, action, details, profiles(username, full_name)')
+            .order('created_at', { ascending: false })
+            .limit(100);
 
-    function openModal() { document.getElementById('suppModal').style.display='flex'; document.getElementById('sId').value=''; }
-    function closeModal() { document.getElementById('suppModal').style.display='none'; }
+        if (error) {
+            console.error(error);
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--mc-red);">Error cargando logs.</td></tr>';
+            return;
+        }
+        
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sin registros recientes.</td></tr>';
+            return;
+        }
 
-    async function edit(id) {
-        const s = allData.find(x => x.id === id);
-        document.getElementById('sId').value = s.id;
-        document.getElementById('sName').value = s.name;
-        document.getElementById('sCat').value = s.category;
-        document.getElementById('sCC').value = s.cost_center;
-        document.getElementById('sBill').value = s.billing_condition;
-        document.getElementById('sCuit').value = s.tax_id || '';
-        document.getElementById('sCbu').value = s.cbu_alias || '';
-        document.getElementById('sContact').value = s.contact_info || '';
-        document.getElementById('suppModal').style.display = 'flex';
-    }
+        tbody.innerHTML = data.map(log => {
+            const date = new Date(log.created_at).toLocaleString('es-AR', { 
+                day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' 
+            });
+            const actor = log.profiles ? (log.profiles.full_name || log.profiles.username) : 'Sistema / Anónimo';
+            
+            let badgeColor = '#333';
+            if (log.action.includes('DELETE') || log.action.includes('ERROR')) badgeColor = 'var(--mc-red)';
+            if (log.action.includes('LOGIN')) badgeColor = 'var(--mc-accent-blue)';
+            if (log.action.includes('IMPORT') || log.action.includes('UPDATE')) badgeColor = '#d600ff';
 
-    async function save() {
-        const id = document.getElementById('sId').value;
-        const d = {
-            name: document.getElementById('sName').value.toUpperCase(),
-            category: document.getElementById('sCat').value,
-            cost_center: document.getElementById('sCC').value,
-            billing_condition: document.getElementById('sBill').value,
-            tax_id: document.getElementById('sCuit').value,
-            cbu_alias: document.getElementById('sCbu').value,
-            contact_info: document.getElementById('sContact').value
-        };
-
-        const { error } = id ? await client.from('suppliers').update(d).eq('id', id) : await client.from('suppliers').insert(d);
-        if(error) alert(error.message);
-        else { closeModal(); window.location.reload(); }
+            return `
+            <tr>
+                <td style="font-family:monospace; color:#888; white-space:nowrap;">${date}</td>
+                <td style="font-weight:700; color:#fff;">${actor.toUpperCase()}</td>
+                <td><span style="background:${badgeColor}; padding:3px 8px; border-radius:4px; font-size:10px; font-weight:700; color:#fff;">${log.action}</span></td>
+                <td style="color:#ccc; font-size:12px;">${log.details || '-'}</td>
+            </tr>`;
+        }).join('');
     }
   </script>
 </body>
