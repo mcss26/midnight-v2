@@ -12,7 +12,7 @@
   <script src="config.js"></script>
 
   <style>
-    /* Estilos Específicos para el Módulo */
+    /* Estilos Específicos */
     .tab-nav { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 1px solid var(--border-light); padding-bottom: 0; }
     .tab-btn { 
         background: none; border: none; color: var(--txt-secondary); padding: 15px 10px; 
@@ -30,6 +30,9 @@
     .diff-negative { color: var(--accent-red); font-weight: 700; }
     .diff-positive { color: var(--accent-green); font-weight: 700; }
     .diff-ok { color: var(--txt-secondary); }
+    
+    .val-lbl { font-size: 10px; color: var(--txt-secondary); text-transform: uppercase; margin-bottom: 4px; }
+    .val-num { font-family: 'Outfit', monospace; font-size: 16px; font-weight: 700; color: #fff; }
   </style>
 </head>
 <body>
@@ -53,7 +56,7 @@
     </div>
 
     <div class="tab-nav">
-        <button class="tab-btn active" onclick="switchTab('cajas', this)">💵 CAJAS & VENTA</button>
+        <button class="tab-btn active" onclick="switchTab('cajas', this)">💵 CONCILIACIÓN CAJAS</button>
         <button class="tab-btn" onclick="switchTab('acceso', this)">🎫 ACCESO & SERVICIOS</button>
         <button class="tab-btn" onclick="switchTab('tesoreria', this)">🏦 ARQUEO CAJA MADRE</button>
     </div>
@@ -71,7 +74,7 @@
             <table class="sku-table">
                 <thead>
                     <tr>
-                        <th>TERMINAL</th>
+                        <th style="padding-left:20px;">TERMINAL</th>
                         <th style="text-align:right;">TEÓRICO EFVO (GBOL)</th>
                         <th style="text-align:right;">DECLARADO EFVO (STAFF)</th>
                         <th style="text-align:right;">DIFERENCIA EFVO</th>
@@ -113,7 +116,7 @@
 
         <div style="border:1px solid var(--border-light); padding:20px; border-radius:var(--radius);">
             <label class="input-label">INGRESO GUARDARROPAS (Efectivo Contado)</label>
-            <input type="number" id="totalWardrobe" class="modal-input" value="0" placeholder="0">
+            <input type="number" id="totalWardrobe" class="modal-input" value="0" placeholder="0" oninput="renderTesoroSummary()">
         </div>
     </div>
 
@@ -163,23 +166,21 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         ['cajas', 'acceso', 'tesoreria'].forEach(v => document.getElementById('view-'+v).style.display='none');
-        document.getElementById('view-'+view).style.display='block';
+        document.getElementById('view-'+v).style.display='block';
     }
 
     async function loadMapping() {
-        // Carga el mapeo POS para cruzar el ID de GBol/Zoco con el nombre amigable
+        // Carga el mapeo POS para cruzar el ID de GBol con el nombre amigable
         const { data } = await client.from('pos_terminals').select('*');
         if(data) data.forEach(p => posMapping[p.provider+'_'+p.external_id] = p.friendly_name);
     }
     
     async function loadData() {
         const date = document.getElementById('eventDate').value;
-
-        // 1. Cargar Cabecera y Detalles de Cierre (Lo que reportó Staff)
         const { data: closing } = await client.from('cash_closings').select('id, total_wardrobe').eq('event_date', date).maybeSingle();
         currentClosingId = closing?.id;
 
-        // Limpiar/Reinicializar terminales con los datos reportados por Staff
+        // 1. Limpiar/Inicializar terminales con los datos reportados por Staff
         terminals = {};
         if (currentClosingId) {
             const { data: details } = await client.from('closing_terminals').select('*').eq('closing_id', currentClosingId);
@@ -188,9 +189,8 @@
                     declared_cash: parseFloat(d.final_count_cash) || 0,
                     declared_digital: parseFloat(d.zoco_digital) || 0,
                     withdrawals: parseFloat(d.cash_withdrawals) || 0,
-                    system_cash: 0, // Se llenan con importación
-                    system_digital: 0, // Se llenan con importación
-                    ...d // Mantener todos los campos
+                    system_cash: 0, system_digital: 0, // Se llenan con importación
+                    ...d 
                 };
             });
             document.getElementById('totalWardrobe').value = closing.total_wardrobe || 0;
@@ -201,7 +201,7 @@
         tesoroData.egresos = movements ? movements.reduce((sum, m) => sum + parseFloat(m.amount), 0) : 0;
         
         renderConciliation();
-        calculateTesoroDiff();
+        renderTesoroSummary();
     }
 
     function renderConciliation() {
@@ -216,11 +216,11 @@
         tbody.innerHTML = keys.map(key => {
             const t = terminals[key];
             
-            // CONCILIACIÓN DE EFECTIVO
+            // CONCILIACIÓN DE EFECTIVO: Declarado (Staff) - Teórico (GBol)
             const diffCash = t.declared_cash - t.system_cash;
             const diffCashClass = diffCash === 0 ? 'diff-ok' : (diffCash < 0 ? 'diff-negative' : 'diff-positive');
             
-            // CONCILIACIÓN DIGITAL
+            // CONCILIACIÓN DIGITAL: Declarado (Staff) - Teórico (GBol)
             const diffDigital = t.declared_digital - t.system_digital;
             const diffDigitalClass = diffDigital === 0 ? 'diff-ok' : (diffDigital < 0 ? 'diff-negative' : 'diff-positive');
 
@@ -237,7 +237,7 @@
         renderTesoroSummary();
     }
 
-    // === IMPORTADORES EXTERNOS ===
+    // --- IMPORTADORES EXTERNOS ---
 
     // IMPORTAR FACTURAS ELECTRÓNICAS (GBOL)
     async function importFacturas(input) {
@@ -249,22 +249,22 @@
                 const wb = XLSX.read(data, { type: 'array' });
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 
-                // Buscar cabecera
+                // 1. Buscar cabecera
                 const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
                 let hIdx = raw.findIndex(r => r.some(cell => String(cell).toLowerCase().includes('cajanom') && String(cell).toLowerCase().includes('efectivo')));
                 if(hIdx === -1) throw new Error("Formato inválido. Se requieren 'cajanom' y 'efectivo'.");
                 
                 const rows = XLSX.utils.sheet_to_json(ws, { range: hIdx });
                 
-                // Limpiar valores de sistema antes de importar
+                // 2. Limpiar valores de sistema antes de importar
                 Object.keys(terminals).forEach(k => { terminals[k].system_cash = 0; terminals[k].system_digital = 0; });
 
                 rows.forEach(r => {
                     const boxName = String(r['cajanom']).trim().toUpperCase();
                     const efectivo = parseFloat(r['efectivo'] || 0);
+                    // Tarjetas (sumamos tarjetas y merpag)
                     const tarjetas = parseFloat(r['tarjetas'] || 0);
                     const merpag = parseFloat(r['merpag'] || 0);
-                    
                     const digitalTotal = tarjetas + merpag;
 
                     if (terminals[boxName]) {
@@ -273,7 +273,6 @@
                     }
                 });
 
-                // Registrar evento
                 await client.from('admin_logs').insert({ action: 'IMPORT_FACTURA', details: `Importadas ventas de ${rows.length} facturas.` });
                 alert("Ventas Teóricas (GBol) Importadas y conciliadas.");
                 renderConciliation();
@@ -290,19 +289,18 @@
         reader.onload = async (e) => {
             try {
                 const csvData = e.target.result;
-                // Parseo manual CSV con delimitador ;
+                // Usamos ; como delimitador
                 const lines = csvData.split('\n').map(line => line.split(';'));
                 
                 if (lines.length < 2) throw new Error("Archivo Passline vacío.");
                 
+                // Buscar encabezados: Estado del eticket, Total
                 const headerIndex = lines.findIndex(row => row.some(cell => cell.includes("Estado del eticket")));
-                if (headerIndex === -1) throw new Error("No se encontró el encabezado 'Estado del eticket'.");
+                if (headerIndex === -1) throw new Error("No se encontró el encabezado de Passline.");
 
+                const statusCol = lines[headerIndex].findIndex(h => h.includes("Estado del eticket"));
+                const totalCol = lines[headerIndex].findIndex(h => h.includes("Total"));
                 const header = lines[headerIndex];
-                const statusCol = header.findIndex(h => h.includes("Estado del eticket"));
-                const totalCol = header.findIndex(h => h.includes("Total"));
-                
-                if (statusCol === -1 || totalCol === -1) throw new Error("Columnas Estado/Total no encontradas.");
                 
                 let totalTickets = 0;
                 let validatedTickets = 0;
@@ -313,7 +311,8 @@
                     if (row.length > statusCol) {
                         totalTickets++;
                         const status = row[statusCol].replace(/"/g, '').trim();
-                        const totalStr = row[totalCol].replace(/"/g, '').replace(',', '.'); // Manejar comas decimales
+                        // Asumimos que total está en formato X.XX o X,XX, lo parseamos
+                        const totalStr = row[totalCol].replace(/"/g, '').replace(',', '.'); 
                         const total = parseFloat(totalStr) || 0;
 
                         if (status === 'Validada') {
@@ -343,14 +342,14 @@
     // === VISTA TESORERÍA (Cálculos Blindados) ===
 
     function renderTesoroSummary() {
-        // Ingreso Consolidado (Efectivo de Cajas + Guardarropas + Passline)
-        const efectivoCajas = Object.values(terminals).reduce((sum, t) => sum + t.declared_cash, 0);
+        // Recalcular si Guardarropas cambia
         const ingresoGuardarropas = parseFloat(document.getElementById('totalWardrobe').value) || 0;
-        const ingresoPassline = passlineData.ingreso; // Passline Bruto - asumimos que es efectivo o se concilia aparte
         
-        // Suma de todos los ingresos de la noche (en efectivo o a recibir)
-        const ingresoConsolidado = efectivoCajas + ingresoGuardarropas + ingresoPassline; 
+        // 1. Ingreso Consolidado
+        const efectivoCajas = Object.values(terminals).reduce((sum, t) => sum + t.declared_cash, 0);
+        const ingresoConsolidado = efectivoCajas + ingresoGuardarropas + passlineData.ingreso; 
         
+        // 2. Egreso
         const egresoConfirmado = tesoroData.egresos;
 
         const saldoFinalTeorico = ingresoConsolidado - egresoConfirmado;
@@ -363,19 +362,16 @@
     }
 
     function calculateTesoroDiff() {
-        const saldoFinalTeorico = parseFloat(document.getElementById('tSaldoFinal').innerText.replace(/[$,]/g, '')) || 0;
+        const saldoFinalTeorico = parseFloat(document.getElementById('tSaldoFinal').innerText.replace(/[$.]/g, '').replace(',', '.')) || 0;
         const conteoFisico = parseFloat(document.getElementById('tConteoFinal').value) || 0;
         const diferencia = conteoFisico - saldoFinalTeorico;
         
         document.getElementById('tDiferencia').innerText = MC_UTILS.formatCurrency(diferencia);
 
         const novelty = document.getElementById('tNovedad');
-        if (diferencia > 1000) {
-            novelty.innerText = "¡SOBRANTE! Audite la procedencia.";
-            novelty.style.color = 'var(--accent-green)';
-        } else if (diferencia < -1000) {
-            novelty.innerText = "¡FALTANTE! Se requiere justificación.";
-            novelty.style.color = 'var(--accent-red)';
+        if (Math.abs(diferencia) > 1000) {
+            novelty.innerText = diferencia > 0 ? "¡SOBRANTE! Audite la procedencia." : "¡FALTANTE! Se requiere justificación.";
+            novelty.style.color = diferencia > 0 ? 'var(--accent-green)' : 'var(--accent-red)';
         } else {
             novelty.innerText = "Cuadrado (Diferencia menor a $1000)";
             novelty.style.color = 'var(--txt-secondary)';
@@ -384,38 +380,38 @@
 
     // --- ACCIÓN FINAL: GUARDAR CIERRE ---
     async function saveAll() {
-        if (!currentClosingId) {
-            // Se debe ejecutar la lógica de guardar cabecera (cierre) para tener un ID
-            const date = document.getElementById('eventDate').value;
-            const pass = passlineData.ingreso;
-            const ward = parseFloat(document.getElementById('totalWardrobe').value) || 0;
-
-            const { data: head, error } = await client.from('cash_closings')
-                .upsert({ event_date: date, total_passline: pass, total_wardrobe: ward, status: 'closed' }, { onConflict: 'event_date' })
-                .select().single();
+        // Lógica para guardar cierre y detalles
+        const date = document.getElementById('eventDate').value;
+        const ward = parseFloat(document.getElementById('totalWardrobe').value) || 0;
+        const pass = passlineData.ingreso;
+        
+        // 1. Upsert Cabecera
+        let { data: head, error: err1 } = await client.from('cash_closings')
+            .upsert({ event_date: date, total_passline: pass, total_wardrobe: ward, status: 'closed' }, { onConflict: 'event_date' })
+            .select().single();
             
-            if (error) return alert("Error al crear cierre: " + error.message);
-            currentClosingId = head.id;
-        }
+        if(err1) return alert("Error al crear cierre: " + err1.message);
 
-        if (confirm("¿Confirmar y cerrar la jornada de forma definitiva?")) {
-            // Guardar el estado actual de las terminales (con los system_cash/digital actualizados por las importaciones)
-            await client.from('closing_terminals').delete().eq('closing_id', currentClosingId);
-            const details = Object.values(terminals).map(t => ({
-                closing_id: currentClosingId,
-                terminal_name: t.terminal_name,
-                final_count_cash: t.declared_cash,
-                system_cash: t.system_cash,
-                system_digital: t.system_digital,
-                zoco_digital: t.declared_digital,
-                cash_withdrawals: t.withdrawals,
-                // Mantener otros campos si existen
-            }));
-            await client.from('closing_terminals').insert(details);
-            
-            alert("Cierre de Noche V2.1 Finalizado.");
-            window.location.href = 'administracion-index.html';
-        }
+        // 2. Insertar/Actualizar Detalles (Finalizar el cierre de terminales)
+        await client.from('closing_terminals').delete().eq('closing_id', head.id);
+        const details = Object.values(terminals).map(t => ({
+            closing_id: head.id,
+            terminal_name: t.terminal_name,
+            final_count_cash: t.declared_cash,
+            system_cash: t.system_cash,
+            system_digital: t.system_digital,
+            zoco_digital: t.declared_digital, // Lo que el staff contó como digital
+            cash_withdrawals: t.withdrawals,
+        }));
+        
+        const { error: err2 } = await client.from('closing_terminals').insert(details);
+        if(err2) return alert("Error al guardar detalles: " + err2.message);
+
+        // 3. Log
+        await client.from('admin_logs').insert({ action: 'CIERRE_JORNADA', details: `Jornada ${date} cerrada por Administrador.` });
+
+        alert("Cierre de Noche V2.1 Finalizado.");
+        window.location.href = 'administracion-index.html';
     }
   </script>
 </body>
