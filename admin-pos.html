@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Midnight - POS Link</title>
+  <link rel="stylesheet" href="admin-styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-blue);">POS</span></div>
+    <button onclick="window.history.back()" class="btn-logout">VOLVER</button>
+  </header>
+
+  <div class="admin-container">
+    <div class="section-header">
+        <h2 class="section-title">Mapeo de Terminales</h2>
+        <div style="display:flex; gap:10px;">
+            <input type="file" id="fileInput" hidden accept=".xlsx,.xls" onchange="handleFile(this)">
+            <button onclick="document.getElementById('fileInput').click()" class="btn-refresh">📂 IMPORTAR CONFIG GBOL</button>
+            <button onclick="openModal()" class="btn-primary" style="padding:8px 15px;">+ MANUAL</button>
+        </div>
+    </div>
+    
+    <div id="posList" class="dashboard-grid"></div>
+  </div>
+
+  <div id="posModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Editar Terminal</h3>
+        <input type="hidden" id="pId">
+        <label class="input-label">Proveedor</label>
+        <select id="pProv" class="modal-select"><option value="ZOCO">ZOCO</option><option value="GBOL">GBOL</option></select>
+        
+        <label class="input-label">ID Externo (Excel)</label>
+        <input type="text" id="pExtId" class="modal-input" placeholder="Ej: 0001">
+        
+        <label class="input-label">Nombre Amigable</label>
+        <input type="text" id="pName" class="modal-input" placeholder="Ej: Barra Principal 1">
+
+        <div class="modal-btns">
+            <button onclick="closeModal()" class="btn-modal-cancel">CANCELAR</button>
+            <button onclick="savePos()" class="btn-modal-save">GUARDAR</button>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = loadData;
+
+    async function loadData() {
+        const { data } = await client.from('pos_terminals').select('*').order('friendly_name');
+        const c = document.getElementById('posList');
+        if(!data.length) { c.innerHTML = '<div class="empty-state">No hay terminales configuradas.</div>'; return; }
+
+        c.innerHTML = data.map(t => `
+            <div class="dash-card" style="height:auto;">
+                <h3 class="dash-title">${t.friendly_name}</h3>
+                <div class="dash-desc" style="font-family:monospace; font-size:12px; margin-top:5px;">
+                    <span style="color:${t.provider === 'ZOCO' ? '#00eaff' : '#e8372f'}">${t.provider}</span> ID: ${t.external_id}
+                </div>
+                <button onclick="edit(${t.id})" style="position:absolute; top:15px; right:15px; background:none; border:1px solid #333; color:#fff; cursor:pointer; padding:2px 6px; border-radius:4px;">✏️</button>
+            </div>
+        `).join('');
+    }
+
+    // Importación de Excel (SheetJS)
+    function handleFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                
+                // Convertir a JSON crudo (array de arrays) para buscar cabeceras
+                const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                
+                // Buscar fila de encabezados (buscamos 'ptovta' o 'caja')
+                const headerRowIdx = raw.findIndex(row => 
+                    row.some(cell => String(cell).toLowerCase().includes('ptovta') || String(cell).toLowerCase().includes('caja'))
+                );
+
+                if (headerRowIdx === -1) throw new Error("No se encontró cabecera válida (PtoVta/Caja).");
+
+                const json = XLSX.utils.sheet_to_json(ws, { range: headerRowIdx });
+                let imported = 0;
+
+                for (const row of json) {
+                    const id = row['ptovta'] || row['Pto. Vta.'] || row['ID'];
+                    const name = row['cajanom'] || row['Caja'] || row['Nombre'];
+
+                    if (id && name) {
+                        // Upsert basado en provider + external_id
+                        await client.from('pos_terminals').upsert({
+                            provider: 'GBOL',
+                            external_id: String(id),
+                            friendly_name: String(name).toUpperCase(),
+                            is_active: true
+                        }, { onConflict: 'provider, external_id' });
+                        imported++;
+                    }
+                }
+
+                alert(`Procesadas ${imported} terminales.`);
+                loadData();
+            } catch (err) {
+                alert("Error procesando archivo: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // Modal
+    function openModal() { document.getElementById('posModal').style.display='flex'; document.getElementById('pId').value=''; }
+    function closeModal() { document.getElementById('posModal').style.display='none'; }
+    
+    async function edit(id) {
+        const { data } = await client.from('pos_terminals').select('*').eq('id',id).single();
+        document.getElementById('pId').value = data.id;
+        document.getElementById('pProv').value = data.provider;
+        document.getElementById('pExtId').value = data.external_id;
+        document.getElementById('pName').value = data.friendly_name;
+        document.getElementById('posModal').style.display='flex';
+    }
+
+    async function savePos() {
+        const id = document.getElementById('pId').value;
+        const d = {
+            provider: document.getElementById('pProv').value,
+            external_id: document.getElementById('pExtId').value,
+            friendly_name: document.getElementById('pName').value
+        };
+        const { error } = id 
+            ? await client.from('pos_terminals').update(d).eq('id', id)
+            : await client.from('pos_terminals').insert(d);
+        
+        if(error) alert(error.message);
+        else { closeModal(); loadData(); }
+    }
+  </script>
+</body>
+</html>
