@@ -4,34 +4,75 @@
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight — General</title>
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
 </head>
 <body>
   <header class="admin-header">
     <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-red);">GENERAL</span></div>
     <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:10px; color:#666;">MODO AUDITORÍA</span>
+        <span style="font-size:10px; color:#666; font-weight:700;">MODO DIOS</span>
         <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
     </div>
   </header>
 
-  <div class="admin-container">
+  <div class="admin-container" style="margin-top:30px;">
     
-    <div class="dashboard-grid">
-        <a href="#" class="dash-card" style="border-color:var(--mc-accent-green);">
-            <div class="dash-icon">📈</div>
-            <h3 class="dash-title">Reporte P&L</h3>
-            <div class="dash-desc">Rentabilidad Mensual</div>
-        </a>
-        <a href="#" class="dash-card">
-            <div class="dash-icon">🛡️</div>
-            <h3 class="dash-title">Logs Seguridad</h3>
-            <div class="dash-desc">Auditoría de eventos</div>
-        </a>
-        <a href="#" class="dash-card">
-            <div class="dash-icon">👁️</div>
-            <h3 class="dash-title">Visión Global</h3>
-            <div class="dash-desc">Acceso a todos los módulos</div>
-        </a>
+    <div class="dashboard-section">
+        <div class="section-label">ESTRATEGIA & AUDITORÍA</div>
+        <div class="dashboard-grid">
+            <a href="reporte-pnl.html" class="dash-card" style="border-color:var(--mc-accent-green);">
+                <div class="dash-icon">📈</div>
+                <h3 class="dash-title">Reporte P&L</h3>
+                <div class="dash-desc">Rentabilidad</div>
+            </a>
+            <a href="admin-logs.html" class="dash-card">
+                <div class="dash-icon">🛡️</div>
+                <h3 class="dash-title">Logs Seguridad</h3>
+                <div class="dash-desc">Auditoría Eventos</div>
+            </a>
+            <a href="panel-master.html" class="dash-card" style="border-color:var(--mc-accent-purple);">
+                <div class="dash-icon">⚙️</div>
+                <h3 class="dash-title">Master Data</h3>
+                <div class="dash-desc">Configuración Global</div>
+            </a>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <div class="section-label">GERENCIAS DE ÁREA</div>
+        <div class="dashboard-grid">
+            <a href="panel-operativo.html" class="dash-card" style="background:#1a1a1a;">
+                <div class="dash-icon">🚀</div>
+                <h3 class="dash-title">Panel Operativo</h3>
+                <div class="dash-desc">Dotación y Stock Noche</div>
+            </a>
+            <a href="panel-administrativo.html" class="dash-card" style="background:#1a1a1a; border-color:#FFD700;">
+                <div class="dash-icon">💼</div>
+                <h3 class="dash-title">Panel Administrativo</h3>
+                <div class="dash-desc">Caja, Pagos y Depósito</div>
+            </a>
+            <a href="panel-gerencia.html" class="dash-card" style="background:#1a1a1a;">
+                <div class="dash-icon">👔</div>
+                <h3 class="dash-title">Panel RRPP / Web</h3>
+                <div class="dash-desc">Socios y Web</div>
+            </a>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <div class="section-label">OPERACIÓN DE CAMPO</div>
+        <div class="dashboard-grid">
+            <a href="panel-encargados.html" class="dash-card" style="border-color:#444;">
+                <div class="dash-icon">👷</div>
+                <h3 class="dash-title" style="color:#aaa;">Vista Encargados</h3>
+                <div class="dash-desc">Validación y Control</div>
+            </a>
+            <a href="panel-staff.html" class="dash-card" style="border-color:#444;">
+                <div class="dash-icon">🧢</div>
+                <h3 class="dash-title" style="color:#aaa;">Vista Staff</h3>
+                <div class="dash-desc">Caja y Barra (Móvil)</div>
+            </a>
+        </div>
     </div>
 
   </div>
