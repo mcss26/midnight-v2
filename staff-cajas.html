@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight Staff — Caja</title>
+  
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Estilos exclusivos para la Calculadora de Caja */
+    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+    .calc-btn { 
+        background: #222; border: 1px solid #444; color: #fff; padding: 10px 5px; 
+        border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.1s;
+    }
+    .calc-btn:active { background: var(--mc-accent-green); color: #000; transform: scale(0.95); }
+    
+    .receipt-box { 
+        background: #fff; color: #000; padding: 30px; border-radius: 8px; 
+        text-align: center; display: none; animation: popIn 0.3s ease;
+    }
+    .receipt-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 10px 0; font-family: monospace; }
+    
+    @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+  </style>
+</head>
+<body>
+  <header class="admin-header" style="background:#000;">
+    <div class="admin-logo">MIDNIGHT<span style="color: #fff;">CAJA</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700; text-transform:uppercase;"></span>
+        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    </div>
+  </header>
+
+  <div class="admin-container" style="max-width:400px; margin-top:20px;">
+    
+    <div id="closingForm">
+        <h2 class="section-title" style="text-align:center;">DECLARACIÓN CIEGA</h2>
+        <div class="dash-card" style="height:auto; padding:20px; border:1px solid #333;">
+            
+            <label class="input-label">1. TU POSICIÓN</label>
+            <select id="termSelect" class="modal-select" style="margin-bottom:20px;">
+                <option value="">Cargando terminales...</option>
+            </select>
+
+            <div style="border-top:1px dashed #333; margin-bottom:20px;"></div>
+
+            <label class="input-label" style="color:var(--mc-accent-green);">2. EFECTIVO (BILLETES)</label>
+            <input type="number" id="cashInput" class="modal-input" placeholder="$ 0" style="font-size:24px; text-align:center; font-weight:700; color:var(--mc-accent-green); margin-bottom:10px; border-color:var(--mc-accent-green);">
+            
+            <div class="calc-grid">
+                <button class="calc-btn" onclick="addCash(10000)">+$10k</button>
+                <button class="calc-btn" onclick="addCash(5000)">+$5k</button>
+                <button class="calc-btn" onclick="addCash(1000)">+$1k</button>
+                <button class="calc-btn" onclick="addCash(500)">+$500</button>
+            </div>
+
+            <label class="input-label" style="color:var(--mc-accent-blue);">3. LOTE ZOCO (TOTAL TARJETAS)</label>
+            <input type="number" id="zocoInput" class="modal-input" placeholder="$ 0" style="font-size:18px; text-align:center; font-weight:700; color:var(--mc-accent-blue); margin-bottom:20px; border-color:var(--mc-accent-blue);">
+
+            <label class="input-label" style="color:var(--mc-red);">4. VALES / RETIROS (TOTAL)</label>
+            <input type="number" id="withdrawInput" class="modal-input" placeholder="$ 0" style="font-size:18px; text-align:center; font-weight:700; color:var(--mc-red); margin-bottom:5px; border-color:var(--mc-red);">
+            <p style="font-size:10px; color:#666; margin-bottom:20px;">Suma todos los tickets de gastos o retiros de socios.</p>
+
+            <button onclick="submitClose()" id="btnSend" class="btn-primary" style="width:100%; padding:15px; font-size:16px;">CONFIRMAR CIERRE 🔒</button>
+        </div>
+    </div>
+
+    <div id="successTicket" class="receipt-box">
+        <div style="font-size:40px; margin-bottom:10px;">✅</div>
+        <h2 style="margin:0 0 5px 0; font-family:'Outfit';">CIERRE ENVIADO</h2>
+        <p style="font-size:12px; color:#666; margin-bottom:20px;">Tu declaración ha sido registrada.</p>
+        
+        <div class="receipt-line"><span>CAJA</span><span id="recTerm">--</span></div>
+        <div class="receipt-line"><span>EFECTIVO</span><span id="recCash">$0</span></div>
+        <div class="receipt-line"><span>ZOCO</span><span id="recZoco">$0</span></div>
+        <div class="receipt-line"><span>RETIROS</span><span id="recWith">$0</span></div>
+        
+        <div style="margin-top:20px; font-size:10px; color:#888;">ID DE REFERENCIA: <span id="recRef">--</span></div>
+        <button onclick="window.location.href='index.html'" class="btn-primary" style="margin-top:20px; width:100%;">VOLVER AL INICIO</button>
+    </div>
+
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // 1. Validar Sesión V2
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        document.getElementById('userDisplay').innerText = currentUser.username;
+
+        // 2. Cargar Terminales
+        loadTerminals();
+    });
+
+    async function loadTerminals() {
+        const { data, error } = await client
+            .from('pos_terminals')
+            .select('friendly_name')
+            .eq('is_active', true)
+            .order('friendly_name');
+        
+        const sel = document.getElementById('termSelect');
+        if (data && data.length > 0) {
+            // Eliminar duplicados si hubiera
+            const unique = [...new Set(data.map(i => i.friendly_name))];
+            sel.innerHTML = unique.map(n => `<option value="${n}">${n}</option>`).join('');
+        } else {
+            sel.innerHTML = '<option value="">Sin terminales activas</option>';
+        }
+    }
+
+    // Función Calculadora
+    function addCash(amount) {
+        const input = document.getElementById('cashInput');
+        let current = parseFloat(input.value) || 0;
+        input.value = current + amount;
+        // Efecto visual simple
+        input.style.borderColor = '#fff';
+        setTimeout(() => input.style.borderColor = 'var(--mc-accent-green)', 100);
+    }
+
+    // Envío del Cierre
+    async function submitClose() {
+        const term = document.getElementById('termSelect').value;
+        const cash = parseFloat(document.getElementById('cashInput').value) || 0;
+        const zoco = parseFloat(document.getElementById('zocoInput').value) || 0;
+        const withdr = parseFloat(document.getElementById('withdrawInput').value) || 0;
+
+        // Validaciones
+        if (!term) return alert("Selecciona una terminal.");
+        
+        const confirmMsg = `¿CONFIRMAS EL CIERRE?\n\n📍 Caja: ${term}\n💵 Efectivo: $${cash}\n💳 Zoco: $${zoco}\n📤 Retiros: $${withdr}`;
+        if (!confirm(confirmMsg)) return;
+
+        // UI Loading
+        const btn = document.getElementById('btnSend');
+        btn.disabled = true; 
+        btn.innerText = "PROCESANDO...";
+
+        try {
+            const today = new Date().toISOString().split('T')[0];
+
+            // 1. Verificar si existe la cabecera del día (Cash Closing Global)
+            let closingId = null;
+            let { data: head } = await client.from('cash_closings').select('id').eq('event_date', today).maybeSingle();
+            
+            if (!head) {
+                // Crear cabecera si es el primer cierre de la noche
+                const { data: newHead, error: errHead } = await client
+                    .from('cash_closings')
+                    .insert({ event_date: today, status: 'open' })
+                    .select()
+                    .single();
+                
+                if (errHead) throw new Error("Error iniciando la noche: " + errHead.message);
+                closingId = newHead.id;
+            } else {
+                closingId = head.id;
+            }
+
+            // 2. Insertar/Actualizar el detalle de la terminal
+            const payload = {
+                closing_id: closingId,
+                terminal_name: term,
+                final_count_cash: cash,
+                zoco_digital: zoco,
+                cash_withdrawals: withdr,
+                // starting_cash y system_cash se llenan desde el Admin o importación GBOL
+            };
+
+            const { error: errDetail } = await client
+                .from('closing_terminals')
+                .upsert(payload, { onConflict: 'closing_id, terminal_name' });
+
+            if (errDetail) throw new Error("Error guardando cierre: " + errDetail.message);
+
+            // 3. Éxito: Mostrar Ticket
+            showReceipt(term, cash, zoco, withdr, closingId);
+
+        } catch (e) {
+            console.error(e);
+            alert("❌ Error: " + e.message);
+            btn.disabled = false;
+            btn.innerText = "CONFIRMAR CIERRE 🔒";
+        }
+    }
+
+    function showReceipt(term, cash, zoco, withdr, id) {
+        document.getElementById('closingForm').style.display = 'none';
+        document.getElementById('successTicket').style.display = 'block';
+        
+        document.getElementById('recTerm').innerText = term;
+        document.getElementById('recCash').innerText = '$' + cash.toLocaleString();
+        document.getElementById('recZoco').innerText = '$' + zoco.toLocaleString();
+        document.getElementById('recWith').innerText = '$' + withdr.toLocaleString();
+        document.getElementById('recRef').innerText = `#${id}-${Date.now().toString().slice(-4)}`;
+    }
+  </script>
+</body>
+</html>

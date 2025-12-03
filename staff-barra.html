@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Midnight Staff — Barra</title>
+  
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Estilos Específicos Touch-Friendly */
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    
+    .big-btn {
+        background: #1a1a1a; border: 1px solid #333; border-radius: 12px;
+        padding: 20px; text-align: center; color: #fff; cursor: pointer;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        height: 120px; transition: 0.1s;
+    }
+    .big-btn:active { transform: scale(0.96); background: #222; border-color: #fff; }
+    .big-btn i { font-size: 32px; margin-bottom: 10px; display: block; }
+    
+    .type-btn {
+        background: #222; border: 1px solid #444; color: #aaa; padding: 15px;
+        border-radius: 8px; font-weight: 700; text-align: center; cursor: pointer;
+        margin-bottom: 10px;
+    }
+    .type-btn.active { background: #fff; color: #000; border-color: #fff; }
+
+    /* Estado de Carga / Éxito */
+    .overlay-msg {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.9); z-index: 999; display: none;
+        flex-direction: column; justify-content: center; align-items: center; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header" style="background:#000;">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-blue);">BARRA</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700;">STAFF</span>
+        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    </div>
+  </header>
+
+  <div class="admin-container" style="max-width:500px; margin-top:20px;">
+    
+    <div id="mainPanel">
+        <h2 class="section-title" style="text-align:center; margin-bottom:20px;">OPERACIÓN DE BARRA</h2>
+        
+        <div class="action-grid">
+            <div class="big-btn" onclick="showSection('incidents')" style="border-bottom: 4px solid var(--mc-red);">
+                <i>📢</i>
+                <span style="font-family:'Outfit';">REPORTAR<br>INCIDENTE</span>
+            </div>
+            <div class="big-btn" onclick="showSection('orders')" style="border-bottom: 4px solid var(--mc-accent-green);">
+                <i>📦</i>
+                <span style="font-family:'Outfit';">PEDIR<br>INSUMOS</span>
+            </div>
+        </div>
+
+        <div class="dash-card" style="height:auto; min-height:100px;">
+            <h3 class="dash-title" style="font-size:14px; margin-bottom:10px;">MIS SOLICITUDES RECIENTES</h3>
+            <div id="historyList" style="font-size:11px; color:#666;">Cargando...</div>
+        </div>
+    </div>
+
+    <div id="secIncidents" style="display:none;">
+        <button onclick="showSection('main')" class="btn-logout" style="width:100%; margin-bottom:20px;">← VOLVER</button>
+        <h2 class="section-title" style="color:var(--mc-red);">REPORTAR INCIDENTE</h2>
+        
+        <label class="input-label">TIPO DE SUCESO</label>
+        <div class="action-grid" style="margin-bottom:10px;">
+            <div class="type-btn" onclick="setType(this, 'ROTURA')">💥 ROTURA</div>
+            <div class="type-btn" onclick="setType(this, 'SEGURIDAD')">👊 PELEA / SEG</div>
+            <div class="type-btn" onclick="setType(this, 'MANTENIMIENTO')">🔧 EQUIPO ROTO</div>
+            <div class="type-btn" onclick="setType(this, 'OBJETO_PERDIDO')">🎒 OBJ. PERDIDO</div>
+        </div>
+        <input type="hidden" id="incType">
+
+        <label class="input-label">DETALLES (BREVE)</label>
+        <textarea id="incDesc" class="modal-input" placeholder="Ej: Se rompió licuadora barra 2..." style="height:80px;"></textarea>
+
+        <button onclick="submitIncident()" class="btn-primary" style="width:100%; padding:15px; margin-top:10px; background:var(--mc-red); color:#fff;">ENVIAR ALERTA 🚨</button>
+    </div>
+
+    <div id="secOrders" style="display:none;">
+        <button onclick="showSection('main')" class="btn-logout" style="width:100%; margin-bottom:20px;">← VOLVER</button>
+        <h2 class="section-title" style="color:var(--mc-accent-green);">PEDIDO A DEPÓSITO</h2>
+        
+        <label class="input-label">¿QUÉ NECESITAS?</label>
+        <div class="action-grid" style="margin-bottom:10px;">
+            <div class="type-btn" onclick="setOrder(this, 'HIELO')">❄️ HIELO</div>
+            <div class="type-btn" onclick="setOrder(this, 'FRUTA')">🍋 FRUTA</div>
+            <div class="type-btn" onclick="setOrder(this, 'VASOS')">🥤 VASOS</div>
+            <div class="type-btn" onclick="setOrder(this, 'ESPUMANTE')">🍾 CHAMPAGNE</div>
+            <div class="type-btn" onclick="setOrder(this, 'SPEED')">⚡ SPEED</div>
+            <div class="type-btn" onclick="setOrder(this, 'OTRO')">📝 OTRO</div>
+        </div>
+        <input type="hidden" id="ordItem">
+
+        <div id="customOrderBox" style="display:none;">
+            <label class="input-label">OTRO INSUMO (ESPECIFICAR)</label>
+            <input type="text" id="ordCustom" class="modal-input" placeholder="Ej: Servilletas">
+        </div>
+
+        <label class="input-label">CANTIDAD (APROX)</label>
+        <div style="display:flex; gap:10px;">
+            <button class="type-btn" style="flex:1;" onclick="setQty(1)">1</button>
+            <button class="type-btn" style="flex:1;" onclick="setQty(5)">5</button>
+            <button class="type-btn" style="flex:1;" onclick="setQty(10)">10</button>
+        </div>
+        <input type="number" id="ordQty" class="modal-input" placeholder="Cant. manual..." style="text-align:center; font-size:16px;">
+
+        <button onclick="submitOrder()" class="btn-primary" style="width:100%; padding:15px; margin-top:10px;">SOLICITAR A RUNNER 🏃</button>
+    </div>
+
+    <div id="msgOverlay" class="overlay-msg">
+        <div style="font-size:50px; margin-bottom:20px;">✅</div>
+        <h2 style="color:#fff; font-family:'Outfit';">ENVIADO</h2>
+        <p style="color:#aaa;">El encargado ha sido notificado.</p>
+        <button onclick="closeOverlay()" class="btn-refresh" style="margin-top:20px; width:150px;">OK</button>
+    </div>
+
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        document.getElementById('userDisplay').innerText = currentUser.username.toUpperCase();
+        loadHistory();
+    });
+
+    // === NAVEGACIÓN ===
+    function showSection(sec) {
+        document.getElementById('mainPanel').style.display = 'none';
+        document.getElementById('secIncidents').style.display = 'none';
+        document.getElementById('secOrders').style.display = 'none';
+        
+        if (sec === 'main') {
+            document.getElementById('mainPanel').style.display = 'block';
+            loadHistory();
+        } else if (sec === 'incidents') {
+            document.getElementById('secIncidents').style.display = 'block';
+            resetForms();
+        } else if (sec === 'orders') {
+            document.getElementById('secOrders').style.display = 'block';
+            resetForms();
+        }
+    }
+
+    function resetForms() {
+        // Reset Clases
+        document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+        // Reset Inputs
+        document.getElementById('incType').value = '';
+        document.getElementById('incDesc').value = '';
+        document.getElementById('ordItem').value = '';
+        document.getElementById('ordCustom').value = '';
+        document.getElementById('ordQty').value = '';
+        document.getElementById('customOrderBox').style.display = 'none';
+    }
+
+    // === LÓGICA INCIDENTES ===
+    function setType(el, type) {
+        document.querySelectorAll('#secIncidents .type-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('incType').value = type;
+    }
+
+    async function submitIncident() {
+        const type = document.getElementById('incType').value;
+        const desc = document.getElementById('incDesc').value;
+
+        if (!type) return alert("Selecciona un tipo de incidente.");
+        if (!desc) return alert("Describe brevemente qué pasó.");
+
+        showLoading(true);
+
+        const { error } = await client.from('incident_reports').insert({
+            reporter_id: currentUser.id,
+            area: 'BARRA',
+            type: type,
+            severity: type === 'SEGURIDAD' ? 'ALTA' : 'MEDIA',
+            description: desc,
+            status: 'open'
+        });
+
+        showLoading(false);
+        if (error) alert("Error: " + error.message);
+        else showSuccess();
+    }
+
+    // === LÓGICA PEDIDOS ===
+    function setOrder(el, item) {
+        document.querySelectorAll('#secOrders .type-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('ordItem').value = item;
+        
+        if (item === 'OTRO') document.getElementById('customOrderBox').style.display = 'block';
+        else document.getElementById('customOrderBox').style.display = 'none';
+    }
+
+    function setQty(n) {
+        document.getElementById('ordQty').value = n;
+    }
+
+    async function submitOrder() {
+        let item = document.getElementById('ordItem').value;
+        const custom = document.getElementById('ordCustom').value;
+        const qty = document.getElementById('ordQty').value;
+
+        if (!item) return alert("Selecciona qué necesitas.");
+        if (item === 'OTRO') {
+            if (!custom) return alert("Especifique qué insumo necesita.");
+            item = custom.toUpperCase();
+        }
+        if (!qty) return alert("Indica cantidad.");
+
+        showLoading(true);
+
+        // Usamos incident_reports con tipo PEDIDO
+        const detail = `SOLICITUD: ${qty} x ${item}`;
+        const { error } = await client.from('incident_reports').insert({
+            reporter_id: currentUser.id,
+            area: 'BARRA',
+            type: 'PEDIDO',
+            severity: 'BAJA',
+            description: detail,
+            status: 'open'
+        });
+
+        showLoading(false);
+        if (error) alert("Error: " + error.message);
+        else showSuccess();
+    }
+
+    // === UTILS ===
+    function showLoading(show) {
+        // Simple loading state
+        const btns = document.querySelectorAll('.btn-primary');
+        btns.forEach(b => {
+            b.disabled = show;
+            b.style.opacity = show ? 0.5 : 1;
+            b.innerText = show ? "ENVIANDO..." : (b.innerText.replace("ENVIANDO...", ""));
+        });
+    }
+
+    function showSuccess() {
+        document.getElementById('msgOverlay').style.display = 'flex';
+    }
+
+    function closeOverlay() {
+        document.getElementById('msgOverlay').style.display = 'none';
+        showSection('main');
+    }
+
+    async function loadHistory() {
+        // Traer últimos 5 reportes de este usuario
+        const { data } = await client
+            .from('incident_reports')
+            .select('created_at, type, description, status')
+            .eq('reporter_id', currentUser.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        const list = document.getElementById('historyList');
+        if (!data || data.length === 0) {
+            list.innerHTML = "No hay actividad reciente.";
+            return;
+        }
+
+        list.innerHTML = data.map(i => {
+            const time = new Date(i.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            let color = '#666';
+            if (i.status === 'open') color = 'var(--mc-accent-blue)'; // Pendiente
+            if (i.status === 'resolved' || i.status === 'closed') color = 'var(--mc-accent-green)'; // Listo
+
+            return `
+            <div style="border-bottom:1px solid #222; padding:8px 0; display:flex; justify-content:space-between;">
+                <div>
+                    <span style="font-weight:700; color:#fff;">${i.type}</span> <span style="color:#444;">${time}</span>
+                    <div style="color:#888;">${i.description}</div>
+                </div>
+                <div style="font-weight:700; font-size:10px; color:${color}; align-self:center;">
+                    ${i.status.toUpperCase()}
+                </div>
+            </div>`;
+        }).join('');
+    }
+  </script>
+</body>
+</html>

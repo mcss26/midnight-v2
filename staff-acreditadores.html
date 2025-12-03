@@ -1,0 +1,195 @@
+Aquí tienes el código para **`staff-acreditadores.html`**.
+
+Este módulo está diseñado para el **Control de Puerta**. Permite al personal de acceso declarar el "Cierre de Ingreso" cruzando dos fuentes de datos críticas:
+
+1.  **Digital:** La cifra que marca la PDA/App de Passline (Escaneados).
+2.  **Físico:** El conteo de pulseras o tickets cortados (Stock Inicial - Sobrante).
+
+Al no tener una tabla específica de "Cierre de Puerta" en la V2.1, utilizaremos la tabla `incident_reports` con una estructura de datos estandarizada en el campo `description`. Esto permite auditarlo desde el panel de **Logs** o **Gerencia**.
+
+### 📄 `staff-acreditadores.html`
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Midnight Staff — Puerta</title>
+  
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+
+  <style>
+    /* Tarjetas de Input Grandes para Noche/Celular */
+    .input-card {
+        background: #111; border: 1px solid #333; padding: 20px;
+        border-radius: 12px; margin-bottom: 15px;
+    }
+    .big-number {
+        background: #000; border: 1px solid #444; color: #fff;
+        font-family: 'Outfit', sans-serif; font-size: 28px; text-align: center;
+        width: 100%; padding: 15px; border-radius: 8px; outline: none;
+        box-sizing: border-box;
+    }
+    .big-number:focus { border-color: var(--mc-accent-blue); }
+    
+    /* Calculadora Visual de Diferencia */
+    .calc-row {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 10px; padding-top: 10px; border-top: 1px dashed #333;
+    }
+    .result-display {
+        font-size: 20px; font-weight: 900; color: var(--mc-accent-green);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header" style="background:#000;">
+    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-accent-blue);">PUERTA</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700;">STAFF</span>
+        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    </div>
+  </header>
+
+  <div class="admin-container" style="max-width:500px; margin-top:20px;">
+    
+    <h2 class="section-title" style="text-align:center; margin-bottom:5px;">CONTROL DE ACCESO</h2>
+    <p style="text-align:center; color:#666; font-size:12px; margin-bottom:25px;">Cierre de Listas y Tickets Físicos</p>
+
+    <div class="input-card" style="border-left: 4px solid #fff;">
+        <label class="input-label">CÓDIGO DE EVENTO / FECHA</label>
+        <input type="date" id="eventDate" class="modal-input" style="text-align:center; font-size:16px;">
+        <input type="text" id="controlId" class="modal-input" placeholder="N° Control / PDA ID" style="text-align:center; margin-top:10px;">
+    </div>
+
+    <div class="input-card" style="border-left: 4px solid var(--mc-accent-blue);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <label class="input-label" style="color:var(--mc-accent-blue); margin:0;">📱 PASSLINE (APP)</label>
+            <span style="font-size:20px;">🎟️</span>
+        </div>
+        <input type="number" id="scanInput" class="big-number" placeholder="0" inputmode="numeric">
+        <p style="font-size:10px; color:#666; text-align:center; margin-top:5px;">Ingresa el "Total Scanned" que figura en la PDA/App.</p>
+    </div>
+
+    <div class="input-card" style="border-left: 4px solid var(--mc-accent-purple);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <label class="input-label" style="color:var(--mc-accent-purple); margin:0;">🖐️ FÍSICO (PULSERAS)</label>
+            <span style="font-size:20px;">📦</span>
+        </div>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div>
+                <label class="input-label">INICIAL (Recibidas)</label>
+                <input type="number" id="phyInit" class="modal-input" placeholder="0" style="text-align:center;" oninput="calcPhysical()">
+            </div>
+            <div>
+                <label class="input-label">SOBRANTE (Devolución)</label>
+                <input type="number" id="phyEnd" class="modal-input" placeholder="0" style="text-align:center;" oninput="calcPhysical()">
+            </div>
+        </div>
+
+        <div class="calc-row">
+            <span style="font-size:12px; color:#888;">CORTADAS / VENDIDAS</span>
+            <span id="phyResult" class="result-display">0</span>
+        </div>
+    </div>
+
+    <label class="input-label">OBSERVACIONES</label>
+    <textarea id="obsInput" class="modal-input" placeholder="Novedades en puerta, colados, incidentes..." style="margin-bottom:20px;"></textarea>
+
+    <button onclick="submitGate()" id="btnSend" class="btn-primary" style="width:100%; padding:18px; font-size:16px;">ENVIAR REPORTE PUERTA 🚀</button>
+
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Auth Check
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
+        document.getElementById('userDisplay').innerText = currentUser.username.toUpperCase();
+        
+        // Default Date
+        document.getElementById('eventDate').valueAsDate = new Date();
+    });
+
+    function calcPhysical() {
+        const ini = parseInt(document.getElementById('phyInit').value) || 0;
+        const end = parseInt(document.getElementById('phyEnd').value) || 0;
+        const used = ini - end;
+        
+        const el = document.getElementById('phyResult');
+        el.innerText = used;
+        
+        if(used < 0) {
+            el.style.color = 'var(--mc-red)';
+            el.innerText = "Error (" + used + ")";
+        } else {
+            el.style.color = 'var(--mc-accent-green)';
+        }
+    }
+
+    async function submitGate() {
+        const date = document.getElementById('eventDate').value;
+        const ctrl = document.getElementById('controlId').value || 'S/D';
+        const scanned = document.getElementById('scanInput').value;
+        
+        const phyIni = document.getElementById('phyInit').value || 0;
+        const phyEnd = document.getElementById('phyEnd').value || 0;
+        const phyUsed = parseInt(phyIni) - parseInt(phyEnd);
+
+        const obs = document.getElementById('obsInput').value;
+
+        if(!scanned) return alert("Ingresa el total escaneado de Passline.");
+        if(phyUsed < 0) return alert("Error en stock físico: El sobrante no puede ser mayor al inicial.");
+
+        if(!confirm(`¿CONFIRMAR CIERRE PUERTA?\n\n📱 Digital: ${scanned}\n🖐️ Físico: ${phyUsed}\n\nEsta acción notificará a Gerencia.`)) return;
+
+        const btn = document.getElementById('btnSend');
+        btn.disabled = true; btn.innerText = "ENVIANDO...";
+
+        try {
+            // Estructuramos el dato para guardarlo en 'incident_reports' ya que no creamos tabla específica aún.
+            // Formato JSON String para fácil parsing futuro.
+            const reportData = {
+                date: date,
+                control_id: ctrl,
+                passline_scanned: parseInt(scanned),
+                physical_initial: parseInt(phyIni),
+                physical_return: parseInt(phyEnd),
+                physical_used: phyUsed,
+                notes: obs
+            };
+
+            const descriptionString = `CIERRE PUERTA | Passline: ${scanned} | Físico: ${phyUsed} (Ini:${phyIni}/Fin:${phyEnd}) | Ctrl: ${ctrl} | Obs: ${obs}`;
+
+            const { error } = await client.from('incident_reports').insert({
+                reporter_id: currentUser.id,
+                area: 'PUERTA',
+                type: 'CIERRE_ACCESO', // Tipo específico para filtrar luego
+                severity: 'BAJA', // Informativo
+                description: descriptionString, 
+                status: 'closed' // Nace cerrado, es un reporte
+            });
+
+            if (error) throw error;
+
+            alert("✅ Reporte de Puerta Enviado.");
+            window.location.href = 'index.html';
+
+        } catch(e) {
+            alert("Error: " + e.message);
+            btn.disabled = false; btn.innerText = "ENVIAR REPORTE PUERTA 🚀";
+        }
+    }
+  </script>
+</body>
+</html>
+```
