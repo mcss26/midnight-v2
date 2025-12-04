@@ -55,7 +55,7 @@
       <button class="tab-btn active" data-view="cajas" onclick="switchTab('cajas', this)">Cajas</button>
       <button class="tab-btn" data-view="acceso" onclick="switchTab('acceso', this)">Acceso &amp; servicios</button>
       <button class="tab-btn" data-view="tesoreria" onclick="switchTab('tesoreria', this)">Tesorería</button>
-      <button class="tab-btn" data-view="stock" onclick="switchTab('stock', this)">Stock</button>
+      <button class="tab-btn" data-view="stock" onclick="switchTab('stock', this)">STOCK</button>
     </nav>
 
     <!-- ============ TAB CAJAS ============ -->
@@ -306,24 +306,44 @@
       </p>
     </section>
 
-    <!-- ============ TAB STOCK (PLACEHOLDER) ============ -->
-    <section id="view-stock" class="audit-box" style="display:none;">
-      <div class="section-header" style="margin-bottom:10px;">
-        <h3 class="section-title" style="font-size:18px;">Arqueo de stock</h3>
-        <p class="section-desc">
-          Cruce entre <strong>operativo-stock</strong> y <strong>admin-stock</strong> para mermas y diferencias de costo.
+    <!-- ============ TAB STOCK ============ -->
+    <div id="view-stock" class="audit-box" style="display:none;">
+      <div class="audit-header">
+        <h2>ARQUEO DE STOCK</h2>
+        <p class="audit-subtitle">
+          Cruce entre stock teórico operativo y stock reportado por Gbol (STOCK_GENERAL) valorizado a costo.
         </p>
       </div>
 
-      <p class="section-desc">
-        En la próxima etapa vamos a traer acá el snapshot de:
-      </p>
-      <ul class="section-desc" style="text-align:left; margin:8px auto 0; max-width:520px;">
-        <li>Stock real (operativo-stock).</li>
-        <li>Stock sistema (admin-stock / Gbol).</li>
-        <li>Valorización de diferencias por insumo.</li>
-      </ul>
-    </section>
+      <div class="stock-summary">
+        <div class="stock-summary-label">Stock teórico operativo (valorizado)</div>
+        <div class="stock-summary-value" id="stockTeoricoTotal">$0</div>
+
+        <div class="stock-summary-label mt-2">Stock según Gbol (valorizado)</div>
+        <div class="stock-summary-value" id="stockGbolTotal">$0</div>
+
+        <div class="stock-summary-label mt-2">Diferencia valorizada</div>
+        <div class="stock-summary-value" id="stockDiffTotal">$0</div>
+      </div>
+
+      <div class="table-container" style="margin-top: 12px;">
+        <table class="sku-table" id="stockAuditTable">
+          <thead>
+            <tr>
+              <th>INSUMO</th>
+              <th>TEÓRICO OPERATIVO</th>
+              <th>GBOL</th>
+              <th>DIF. UNIDADES</th>
+              <th>COSTO UNITARIO</th>
+              <th>DIF. VALORIZADA</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- filas dinámicas -->
+          </tbody>
+        </table>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -384,16 +404,23 @@
     });
 
     function switchTab(view, btn) {
+      const views = ['cajas', 'acceso', 'tesoreria', 'stock'];
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
 
-      ['cajas', 'acceso', 'tesoreria', 'stock'].forEach(v => {
+      views.forEach(v => {
         const el = document.getElementById('view-' + v);
-        if (el) el.style.display = (v === view) ? 'block' : 'none';
+        if (el) {
+          el.style.display = v === view ? 'block' : 'none';
+        }
       });
 
       if (view === 'tesoreria') {
         renderTesoroSummary();
+      }
+
+      if (view === 'stock') {
+        loadStockAudit();
       }
     }
 
@@ -921,6 +948,155 @@
           passlineImportStatus.textContent = 'Error al importar Passline. Revisá el archivo.';
         }
       }
+    }
+
+    function formatStockCurrency(value) {
+      const numeric = Number(value) || 0;
+      if (typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency) {
+        return MC_UTILS.formatCurrency(numeric);
+      }
+      return `$${numeric.toFixed(2)}`;
+    }
+
+    async function loadStockAudit() {
+      const tbody = document.querySelector('#stockAuditTable tbody');
+      if (tbody) {
+        tbody.innerHTML =
+          '<tr><td colspan="6" style="text-align:center; padding:14px;">Cargando arqueo de stock...</td></tr>';
+      }
+
+      try {
+        const [
+          { data: skuRows, error: skuError },
+          { data: stockRows, error: stockError },
+          { data: gbolRows, error: gbolError }
+        ] = await Promise.all([
+          client.from('inventory_skus').select('id, name, cost_price'),
+          client.from('inventory_stock').select('sku_id, stock_current'),
+          client
+            .from('import_gbol_stock')
+            .select('sku_id, stock_real, import_date')
+            .order('import_date', { ascending: false })
+        ]);
+
+        if (skuError) throw skuError;
+        if (stockError) throw stockError;
+        if (gbolError) throw gbolError;
+
+        const stockMap = new Map();
+        (stockRows || []).forEach(row => {
+          if (!row?.sku_id) return;
+          stockMap.set(row.sku_id, Number(row.stock_current) || 0);
+        });
+
+        const gbolMap = new Map();
+        (gbolRows || []).forEach(row => {
+          if (!row?.sku_id) return;
+          if (gbolMap.has(row.sku_id)) return;
+          gbolMap.set(row.sku_id, {
+            stock_real: Number(row.stock_real) || 0,
+            import_date: row.import_date
+          });
+        });
+
+        let totalTeorico = 0;
+        let totalGbol = 0;
+
+        const rows = (skuRows || [])
+          .map(sku => {
+            if (!sku?.id) return null;
+            const teorico = stockMap.get(sku.id) ?? 0;
+            const gbolEntry = gbolMap.get(sku.id);
+            const gbol = gbolEntry?.stock_real ?? 0;
+            const diffUnits = teorico - gbol;
+            const cost = Number(sku.cost_price) || 0;
+            const diffValue = diffUnits * cost;
+
+            totalTeorico += teorico * cost;
+            totalGbol += gbol * cost;
+
+            return {
+              name: sku.name || 'SIN NOMBRE',
+              teorico,
+              gbol,
+              diffUnits,
+              cost,
+              diffValue
+            };
+          })
+          .filter(Boolean);
+
+        const totalDiffValue = totalTeorico - totalGbol;
+
+        const totalEls = [
+          { id: 'stockTeoricoTotal', value: totalTeorico },
+          { id: 'stockGbolTotal', value: totalGbol },
+          { id: 'stockDiffTotal', value: totalDiffValue }
+        ];
+
+        totalEls.forEach(({ id, value }) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.textContent = formatStockCurrency(value);
+          }
+        });
+
+        renderStockAuditTable(rows);
+      } catch (err) {
+        console.error('Error al cargar arqueo de stock', err);
+        ['stockTeoricoTotal', 'stockGbolTotal', 'stockDiffTotal'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.textContent = formatStockCurrency(0);
+          }
+        });
+        if (tbody) {
+          tbody.innerHTML =
+            '<tr><td colspan="6" style="text-align:center; padding:14px;">No se pudo cargar el arqueo de stock.</td></tr>';
+        }
+      }
+    }
+
+    function renderStockAuditTable(rows = []) {
+      const tbody = document.querySelector('#stockAuditTable tbody');
+      if (!tbody) return;
+
+      const validRows = (rows || []).filter(Boolean);
+      const diffRows = validRows.filter(r => r.diffUnits !== 0);
+      const sourceRows = diffRows.length > 0 ? diffRows : validRows;
+
+      if (sourceRows.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="6" style="text-align:center; padding:14px;">No hay diferencias de stock para esta fecha.</td></tr>';
+        return;
+      }
+
+      const rowsHtml = sourceRows
+        .map(row => {
+          const diffUnitsStyle =
+            row.diffUnits !== 0
+              ? `font-weight:600; color:${row.diffUnits < 0 ? 'var(--state-error)' : 'var(--accent-green)'};`
+              : '';
+          const diffValueStyle =
+            row.diffValue !== 0
+              ? `font-weight:600; color:${row.diffValue < 0 ? 'var(--state-error)' : 'var(--accent-green)'};`
+              : '';
+          return `
+            <tr>
+              <td>
+                <div class="row-title">${row.name}</div>
+              </td>
+              <td>${row.teorico ?? 0}</td>
+              <td>${row.gbol ?? 0}</td>
+              <td style="${diffUnitsStyle}">${row.diffUnits ?? 0}</td>
+              <td class="col-costo">${formatStockCurrency(row.cost)}</td>
+              <td class="col-costo" style="${diffValueStyle}">${formatStockCurrency(row.diffValue)}</td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      tbody.innerHTML = rowsHtml;
     }
   </script>
 </body>
