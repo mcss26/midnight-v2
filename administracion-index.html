@@ -5,44 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Administración</title>
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!localStorage.getItem('mc_user')) {
+        const dev = { id: 'dev', username: 'DEV', full_name: 'Modo Desarrollador', role: 'superadmin' };
+        localStorage.setItem('mc_user', JSON.stringify(dev));
+      }
+    });
+  </script>
+
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--color-gold);">ADMIN</span></div>
-    <button onclick="window.location.href='index.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span class="logo-accent">ADMIN</span></div>
+    <button onclick="window.location.href='index.html'" class="btn-back">VOLVER</button>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-        <h2 class="section-title">Oficina Central</h2>
+      <div>
+        <h2 class="section-title">Administración</h2>
+        <p class="section-desc">Herramientas de backoffice y control.</p>
+      </div>
     </div>
 
-    <div class="dashboard-grid">
-        <a href="admin-deposito.html" class="dash-card">
-            <div class="dash-icon">🏭</div>
-            <h3 class="dash-title">Depósito</h3>
-            <div class="dash-desc">Ingreso de mercadería y control.</div>
-        </a>
-        <a href="admin-compras.html" class="dash-card">
-            <div class="dash-icon">💳</div>
-            <h3 class="dash-title">Órdenes de Pago</h3>
-            <div class="dash-desc">Facturas y egresos.</div>
-        </a>
-        <a href="admin-pagos.html" class="dash-card">
-            <div class="dash-icon">📅</div>
-            <h3 class="dash-title">Calendario</h3>
-            <div class="dash-desc">Agenda de vencimientos.</div>
-        </a>
-        <a href="admin-cierre.html" class="dash-card">
-            <div class="dash-icon" style="color:var(--color-gold);">🌜</div>
-            <h3 class="dash-title">Cierre Noche</h3>
-            <div class="dash-desc">Conciliación final de caja.</div>
-        </a>
-        <a href="#" class="dash-card" style="opacity:0.5;">
-            <div class="dash-icon">⚖️</div>
-            <h3 class="dash-title">Balance Semanal</h3>
-            <div class="dash-desc">Próximamente.</div>
-        </a>
+    <div class="dash-grid" style="grid-template-columns:1fr; max-width:420px; margin:10px auto 0;">
+      <a href="admin-cierre.html" class="dash-card">
+        <h3 class="dash-title">CIERRES DE CAJA</h3>
+      </a>
+      <a href="admin-pos.html" class="dash-card">
+        <h3 class="dash-title">POS & TERMINALES</h3>
+      </a>
+      <a href="admin-logs.html" class="dash-card">
+        <h3 class="dash-title">AUDITORÍA LOGS</h3>
+      </a>
     </div>
   </div>
 </body>

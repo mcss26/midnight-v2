@@ -5,46 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Staff</title>
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!localStorage.getItem('mc_user')) {
+        const dev = { id: 'dev', username: 'DEV', full_name: 'Modo Desarrollador', role: 'superadmin' };
+        localStorage.setItem('mc_user', JSON.stringify(dev));
+      }
+    });
+  </script>
+
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: #fff;">STAFF</span></div>
-    <button onclick="window.location.href='index.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span class="logo-accent">STAFF</span></div>
+    <button onclick="window.location.href='index.html'" class="btn-back">VOLVER</button>
   </header>
 
   <div class="admin-container">
-    
-    <a href="modulo-qr.html" class="hero-card">
-        <div style="display:flex; align-items:center;">
-            <div class="hero-icon">📍</div>
-            <div>
-                <div style="font-family:'Outfit'; font-size:20px; font-weight:700; color:#fff;">FICHAR</div>
-                <div style="font-size:13px; color:var(--text-secondary);">Registro de asistencia</div>
-            </div>
-        </div>
-        <div style="color:#fff; opacity:0.5; font-size:20px;">➔</div>
-    </a>
-
     <div class="section-header">
-        <h2 class="section-title">Mi Puesto</h2>
+      <div>
+        <h2 class="section-title">Staff</h2>
+        <p class="section-desc">Accesos para el equipo de noche.</p>
+      </div>
     </div>
 
-    <div class="dashboard-grid">
-        <a href="staff-cajas.html" class="dash-card">
-            <div class="dash-icon" style="color:var(--color-success);">💵</div>
-            <h3 class="dash-title">Caja</h3>
-            <div class="dash-desc">Cobro, retiros y cierre de turno.</div>
-        </a>
-        <a href="staff-barra.html" class="dash-card">
-            <div class="dash-icon" style="color:var(--color-info);">🍹</div>
-            <h3 class="dash-title">Barra</h3>
-            <div class="dash-desc">Pedidos de insumos y reportes.</div>
-        </a>
-        <a href="staff-acreditadores.html" class="dash-card">
-            <div class="dash-icon" style="color:var(--color-purple);">🎫</div>
-            <h3 class="dash-title">Acceso</h3>
-            <div class="dash-desc">Control de puerta y listas.</div>
-        </a>
+    <div class="dash-grid" style="grid-template-columns:1fr; max-width:420px; margin:10px auto 0;">
+      <a href="staff-barra.html" class="dash-card">
+        <h3 class="dash-title">BARRA</h3>
+      </a>
+      <a href="staff-cajas.html" class="dash-card">
+        <h3 class="dash-title">CAJAS</h3>
+      </a>
+      <a href="staff-acreditadores.html" class="dash-card">
+        <h3 class="dash-title">ACREDITADORES</h3>
+      </a>
     </div>
   </div>
 </body>

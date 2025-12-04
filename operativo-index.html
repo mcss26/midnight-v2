@@ -5,34 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Operativo</title>
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!localStorage.getItem('mc_user')) {
+        const dev = { id: 'dev', username: 'DEV', full_name: 'Modo Desarrollador', role: 'superadmin' };
+        localStorage.setItem('mc_user', JSON.stringify(dev));
+      }
+    });
+  </script>
+
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--text-primary);">OPS</span></div>
-    <button onclick="window.location.href='index.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span class="logo-accent">OPS</span></div>
+    <button onclick="window.location.href='index.html'" class="btn-back">VOLVER</button>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-        <h2 class="section-title">Gerencia de Noche</h2>
+      <div>
+        <h2 class="section-title">Operativo</h2>
+        <p class="section-desc">Herramientas para controlar la noche.</p>
+      </div>
     </div>
 
-    <div class="dashboard-grid">
-        <a href="panel-operativo.html" class="dash-card">
-            <div class="dash-icon" style="color:var(--text-primary);">👷</div>
-            <h3 class="dash-title">Dotación</h3>
-            <div class="dash-desc">Personal presente en tiempo real.</div>
-        </a>
-        <a href="operativo-stock.html" class="dash-card">
-            <div class="dash-icon" style="color:var(--color-success);">📦</div>
-            <h3 class="dash-title">Stock Global</h3>
-            <div class="dash-desc">Inventario central y ajustes.</div>
-        </a>
-        <a href="operativo-pedidos.html" class="dash-card">
-            <div class="dash-icon" style="color:var(--color-info);">📝</div>
-            <h3 class="dash-title">Solicitar Compra</h3>
-            <div class="dash-desc">Reposición de insumos al proveedor.</div>
-        </a>
+    <div class="dash-grid" style="grid-template-columns:1fr; max-width:420px; margin:10px auto 0;">
+      <a href="operativo-stock.html" class="dash-card">
+        <h3 class="dash-title">STOCK GLOBAL</h3>
+      </a>
+      <a href="admin-cierre.html" class="dash-card">
+        <h3 class="dash-title">CIERRE DE CAJA</h3>
+      </a>
     </div>
   </div>
 </body>

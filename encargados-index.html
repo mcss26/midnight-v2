@@ -5,47 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Encargados</title>
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!localStorage.getItem('mc_user')) {
+        const dev = { id: 'dev', username: 'DEV', full_name: 'Modo Desarrollador', role: 'superadmin' };
+        localStorage.setItem('mc_user', JSON.stringify(dev));
+      }
+    });
+  </script>
+
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--color-success);">LÍDER</span></div>
-    <button onclick="window.location.href='index.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-logo">MIDNIGHT<span class="logo-accent">ENCARGADOS</span></div>
+    <button onclick="window.location.href='index.html'" class="btn-back">VOLVER</button>
   </header>
 
   <div class="admin-container">
-    
-    <a href="modulo-qr.html" class="hero-card" style="padding:20px; margin-bottom:30px;">
-        <div style="display:flex; align-items:center;">
-            <div class="hero-icon" style="width:40px; height:40px; font-size:20px;">📍</div>
-            <div style="font-weight:700; color:#fff;">Fichar Asistencia</div>
-        </div>
-    </a>
-
     <div class="section-header">
-        <h2 class="section-title">Supervisión de Área</h2>
+      <div>
+        <h2 class="section-title">Encargados</h2>
+        <p class="section-desc">Accesos por área de responsabilidad.</p>
+      </div>
     </div>
 
-    <div class="dashboard-grid">
-        <a href="encargado-caja.html" class="dash-card">
-            <div class="dash-icon">💰</div>
-            <h3 class="dash-title">Tesorería</h3>
-            <div class="dash-desc">Validar cierres y autorizar retiros.</div>
-        </a>
-        <a href="encargado-barra-index.html" class="dash-card">
-            <div class="dash-icon">🍸</div>
-            <h3 class="dash-title">Jefe de Barra</h3>
-            <div class="dash-desc">Stock, mermas y gestión de equipo.</div>
-        </a>
-        <a href="encargado-seguridad.html" class="dash-card">
-            <div class="dash-icon">🛡️</div>
-            <h3 class="dash-title">Seguridad</h3>
-            <div class="dash-desc">Reporte de incidentes y admisión.</div>
-        </a>
-        <a href="encargado-limpieza.html" class="dash-card">
-            <div class="dash-icon">🧹</div>
-            <h3 class="dash-title">Limpieza</h3>
-            <div class="dash-desc">Estado de baños y reposición.</div>
-        </a>
+    <div class="dash-grid" style="grid-template-columns:1fr; max-width:420px; margin:10px auto 0;">
+      <a href="encargado-barra.html" class="dash-card">
+        <h3 class="dash-title">BARRA</h3>
+      </a>
+      <a href="encargado-caja.html" class="dash-card">
+        <h3 class="dash-title">CAJA</h3>
+      </a>
+      <a href="encargado-limpieza.html" class="dash-card">
+        <h3 class="dash-title">LIMPIEZA</h3>
+      </a>
+      <a href="encargado-seguridad.html" class="dash-card">
+        <h3 class="dash-title">SEGURIDAD</h3>
+      </a>
     </div>
   </div>
 </body>
