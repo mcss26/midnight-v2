@@ -2,97 +2,170 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Midnight ERP - accesos rápidos a módulos de staff, encargados, operativo y administración." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="description" content="Portal de Acceso - Midnight ERP" />
   <title>Midnight ERP</title>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
+  
   <script src="session.js" defer></script>
+
+  <style>
+    /* Estilos exclusivos para el Portal de Acceso */
+    body {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .portal-container {
+        width: 100%;
+        max-width: 480px; /* Ancho máximo para que no se deforme en Desktop */
+        margin: 0 auto;
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center; /* Centrado vertical en desktop */
+    }
+
+    .menu-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+    }
+
+    /* Tarjetas de Acceso - Estilo Botón Grande */
+    .access-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 24px 20px;
+        background: rgba(15, 20, 30, 0.6);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Hover y Active */
+    .access-card:active { transform: scale(0.98); background: rgba(255,255,255,0.05); }
+    
+    @media(hover: hover) {
+        .access-card:hover {
+            border-color: var(--border-light);
+            background: rgba(255,255,255,0.03);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+    }
+
+    /* Tipografía */
+    .card-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+        font-weight: 600;
+    }
+
+    .card-title {
+        font-family: var(--font-title);
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0;
+    }
+
+    /* Indicadores de color por área (Borde izquierdo sutil) */
+    .border-staff { border-left: 4px solid var(--text-secondary); }
+    .border-enc { border-left: 4px solid var(--accent-blue); }
+    .border-ops { border-left: 4px solid var(--accent-purple); }
+    .border-admin { border-left: 4px solid var(--accent-red); }
+    .border-master { border-left: 4px solid var(--accent-gold); }
+
+    .footer-info {
+        text-align: center;
+        margin-top: 40px;
+        font-size: 11px;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+    }
+  </style>
 </head>
 <body>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      MC_SESSION.ensure({ pageTitle: 'Portal', redirectHome: 'index.html' });
+      // Verificación de sesión sin bloquear la UI inmediatamente
+      if (typeof MC_SESSION !== 'undefined') {
+          MC_SESSION.ensure({ pageTitle: 'Portal', redirectHome: null });
+      }
     });
   </script>
 
-  <!-- HEADER -->
-  <header class="admin-header" style="border-bottom-color: rgba(232,55,47,0.35);">
-    <div class="admin-header-top">
-      <div class="admin-logo">
-        MIDNIGHT<span class="logo-accent">ERP</span>
-      </div>
-      <div class="header-pill">NOCHE ACTUAL</div>
+  <header class="admin-header">
+    <div class="admin-logo">
+      MIDNIGHT<span class="logo-accent">ERP</span>
     </div>
     <div class="admin-header-right">
-      <div class="session-chip" data-session-chip aria-live="polite"></div>
-      <button class="btn-logout" type="button" data-session-logout aria-label="Cerrar sesión">Salir</button>
+      <div class="session-chip" data-session-chip></div>
+      <button class="btn-logout" type="button" data-session-logout>SALIR</button>
     </div>
   </header>
 
-  <main class="admin-container">
-    <div
-      class="dash-grid"
-      style="
-        grid-template-columns: 1fr;
-        max-width: 480px;
-        margin: 28px auto 0;
-        gap: 14px;
-      "
-    >
-      <!-- 1. STAFF -->
-      <a href="staff-index.html" class="dash-card dash-card-staff" aria-label="Ir a Staff">
-        <div class="dash-card-inner">
-          <div class="dash-card-label">EQUIPO</div>
-          <h3 class="dash-title">STAFF</h3>
+  <main class="portal-container">
+    
+    <div class="section-header" style="justify-content: center; text-align: center; margin-bottom: 30px;">
+        <div>
+            <h2 class="section-title">Panel de Acceso</h2>
+            <p class="section-desc">Seleccione su módulo de trabajo</p>
         </div>
-      </a>
-
-      <!-- 2. ENCARGADOS -->
-      <a href="encargados-index.html" class="dash-card dash-card-op" aria-label="Ir a Encargados">
-        <div class="dash-card-inner">
-          <div class="dash-card-label">ÁREA</div>
-          <h3 class="dash-title">ENCARGADOS</h3>
-        </div>
-      </a>
-
-      <!-- 3. OPERATIVO -->
-      <a href="operativo-index.html" class="dash-card dash-card-op" aria-label="Ir a Operativo">
-        <div class="dash-card-inner">
-          <div class="dash-card-label">ÁREA</div>
-          <h3 class="dash-title">OPERATIVO</h3>
-        </div>
-      </a>
-
-      <!-- 4. ADMINISTRACIÓN -->
-      <a href="administracion-index.html" class="dash-card dash-card-admin" aria-label="Ir a Administración">
-        <div class="dash-card-inner">
-          <div class="dash-card-label">CONTROL</div>
-          <h3 class="dash-title">ADMINISTRACIÓN</h3>
-        </div>
-      </a>
-
-      <!-- 5. GERENCIA -->
-      <a href="gerencia-index.html" class="dash-card dash-card-admin" aria-label="Ir a Gerencia">
-        <div class="dash-card-inner">
-          <div class="dash-card-label">CONTROL</div>
-          <h3 class="dash-title">GERENCIA</h3>
-        </div>
-      </a>
-
-      <!-- 6. MASTER DATA -->
-      <a href="panel-master.html" class="dash-card dash-card-master" aria-label="Ir a Master Data">
-        <div class="dash-card-inner">
-          <div class="dash-card-label">CONFIG</div>
-          <h3 class="dash-title">MASTER DATA</h3>
-        </div>
-      </a>
     </div>
 
-    <div class="access-footer">
-      Midnight ERP · uso interno
+    <nav class="menu-stack">
+      <a href="staff-index.html" class="access-card border-staff">
+        <span class="card-label">OPERACIÓN BASE</span>
+        <h3 class="card-title">STAFF</h3>
+      </a>
+
+      <a href="encargados-index.html" class="access-card border-enc">
+        <span class="card-label">SUPERVISIÓN</span>
+        <h3 class="card-title">ENCARGADOS</h3>
+      </a>
+
+      <a href="operativo-index.html" class="access-card border-ops">
+        <span class="card-label">CONTROL DE NOCHE</span>
+        <h3 class="card-title">OPERATIVO</h3>
+      </a>
+
+      <a href="administracion-index.html" class="access-card border-admin">
+        <span class="card-label">BACKOFFICE</span>
+        <h3 class="card-title">ADMINISTRACIÓN</h3>
+      </a>
+
+      <a href="gerencia-index.html" class="access-card border-admin" style="background: rgba(232,55,47,0.05);">
+        <span class="card-label" style="color:var(--accent-red);">DIRECCIÓN</span>
+        <h3 class="card-title">GERENCIA</h3>
+      </a>
+
+      <a href="panel-master.html" class="access-card border-master">
+        <span class="card-label">CONFIGURACIÓN</span>
+        <h3 class="card-title">MASTER DATA</h3>
+      </a>
+    </nav>
+
+    <div class="footer-info">
+      MIDNIGHT CLUB · SISTEMA INTERNO V2.2
     </div>
   </main>
 </body>
