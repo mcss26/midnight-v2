@@ -23,50 +23,94 @@
     });
   </script>
 
+  <!-- HEADER -->
   <header class="admin-header" style="border-bottom-color: rgba(232,55,47,0.35);">
-    <div class="admin-logo">
-      MIDNIGHT<span class="logo-accent">ERP</span>
+    <div class="admin-header-top">
+      <div class="admin-logo">
+        MIDNIGHT<span class="logo-accent">ERP</span>
+      </div>
+      <div class="header-pill">NOCHE ACTUAL</div>
     </div>
   </header>
 
   <div class="admin-container">
+    <!-- TITULO CENTRAL -->
     <div class="section-header" style="flex-direction:column; align-items:center; text-align:center; gap:6px; margin-top:6px;">
       <div>
         <h2 class="section-title" style="text-align:center;">ACCESOS</h2>
-        <p class="section-desc" style="max-width:360px; margin:4px auto 0; text-align:center;">
+        <div class="section-underline"></div>
+        <p class="section-desc" style="max-width:360px; margin:6px auto 0; text-align:center;">
           Elegí el área con la que vas a trabajar esta noche.
         </p>
       </div>
     </div>
 
-    <div
-      class="dash-grid"
-      style="
-        grid-template-columns: 1fr;
-        max-width: 480px;
-        margin: 18px auto 0;
-        gap: 14px;
-      "
-    >
-      <a href="operativo-index.html" class="dash-card">
-        <h3 class="dash-title">OPERATIVO</h3>
-      </a>
+    <!-- BLOQUE 1: OPERACIÓN -->
+    <section class="access-group">
+      <div class="access-group-title">OPERACIÓN</div>
+      <div
+        class="dash-grid"
+        style="
+          grid-template-columns: 1fr;
+          max-width: 480px;
+          margin: 10px auto 0;
+          gap: 14px;
+        "
+      >
+        <a href="operativo-index.html" class="dash-card dash-card-op">
+          <div class="dash-card-inner">
+            <div class="dash-card-label">ÁREA</div>
+            <h3 class="dash-title">OPERATIVO</h3>
+          </div>
+        </a>
 
-      <a href="encargados-index.html" class="dash-card">
-        <h3 class="dash-title">ENCARGADOS</h3>
-      </a>
+        <a href="encargados-index.html" class="dash-card dash-card-op">
+          <div class="dash-card-inner">
+            <div class="dash-card-label">ÁREA</div>
+            <h3 class="dash-title">ENCARGADOS</h3>
+          </div>
+        </a>
 
-      <a href="staff-index.html" class="dash-card">
-        <h3 class="dash-title">STAFF</h3>
-      </a>
+        <a href="staff-index.html" class="dash-card dash-card-staff">
+          <div class="dash-card-inner">
+            <div class="dash-card-label">EQUIPO</div>
+            <h3 class="dash-title">STAFF</h3>
+          </div>
+        </a>
+      </div>
+    </section>
 
-      <a href="administracion-index.html" class="dash-card">
-        <h3 class="dash-title">ADMINISTRACIÓN</h3>
-      </a>
+    <!-- BLOQUE 2: BACKOFFICE -->
+    <section class="access-group">
+      <div class="access-group-title">BACKOFFICE</div>
+      <div
+        class="dash-grid"
+        style="
+          grid-template-columns: 1fr;
+          max-width: 480px;
+          margin: 10px auto 0;
+          gap: 14px;
+        "
+      >
+        <a href="administracion-index.html" class="dash-card dash-card-admin">
+          <div class="dash-card-inner">
+            <div class="dash-card-label">CONTROL</div>
+            <h3 class="dash-title">ADMINISTRACIÓN</h3>
+          </div>
+        </a>
 
-      <a href="panel-master.html" class="dash-card">
-        <h3 class="dash-title">PANEL MASTER</h3>
-      </a>
+        <a href="panel-master.html" class="dash-card dash-card-master">
+          <div class="dash-card-inner">
+            <div class="dash-card-label">CONFIG</div>
+            <h3 class="dash-title">PANEL MASTER</h3>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- FOOTER SIMPLE -->
+    <div class="access-footer">
+      Midnight ERP · uso interno
     </div>
   </div>
 </body>

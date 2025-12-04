@@ -539,3 +539,98 @@ body {
 .mt-3 {
   margin-top: 12px;
 }
+
+/* ====== INDEX ACCESOS – LAYOUT ESPECIFICO ====== */
+
+.admin-header-top {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.header-pill {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+}
+
+.section-underline {
+  width: 80px;
+  height: 2px;
+  margin: 6px auto 0;
+  background: linear-gradient(90deg, rgba(232,55,47,0.9), transparent);
+  border-radius: 999px;
+}
+
+.access-group {
+  margin-top: 22px;
+}
+
+.access-group-title {
+  max-width: 480px;
+  margin: 0 auto 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+}
+
+.dash-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.dash-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-secondary);
+}
+
+.dash-card {
+  min-height: 96px;
+}
+
+/* Variaciones sutiles por grupo */
+.dash-card-op {
+  border-color: rgba(232, 55, 47, 0.35);
+}
+
+.dash-card-op:hover {
+  border-color: rgba(232, 55, 47, 0.9);
+}
+
+.dash-card-staff {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.dash-card-admin {
+  border-color: rgba(79, 163, 255, 0.4);
+}
+
+.dash-card-master {
+  border-color: rgba(232, 55, 47, 0.6);
+  box-shadow: 0 0 0 0 rgba(232, 55, 47, 0.0);
+}
+
+.dash-card-master:hover {
+  box-shadow: 0 0 18px rgba(232, 55, 47, 0.4);
+}
+
+.access-footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
