@@ -8,35 +8,45 @@
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--color-info);">CEO</span></div>
-    <button onclick="window.location.href='index.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-header-inner">
+      <div class="admin-header-top">
+        <div class="admin-logo">MIDNIGHT<span class="logo-accent">CEO</span></div>
+        <div class="admin-header-right">
+          <button onclick="window.location.href='index.html'" class="btn-back">VOLVER</button>
+        </div>
+      </div>
+    </div>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-        <h2 class="section-title">Dirección General</h2>
+        <h2 class="section-title">DIRECCIÓN GENERAL</h2>
     </div>
 
-    <div class="dashboard-grid">
-        <a href="reporte-pnl.html" class="dash-card">
-            <div class="dash-icon" style="color:var(--color-success);">📈</div>
-            <h3 class="dash-title">Reporte P&L</h3>
-            <div class="dash-desc">Rentabilidad mensual.</div>
+    <div class="dash-grid">
+        <a href="reporte-pnl.html" class="dash-card dash-card-gerencia">
+            <div class="dash-card-inner">
+              <h3 class="dash-title">REPORTE P&L</h3>
+              <p class="dash-card-label">Rentabilidad mensual</p>
+            </div>
         </a>
-        <a href="admin-pagos.html" class="dash-card">
-            <div class="dash-icon">📅</div>
-            <h3 class="dash-title">Calendario Pagos</h3>
-            <div class="dash-desc">Visión financiera.</div>
+        <a href="admin-pagos.html" class="dash-card dash-card-gerencia">
+            <div class="dash-card-inner">
+              <h3 class="dash-title">CALENDARIO PAGOS</h3>
+              <p class="dash-card-label">Visión financiera</p>
+            </div>
         </a>
-        <a href="admin-logs.html" class="dash-card">
-            <div class="dash-icon">🛡️</div>
-            <h3 class="dash-title">Auditoría</h3>
-            <div class="dash-desc">Logs de seguridad.</div>
+        <a href="admin-logs.html" class="dash-card dash-card-gerencia">
+            <div class="dash-card-inner">
+              <h3 class="dash-title">AUDITORÍA</h3>
+              <p class="dash-card-label">Logs de seguridad</p>
+            </div>
         </a>
-        <a href="panel-operativo.html" class="dash-card">
-            <div class="dash-icon">👁️</div>
-            <h3 class="dash-title">Vista Global</h3>
-            <div class="dash-desc">Acceso al tablero operativo.</div>
+        <a href="panel-operativo.html" class="dash-card dash-card-gerencia">
+            <div class="dash-card-inner">
+              <h3 class="dash-title">VISTA GLOBAL</h3>
+              <p class="dash-card-label">Tablero operativo</p>
+            </div>
         </a>
     </div>
   </div>

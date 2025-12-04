@@ -4,466 +4,923 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Cierre de Noche</title>
+
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet"/>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
-
-  <style>
-    /* Estilos Específicos */
-    .tab-nav { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 1px solid var(--border-light); padding-bottom: 0; }
-    .tab-btn { 
-        background: none; border: none; color: var(--txt-secondary); padding: 15px 10px; 
-        font-family: var(--font-main); font-size: 13px; font-weight: 600; cursor: pointer; 
-        border-bottom: 3px solid transparent; transition: 0.2s;
-    }
-    .tab-btn:hover { color: #fff; }
-    .tab-btn.active { color: var(--txt-primary); border-bottom-color: var(--accent-gold); }
-
-    .audit-box { 
-        background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius);
-        padding: 30px; margin-bottom: 25px; 
-    }
-
-    .diff-negative { color: var(--accent-red); font-weight: 700; }
-    .diff-positive { color: var(--accent-green); font-weight: 700; }
-    .diff-ok { color: var(--txt-secondary); }
-    
-    .val-lbl { font-size: 10px; color: var(--txt-secondary); text-transform: uppercase; margin-bottom: 4px; }
-    .val-num { font-family: 'Outfit', monospace; font-size: 16px; font-weight: 700; color: #fff; }
-  </style>
 </head>
 <body>
-
+  <!-- HEADER -->
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--accent-gold);">CIERRE</span></div>
-    <button onclick="window.location.href='administracion-index.html'" class="btn-logout">VOLVER</button>
+    <div class="admin-header-inner">
+      <div class="admin-header-top">
+        <div class="admin-logo"></div>
+        <div class="admin-header-right">
+          <button class="btn-back" type="button" onclick="window.location.href='administracion-index.html'">
+            VOLVER
+          </button>
+        </div>
+      </div>
+    </div>
   </header>
 
-  <div class="admin-container">
-    
-    <div class="section-header" style="align-items:center;">
+  <main class="admin-container">
+    <!-- TITULO + FECHA -->
+    <section class="section-header">
+      <h1 class="section-title">CIERRE DE NOCHE</h1>
+      <p class="section-desc">
+        Cruce de cajas, accesos y tesorería para la fecha seleccionada.
+      </p>
+    </section>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <div>
-            <h2 class="section-title">Asistente de Conciliación</h2>
-            <p class="section-desc">Cruce de datos de campo vs. Facturación Electrónica</p>
+          <label class="input-label" for="eventDate" style="margin-bottom:2px;">FECHA EVENTO</label>
+          <input type="date" id="eventDate" class="modal-input" style="width:170px;" />
         </div>
-        <div style="display:flex; gap:10px;">
-            <input type="date" id="eventDate" class="modal-input" style="width:160px;" onchange="loadData()">
-            <button onclick="saveAll()" class="btn-primary">💾 CERRAR JORNADA</button>
-        </div>
+        <button type="button" class="btn-secondary" onclick="loadData()">RECARGAR</button>
+      </div>
+
+      <button type="button" class="btn-primary" onclick="finalizarCierre()">
+        FINALIZAR CIERRE
+      </button>
     </div>
 
-    <div class="tab-nav">
-        <button class="tab-btn active" onclick="switchTab('cajas', this)">💵 CONCILIACIÓN CAJAS</button>
-        <button class="tab-btn" onclick="switchTab('acceso', this)">🎫 ACCESO & SERVICIOS</button>
-        <button class="tab-btn" onclick="switchTab('tesoreria', this)">🏦 ARQUEO CAJA MADRE</button>
-    </div>
+    <!-- TABS -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-view="cajas" onclick="switchTab('cajas', this)">Cajas</button>
+      <button class="tab-btn" data-view="acceso" onclick="switchTab('acceso', this)">Acceso &amp; servicios</button>
+      <button class="tab-btn" data-view="tesoreria" onclick="switchTab('tesoreria', this)">Tesorería</button>
+      <button class="tab-btn" data-view="stock" onclick="switchTab('stock', this)">Stock</button>
+    </nav>
 
-    <div id="view-cajas" class="audit-box">
-        <div class="section-header" style="margin-bottom:20px;">
-            <h3 class="section-title" style="font-size:18px;">Cruce de Efectivo y Digital</h3>
-            <div style="display:flex; gap:10px;">
-                <input type="file" id="fileFacturas" hidden accept=".xlsx,.xls,.csv" onchange="importFacturas(this)">
-                <button onclick="document.getElementById('fileFacturas').click()" class="btn-refresh" style="background:var(--accent-blue); color:#fff;">📥 IMPORTAR FACTURACIÓN (GBOL)</button>
-            </div>
+    <!-- ============ TAB CAJAS ============ -->
+    <section id="view-cajas" class="audit-box">
+      <div class="section-header" style="margin-bottom:12px;">
+        <h3 class="section-title" style="font-size:18px;">Cruce de efectivo y digital</h3>
+        <p class="section-desc">
+          Conciliación por terminal entre lo teórico (Gbol / sistema) y lo declarado en cierre.
+        </p>
+      </div>
+
+      <!-- IMPORT Gbol FACTURA ELECTRÓNICA -->
+      <div class="section-header" style="margin-bottom:12px;">
+        <p class="section-desc">
+          Importa el archivo <strong>“Factura electrónica”</strong> exportado desde Gbol para esta fecha.
+        </p>
+        <div style="margin-top:6px;">
+          <input type="file" id="facturaFileInput" accept=".xlsx,.xls" hidden />
+          <button class="btn-secondary" type="button" id="facturaImportBtn">
+            Importar facturación (Gbol)
+          </button>
+        </div>
+        <div id="cajasImportStatus" class="section-desc" style="margin-top:6px;"></div>
+      </div>
+
+      <!-- RESUMEN GENERAL DE CAJAS -->
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="summary-label">Total teórico efectivo</div>
+          <div class="summary-value" id="sumSystemCash">$ 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Total declarado efectivo</div>
+          <div class="summary-value" id="sumDeclaredCash">$ 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Diferencia total efectivo</div>
+          <div class="summary-value" id="sumDiffCash">$ 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Cajas con diferencia</div>
+          <div class="summary-value" id="countDiffCajas">0</div>
+        </div>
+      </div>
+
+      <div class="table-container" style="margin-top:8px;">
+        <table class="sku-table" aria-label="Conciliación por terminal">
+          <thead>
+            <tr>
+              <th style="padding-left:20px;">TERMINAL</th>
+              <th class="text-right">TEÓRICO EFVO (SISTEMA)</th>
+              <th class="text-right">DECLARADO EFVO</th>
+              <th class="text-right">DIFERENCIA EFVO</th>
+              <th class="text-right">TEÓRICO DIGITAL (SISTEMA)</th>
+              <th class="text-right">DECLARADO DIGITAL</th>
+              <th class="text-right">DIFERENCIA DIGITAL</th>
+            </tr>
+          </thead>
+          <tbody id="conciliacionBody">
+            <tr>
+              <td colspan="7" style="text-align:center; padding:24px; color:var(--text-secondary);">
+                No hay cajas mapeadas para iniciar la auditoría.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ TAB ACCESO & SERVICIOS ============ -->
+    <section id="view-acceso" class="audit-box" style="display:none;">
+      <div class="section-header" style="margin-bottom:12px;">
+        <h3 class="section-title" style="font-size:18px;">Accesos y servicios</h3>
+        <p class="section-desc">
+          Resumen de Passline, boletería física, guardarropas y control de tickets.
+        </p>
+      </div>
+
+      <!-- IMPORT PASSLINE -->
+      <div class="section-header" style="margin-bottom:12px;">
+        <p class="section-desc">
+          Importa el archivo <strong>“tickets_comprados… .csv”</strong> exportado desde Passline para esta fecha.
+        </p>
+        <div style="margin-top:6px;">
+          <input type="file" id="passlineFileInput" accept=".csv" hidden />
+          <button class="btn-secondary" type="button" id="passlineImportBtn">
+            Importar Passline CSV
+          </button>
+        </div>
+        <div id="passlineImportStatus" class="section-desc" style="margin-top:6px;"></div>
+      </div>
+
+      <!-- PASSLINE + GUARDARROPAS -->
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="summary-label">Passline – validados</div>
+          <div class="summary-value" id="passlineValidated">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Passline – total</div>
+          <div class="summary-value" id="passlineTotal">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Ingreso neto Passline</div>
+          <div class="summary-value" id="passlineIngreso">$ 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Guardarroperas – efectivo</div>
+          <div class="summary-value" id="guardarropasIngreso">$ 0</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-top:8px;">
+        <div>
+          <label class="input-label">PASSLINE – Validados</label>
+          <input
+            type="number"
+            id="inputPasslineValidated"
+            class="modal-input"
+            min="0"
+            value="0"
+            oninput="updateAccesoFromInputs()"
+          />
+        </div>
+        <div>
+          <label class="input-label">PASSLINE – Total vendidos</label>
+          <input
+            type="number"
+            id="inputPasslineTotal"
+            class="modal-input"
+            min="0"
+            value="0"
+            oninput="updateAccesoFromInputs()"
+          />
+        </div>
+        <div>
+          <label class="input-label">INGRESO PASSLINE ($)</label>
+          <input
+            type="number"
+            id="inputPasslineIngreso"
+            class="modal-input"
+            min="0"
+            value="0"
+            oninput="updateAccesoFromInputs()"
+          />
+        </div>
+        <div>
+          <label class="input-label">INGRESO GUARDARROPAS ($)</label>
+          <input
+            type="number"
+            id="inputGuardarropas"
+            class="modal-input"
+            min="0"
+            value="0"
+            oninput="updateAccesoFromInputs()"
+          />
+        </div>
+      </div>
+
+      <!-- CONTROL FÍSICO DE TICKETS -->
+      <div style="border:1px solid var(--border-light); padding:20px; border-radius:var(--radius-lg); margin-top:24px;">
+        <div class="section-header" style="margin-bottom:10px; padding-bottom:6px;">
+          <h4 style="font-size:16px; margin:0;">Control físico de tickets</h4>
+          <p class="section-desc" style="margin-top:4px;">
+            Talonario físico vs boletos vendidos en boletería.
+          </p>
         </div>
 
-        <div class="table-container">
-            <table class="sku-table">
-                <thead>
-                    <tr>
-                        <th style="padding-left:20px;">TERMINAL</th>
-                        <th style="text-align:right;">TEÓRICO EFVO (GBOL)</th>
-                        <th style="text-align:right;">DECLARADO EFVO (STAFF)</th>
-                        <th style="text-align:right;">DIFERENCIA EFVO</th>
-                        <th style="text-align:right;">TEÓRICO DIGITAL (GBOL)</th>
-                        <th style="text-align:right;">DECLARADO DIGITAL</th>
-                        <th style="text-align:right;">DIFERENCIA DIGITAL</th>
-                    </tr>
-                </thead>
-                <tbody id="conciliacionBody">
-                    <tr><td colspan="7" style="text-align:center; padding:30px; color:var(--txt-secondary);">Cargue las facturas electrónicas para conciliar.</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="view-acceso" class="audit-box" style="display:none;">
-        <h3 class="section-title" style="font-size:18px; margin-bottom:25px;">Ingresos Secundarios</h3>
-
-        <div style="border:1px solid var(--border-light); padding:20px; border-radius:var(--radius); margin-bottom:30px;">
-            <div class="section-header" style="margin-bottom:15px; padding-bottom:10px;">
-                <h4 style="font-size:16px; margin:0; color:var(--accent-purple);">Passline (Venta de Acceso)</h4>
-                <input type="file" id="filePassline" hidden accept=".csv" onchange="importPassline(this)">
-                <button onclick="document.getElementById('filePassline').click()" class="btn-refresh">📥 IMPORTAR TICKETS</button>
-            </div>
-            
-            <div id="passlineSummary" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:15px;">
-                <div style="background:#000; padding:15px; border-radius:var(--radius); text-align:center;">
-                    <div class="val-lbl">COMPRADOS</div><div class="val-num" id="plTotal" style="color:#fff;">0</div>
-                </div>
-                <div style="background:#000; padding:15px; border-radius:var(--radius); text-align:center;">
-                    <div class="val-lbl">ACREDITADOS</div><div class="val-num" id="plValidated" style="color:var(--accent-green);">0</div>
-                </div>
-                <div style="background:#000; padding:15px; border-radius:var(--radius); text-align:center;">
-                    <div class="val-lbl">REMANENTE</div><div class="val-num" id="plRemanente" style="color:var(--accent-red);">0</div>
-                </div>
-                <div style="grid-column:1/-1; text-align:center; margin-top:10px;">
-                    <span class="val-lbl">INGRESO BRUTO ESTIMADO:</span> <span class="val-num" id="plIngresoBruto" style="color:var(--accent-gold); font-size:18px;">$ 0</span>
-                </div>
-            </div>
+        <div class="tickets-grid">
+          <div>
+            <label class="input-label">TALONARIO INICIAL</label>
+            <input
+              type="number"
+              id="ticketsInitial"
+              class="modal-input"
+              value="0"
+              min="0"
+              oninput="renderTicketsFisicos()"
+            />
+          </div>
+          <div>
+            <label class="input-label">TICKETS RESTANTES (Control)</label>
+            <input
+              type="number"
+              id="ticketsRemaining"
+              class="modal-input"
+              value="0"
+              min="0"
+              oninput="renderTicketsFisicos()"
+            />
+          </div>
+          <div>
+            <label class="input-label">VENDIDOS BOLETERÍA</label>
+            <input
+              type="number"
+              id="ticketsBoleteria"
+              class="modal-input"
+              value="0"
+              min="0"
+              oninput="renderTicketsFisicos()"
+            />
+          </div>
         </div>
 
-        <div style="border:1px solid var(--border-light); padding:20px; border-radius:var(--radius);">
-            <label class="input-label">INGRESO GUARDARROPAS (Efectivo Contado)</label>
-            <input type="number" id="totalWardrobe" class="modal-input" value="0" placeholder="0" oninput="renderTesoroSummary()">
+        <div class="summary-row" style="margin-top:14px;">
+          <div class="summary-card">
+            <div class="summary-label">Tickets usados físicos</div>
+            <div class="summary-value" id="ticketsUsed">0</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Diferencia vs boletería</div>
+            <div class="summary-value diff-ok" id="ticketsDiff">0</div>
+          </div>
         </div>
-    </div>
+      </div>
+    </section>
 
-    <div id="view-tesoreria" class="audit-box" style="display:none;">
-        <h3 class="section-title" style="font-size:18px; margin-bottom:20px;">Arqueo y Cierre Tesorería</h3>
+    <!-- ============ TAB TESORERÍA ============ -->
+    <section id="view-tesoreria" class="audit-box" style="display:none;">
+      <div class="section-header" style="margin-bottom:16px;">
+        <h3 class="section-title" style="font-size:18px;">Tesorería</h3>
+        <p class="section-desc">
+          Visión rápida de resultado de la noche cruzando cajas, accesos y egresos.
+        </p>
+      </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:30px;">
-            <div class="val-card">
-                <div class="val-lbl">INGRESO TOTAL EFECTIVO (TEÓRICO)</div>
-                <div class="val-num" id="tIngreso" style="font-size:24px; color:var(--accent-green);">$ 0</div>
-                <div class="val-lbl" style="margin-top:15px;">EGRESOS CONFIRMADOS</div>
-                <div class="val-num" id="tEgreso" style="color:var(--accent-red);">$ 0</div>
-                <div class="val-lbl" style="margin-top:20px; border-top:1px solid var(--border-light); padding-top:10px;">SALDO FINAL TEÓRICO</div>
-                <div class="val-num" id="tSaldoFinal" style="font-size:28px;">$ 0</div>
-            </div>
-
-            <div class="val-card" style="background:#000;">
-                <label class="input-label" style="color:#fff;">CONTEO FÍSICO (CAJA FUERTE)</label>
-                <input type="number" id="tConteoFinal" class="modal-input" placeholder="0" oninput="calculateTesoroDiff()">
-                
-                <div class="input-label" style="margin-top:30px;">DIFERENCIA FINAL</div>
-                <div class="val-num" id="tDiferencia" style="font-size:24px;">$ 0</div>
-                <p class="section-desc" id="tNovedad" style="color:var(--accent-red); font-weight:600; margin-top:10px;"></p>
-            </div>
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="summary-label">Facturación total (efvo + digital)</div>
+          <div class="summary-value" id="tesoFacturado">$ 0</div>
         </div>
+        <div class="summary-card">
+          <div class="summary-label">Declarado total cajas</div>
+          <div class="summary-value" id="tesoDeclarado">$ 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Diferencia neta cajas</div>
+          <div class="summary-value" id="tesoDiferencia">$ 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Egresos (mov. tesorería)</div>
+          <div class="summary-value" id="tesoEgresos">$ 0</div>
+        </div>
+      </div>
 
-        <button onclick="saveAll()" class="btn-primary" style="width:100%; padding:15px;">FINALIZAR ARQUEO Y CERRAR JORNADA</button>
-    </div>
+      <p class="section-desc" style="margin-top:10px;">
+        Más adelante, este panel va a tomar también egresos reales desde <strong>cash_movements</strong> y otros módulos de Administración.
+      </p>
+    </section>
 
-  </div>
+    <!-- ============ TAB STOCK (PLACEHOLDER) ============ -->
+    <section id="view-stock" class="audit-box" style="display:none;">
+      <div class="section-header" style="margin-bottom:10px;">
+        <h3 class="section-title" style="font-size:18px;">Arqueo de stock</h3>
+        <p class="section-desc">
+          Cruce entre <strong>operativo-stock</strong> y <strong>admin-stock</strong> para mermas y diferencias de costo.
+        </p>
+      </div>
+
+      <p class="section-desc">
+        En la próxima etapa vamos a traer acá el snapshot de:
+      </p>
+      <ul class="section-desc" style="text-align:left; margin:8px auto 0; max-width:520px;">
+        <li>Stock real (operativo-stock).</li>
+        <li>Stock sistema (admin-stock / Gbol).</li>
+        <li>Valorización de diferencias por insumo.</li>
+      </ul>
+    </section>
+  </main>
 
   <script>
     let currentClosingId = null;
-    let terminals = {}; 
+    let terminals = {};
     let passlineData = { validated: 0, total: 0, ingreso: 0 };
     let tesoroData = { egresos: 0 };
-    let posMapping = {};
 
-    window.onload = async () => {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('eventDate').value = today;
-        await loadMapping();
-        await loadData();
+    let cashTotals = {
+      systemCash: 0,
+      declaredCash: 0,
+      diffCash: 0,
+      systemDigital: 0,
+      declaredDigital: 0,
+      diffDigital: 0,
+      cajasConDiferencia: 0
     };
 
+    let facturaFileInput, facturaImportBtn, cajasImportStatus;
+    let passlineFileInput, passlineImportBtn, passlineImportStatus;
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const dateInput = document.getElementById('eventDate');
+
+      facturaFileInput = document.getElementById('facturaFileInput');
+      facturaImportBtn = document.getElementById('facturaImportBtn');
+      cajasImportStatus = document.getElementById('cajasImportStatus');
+
+      passlineFileInput = document.getElementById('passlineFileInput');
+      passlineImportBtn = document.getElementById('passlineImportBtn');
+      passlineImportStatus = document.getElementById('passlineImportStatus');
+
+      if (facturaImportBtn && facturaFileInput) {
+        facturaImportBtn.addEventListener('click', () => facturaFileInput.click());
+        facturaFileInput.addEventListener('change', async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          await handleImportGbolFacturas(file);
+          await loadData();
+          facturaFileInput.value = '';
+        });
+      }
+
+      if (passlineImportBtn && passlineFileInput) {
+        passlineImportBtn.addEventListener('click', () => passlineFileInput.click());
+        passlineFileInput.addEventListener('change', async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          await handlePasslineImport(file);
+          passlineFileInput.value = '';
+        });
+      }
+
+      if (!dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+      }
+      await loadData();
+    });
+
     function switchTab(view, btn) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        ['cajas', 'acceso', 'tesoreria'].forEach(v => document.getElementById('view-'+v).style.display='none');
-        document.getElementById('view-'+view).style.display='block';
-        if (view === 'acceso' || view === 'tesoreria') {
-            renderTesoroSummary();
-        }
-    }
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
 
-    async function loadMapping() {
-        const { data } = await client.from('pos_terminals').select('*');
-        // El mapa usa el nombre amigable en mayúsculas como clave
-        if(data) data.forEach(p => posMapping[p.provider+'_'+p.friendly_name.toUpperCase()] = p.friendly_name.toUpperCase());
-    }
-    
-    // Función de limpieza numérica global
-    function cleanNumber(str) {
-        if (!str) return 0;
-        let s = String(str);
-        // 1. Eliminar caracteres no numéricos excepto coma y punto.
-        s = s.replace(/[^\d,\.-]/g, ''); 
-        
-        // 2. Si hay más de un separador (ej: 1.000.000,00), asumimos formato español y eliminamos puntos de miles.
-        if ((s.match(/[.,]/g) || []).length > 1) {
-             s = s.replace(/\./g, ''); // Eliminar puntos de miles
-        }
-        
-        // 3. Reemplazar la coma por punto (decimal).
-        s = s.replace(/,/g, '.');
+      ['cajas', 'acceso', 'tesoreria', 'stock'].forEach(v => {
+        const el = document.getElementById('view-' + v);
+        if (el) el.style.display = (v === view) ? 'block' : 'none';
+      });
 
-        return parseFloat(s) || 0;
+      if (view === 'tesoreria') {
+        renderTesoroSummary();
+      }
     }
 
     async function loadData() {
-        const date = document.getElementById('eventDate').value;
-        const { data: closing } = await client.from('cash_closings').select('id, total_wardrobe').eq('event_date', date).maybeSingle();
-        currentClosingId = closing?.id;
+      const date = document.getElementById('eventDate').value;
+      if (!date) return;
 
-        // --- 1. INICIALIZACIÓN DE TERMINALES ---
-        terminals = {};
-        const friendlyNames = [...new Set(Object.values(posMapping))].sort();
-        
-        friendlyNames.forEach(name => {
-            terminals[name] = { 
-                terminal_name: name, declared_cash: 0, declared_digital: 0, withdrawals: 0, system_cash: 0, system_digital: 0,
-                starting_cash: 0, staff_payments: 0, other_expenses: 0,
-            };
-        });
-        
-        // 2. Sobrescribir con los datos reportados por Staff
-        if (currentClosingId) {
-            const { data: details } = await client.from('closing_terminals').select('*').eq('closing_id', currentClosingId);
-            details.forEach(d => {
-                const name = d.terminal_name.toUpperCase();
-                if (terminals[name]) { 
-                    terminals[name] = { 
-                        ...terminals[name], 
-                        declared_cash: parseFloat(d.final_count_cash) || 0,
-                        declared_digital: parseFloat(d.zoco_digital) || 0,
-                        withdrawals: parseFloat(d.cash_withdrawals) || 0,
-                    };
-                }
-            });
-            document.getElementById('totalWardrobe').value = closing.total_wardrobe || 0;
-        } else {
-            document.getElementById('totalWardrobe').value = 0;
+      terminals = {};
+      cashTotals = {
+        systemCash: 0,
+        declaredCash: 0,
+        diffCash: 0,
+        systemDigital: 0,
+        declaredDigital: 0,
+        diffDigital: 0,
+        cajasConDiferencia: 0
+      };
+
+      try {
+        // 1) cash_closings para la fecha
+        const { data: closing, error: closingError } = await client
+          .from('cash_closings')
+          .select('id, status, total_passline')
+          .eq('event_date', date)
+          .maybeSingle();
+
+        if (closingError && closingError.code !== 'PGRST116') {
+          throw closingError;
         }
 
-        // 3. Cargar Movimientos de Egreso (Cash Movements)
-        const { data: movements } = await client.from('cash_movements').select('amount').eq('event_date', date).eq('status', 'CONFIRMED');
-        tesoroData.egresos = movements ? movements.reduce((sum, m) => sum + parseFloat(m.amount), 0) : 0;
-        
+        currentClosingId = closing?.id ?? null;
+
+        // 2) Declarado por terminal (closing_terminals)
+        let declaredBy = new Map();
+        if (currentClosingId) {
+          const { data: terminalRows, error: ctError } = await client
+            .from('closing_terminals')
+            .select('terminal_name, system_cash, final_count_cash, system_digital, zoco_digital, cash_withdrawals')
+            .eq('closing_id', currentClosingId);
+
+          if (ctError) throw ctError;
+
+          (terminalRows || []).forEach(row => {
+            const name = (row.terminal_name || 'SIN NOMBRE').trim();
+            declaredBy.set(name, {
+              declared_cash: Number(row.final_count_cash) || 0,
+              declared_digital: Number(row.zoco_digital) || 0,
+              withdrawals: Number(row.cash_withdrawals) || 0,
+              system_cash: Number(row.system_cash) || 0,
+              system_digital: Number(row.system_digital) || 0
+            });
+          });
+        }
+
+        // 3) Teórico por terminal desde import_gbol_sales (Gbol)
+        const { data: gbolRows, error: gbolError } = await client
+          .from('import_gbol_sales')
+          .select('cajanom, fecha, efectivo, tarjetas')
+          .eq('fecha', date);
+
+        if (gbolError) throw gbolError;
+
+        const systemBy = new Map();
+        (gbolRows || []).forEach(row => {
+          const key = (row.cajanom || 'SIN NOMBRE').trim();
+          const prev = systemBy.get(key) || { cash: 0, digital: 0 };
+          prev.cash += Number(row.efectivo) || 0;
+          prev.digital += Number(row.tarjetas) || 0;
+          systemBy.set(key, prev);
+        });
+
+        // 4) Unir nombres de terminal de ambos lados
+        const names = new Set([...declaredBy.keys(), ...systemBy.keys()]);
+        terminals = {};
+
+        names.forEach(name => {
+          const dec = declaredBy.get(name) || {};
+          const sysAgg = systemBy.get(name) || {};
+          terminals[name] = {
+            system_cash: (sysAgg.cash ?? dec.system_cash ?? 0),
+            declared_cash: dec.declared_cash ?? 0,
+            system_digital: (sysAgg.digital ?? dec.system_digital ?? 0),
+            declared_digital: dec.declared_digital ?? 0,
+            withdrawals: dec.withdrawals ?? 0
+          };
+        });
+
         renderConciliation();
+        renderTesoroSummary();
+      } catch (err) {
+        console.error('Error al cargar datos de cierre', err);
+        alert('No se pudieron cargar los datos de cierre para esa fecha.');
+      }
+    }
+
+    function formatCurrency(val) {
+      const n = Number(val) || 0;
+      if (typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency) {
+        return MC_UTILS.formatCurrency(n);
+      }
+      return '$ ' + n.toFixed(0);
     }
 
     function renderConciliation() {
-        const tbody = document.getElementById('conciliacionBody');
-        const keys = Object.keys(terminals).sort();
+      const tbody = document.getElementById('conciliacionBody');
+      const keys = Object.keys(terminals).sort();
 
-        if (keys.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--txt-secondary);">No hay cajas mapeadas para iniciar la auditoría.</td></tr>';
-            return;
-        }
+      if (keys.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-secondary);">No hay cajas mapeadas para iniciar la auditoría.</td></tr>';
 
-        tbody.innerHTML = keys.map(key => {
-            const t = terminals[key];
-            
-            // CONCILIACIÓN DE EFECTIVO
-            const diffCash = t.declared_cash - t.system_cash;
-            const diffCashClass = diffCash === 0 ? 'diff-ok' : (Math.abs(diffCash) < 100 ? 'diff-ok' : (diffCash < 0 ? 'diff-negative' : 'diff-positive'));
-            
-            // CONCILIACIÓN DIGITAL
-            const diffDigital = t.declared_digital - t.system_digital;
-            const diffDigitalClass = diffDigital === 0 ? 'diff-ok' : (Math.abs(diffDigital) < 100 ? 'diff-ok' : (diffDigital < 0 ? 'diff-negative' : 'diff-positive'));
+        const sumEls = ['sumSystemCash','sumDeclaredCash','sumDiffCash','countDiffCajas'];
+        sumEls.forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (id === 'countDiffCajas') el.textContent = '0';
+          else el.textContent = '$ 0';
+        });
+        return;
+      }
 
-            return `
-            <tr>
-                <td style="font-weight:600; padding-left:20px;">${key}</td>
-                <td style="text-align:right;">${MC_UTILS.formatCurrency(t.system_cash)}</td>
-                <td style="text-align:right;">${MC_UTILS.formatCurrency(t.declared_cash)}</td>
-                <td class="${diffCashClass}" style="text-align:right;">${MC_UTILS.formatCurrency(diffCash)}</td>
-                <td style="text-align:right;">${MC_UTILS.formatCurrency(t.system_digital)}</td>
-                <td style="text-align:right;">${MC_UTILS.formatCurrency(t.declared_digital)}</td>
-                <td class="${diffDigitalClass}" style="text-align:right; padding-right:20px;">${MC_UTILS.formatCurrency(diffDigital)}</td>
-            </tr>`;
-        }).join('');
+      let totalSystemCash = 0;
+      let totalDeclaredCash = 0;
+      let totalDiffCash = 0;
 
-        renderTesoroSummary();
+      let totalSystemDigital = 0;
+      let totalDeclaredDigital = 0;
+      let totalDiffDigital = 0;
+
+      let cajasConDiferencia = 0;
+
+      const rowsHtml = keys.map(key => {
+        const t = terminals[key];
+
+        const systemCash = Number(t.system_cash) || 0;
+        const declaredCash = Number(t.declared_cash) || 0;
+        const systemDigital = Number(t.system_digital) || 0;
+        const declaredDigital = Number(t.declared_digital) || 0;
+
+        const diffCash = declaredCash - systemCash;
+        const diffDigital = declaredDigital - systemDigital;
+
+        const diffCashClass =
+          diffCash === 0 ? 'diff-ok' : diffCash < 0 ? 'diff-negative' : 'diff-positive';
+        const diffDigitalClass =
+          diffDigital === 0 ? 'diff-ok' : diffDigital < 0 ? 'diff-negative' : 'diff-positive';
+
+        totalSystemCash += systemCash;
+        totalDeclaredCash += declaredCash;
+        totalDiffCash += diffCash;
+
+        totalSystemDigital += systemDigital;
+        totalDeclaredDigital += declaredDigital;
+        totalDiffDigital += diffDigital;
+
+        if (diffCash !== 0 || diffDigital !== 0) cajasConDiferencia++;
+
+        return `
+          <tr>
+            <td style="font-weight:600; padding-left:20px;">${key}</td>
+            <td class="text-right">${formatCurrency(systemCash)}</td>
+            <td class="text-right">${formatCurrency(declaredCash)}</td>
+            <td class="text-right ${diffCashClass}">${formatCurrency(diffCash)}</td>
+            <td class="text-right">${formatCurrency(systemDigital)}</td>
+            <td class="text-right">${formatCurrency(declaredDigital)}</td>
+            <td class="text-right ${diffDigitalClass}" style="padding-right:20px;">
+              ${formatCurrency(diffDigital)}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const totalCashClass =
+        totalDiffCash === 0 ? 'diff-ok' : totalDiffCash < 0 ? 'diff-negative' : 'diff-positive';
+      const totalDigitalClass =
+        totalDiffDigital === 0 ? 'diff-ok' : totalDiffDigital < 0 ? 'diff-negative' : 'diff-positive';
+
+      const totalsRow = `
+        <tr class="totals-row">
+          <td class="totals-label">TOTAL</td>
+          <td class="text-right">${formatCurrency(totalSystemCash)}</td>
+          <td class="text-right">${formatCurrency(totalDeclaredCash)}</td>
+          <td class="text-right ${totalCashClass}">${formatCurrency(totalDiffCash)}</td>
+          <td class="text-right">${formatCurrency(totalSystemDigital)}</td>
+          <td class="text-right">${formatCurrency(totalDeclaredDigital)}</td>
+          <td class="text-right ${totalDigitalClass}" style="padding-right:20px;">
+            ${formatCurrency(totalDiffDigital)}
+          </td>
+        </tr>
+      `;
+
+      tbody.innerHTML = rowsHtml + totalsRow;
+
+      const sumSystemCashEl = document.getElementById('sumSystemCash');
+      const sumDeclaredCashEl = document.getElementById('sumDeclaredCash');
+      const sumDiffCashEl = document.getElementById('sumDiffCash');
+      const countDiffEl = document.getElementById('countDiffCajas');
+
+      if (sumSystemCashEl) sumSystemCashEl.textContent = formatCurrency(totalSystemCash);
+      if (sumDeclaredCashEl) sumDeclaredCashEl.textContent = formatCurrency(totalDeclaredCash);
+      if (sumDiffCashEl) sumDiffCashEl.textContent = formatCurrency(totalDiffCash);
+      if (countDiffEl) countDiffEl.textContent = String(cajasConDiferencia);
+
+      cashTotals = {
+        systemCash: totalSystemCash,
+        declaredCash: totalDeclaredCash,
+        diffCash: totalDiffCash,
+        systemDigital: totalSystemDigital,
+        declaredDigital: totalDeclaredDigital,
+        diffDigital: totalDiffDigital,
+        cajasConDiferencia
+      };
     }
 
-    // --- IMPORTADORES EXTERNOS ---
+    function updateAccesoFromInputs() {
+      const vVal = parseInt(document.getElementById('inputPasslineValidated')?.value || '0', 10) || 0;
+      const vTot = parseInt(document.getElementById('inputPasslineTotal')?.value || '0', 10) || 0;
+      const vIng = Number(document.getElementById('inputPasslineIngreso')?.value || '0') || 0;
+      const gIng = Number(document.getElementById('inputGuardarropas')?.value || '0') || 0;
 
-    // FIX: Importación Robusta de Facturas Electrónicas (GBOL)
-    async function importFacturas(input) {
-        const file = input.files[0]; if(!file) return;
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const wb = XLSX.read(data, { type: 'array' });
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                
-                // 1. Buscar cabecera de forma robusta
-                const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
-                let hIdx = raw.findIndex(r => {
-                    const rowStr = JSON.stringify(r).toLowerCase();
-                    return (rowStr.includes('cajanom') || rowStr.includes('caja')) && rowStr.includes('efectivo');
-                });
-                
-                if(hIdx === -1) throw new Error("Formato inválido. Se requiere 'cajanom/caja' y 'efectivo'.");
-                
-                // 2. Procesar con la limpieza de números
-                const rows = XLSX.utils.sheet_to_json(ws, { range: hIdx });
-                
-                Object.keys(terminals).forEach(k => { terminals[k].system_cash = 0; terminals[k].system_digital = 0; });
+      passlineData.validated = vVal;
+      passlineData.total = vTot;
+      passlineData.ingreso = vIng;
 
-                rows.forEach(r => {
-                    const rawBoxName = String(r['cajanom'] || r['caja']).trim().toUpperCase();
-                    const boxName = rawBoxName.replace(/\s+/g, ' '); 
-                    
-                    const efectivo = cleanNumber(r['efectivo']);
-                    const tarjetas = cleanNumber(r['tarjetas']);
-                    const merpag = cleanNumber(r['merpag']);
-                    const digitalTotal = tarjetas + merpag;
+      const elVal = document.getElementById('passlineValidated');
+      const elTot = document.getElementById('passlineTotal');
+      const elIng = document.getElementById('passlineIngreso');
+      const elGuard = document.getElementById('guardarropasIngreso');
 
-                    if (terminals[boxName]) {
-                        terminals[boxName].system_cash += efectivo; 
-                        terminals[boxName].system_digital += digitalTotal;
-                    } else if (boxName.includes('BOLETERIA')) {
-                        const genericBoleteriaName = 'BOLETERIA GENERAL 1';
-                        if (terminals[genericBoleteriaName]) {
-                            terminals[genericBoleteriaName].system_cash += efectivo; 
-                            terminals[genericBoleteriaName].system_digital += digitalTotal;
-                        }
-                    }
-                });
+      if (elVal) elVal.textContent = vVal.toString();
+      if (elTot) elTot.textContent = vTot.toString();
+      if (elIng) elIng.textContent = formatCurrency(vIng);
+      if (elGuard) elGuard.textContent = formatCurrency(gIng);
 
-                await client.from('admin_logs').insert({ action: 'IMPORT_FACTURA', details: `Importadas ventas de ${rows.length} facturas.` });
-                alert("Ventas Teóricas (GBol) Importadas y conciliadas.");
-                renderConciliation();
-                input.value = '';
-            } catch (err) { alert("Error GBol: " + err.message); }
-        };
-        reader.readAsArrayBuffer(file);
+      renderTesoroSummary();
     }
-    
-    // IMPORTAR PASSLINE (Control de Acceso) - FIX FINAL DE MAGNITUD
-    async function importPassline(input) {
-        const file = input.files[0]; if(!file) return;
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const csvData = e.target.result;
-                const lines = csvData.split('\n').map(line => line.split(';'));
-                
-                if (lines.length < 2) throw new Error("Archivo Passline vacío.");
-                
-                const headerIndex = lines.findIndex(row => row.some(cell => cell.includes("Estado del eticket")));
-                if (headerIndex === -1) throw new Error("No se encontró el encabezado de Passline.");
 
-                const statusCol = lines[headerIndex].findIndex(h => h.includes("Estado del eticket"));
-                const totalCol = lines[headerIndex].findIndex(h => h.includes("Total"));
-                
-                if (statusCol === -1 || totalCol === -1) throw new Error("Columnas Estado/Total no encontradas.");
-                
-                let totalTickets = 0;
-                let validatedTickets = 0;
-                let ingresoBruto = 0;
-                
-                for (let i = headerIndex + 1; i < lines.length; i++) {
-                    const row = lines[i];
-                    if (row.length > statusCol) {
-                        totalTickets++;
-                        const status = row[statusCol].replace(/"/g, '').trim();
-                        
-                        // LIMPIEZA CRÍTICA
-                        const totalRaw = row[totalCol];
-                        let total = cleanNumber(totalRaw); 
-                        
-                        // FIX DE MAGNITUD: Si el número es demasiado grande y no tiene decimales, asumimos que viene en formato entero sin separador decimal
-                        if (total > 1000000 && total % 10 === 0) { 
-                             total = total / 100; 
-                        }
+    function renderTicketsFisicos() {
+      const initial = parseInt(document.getElementById('ticketsInitial')?.value || '0', 10) || 0;
+      const remaining = parseInt(document.getElementById('ticketsRemaining')?.value || '0', 10) || 0;
+      const boleteria = parseInt(document.getElementById('ticketsBoleteria')?.value || '0', 10) || 0;
 
+      const used = Math.max(initial - remaining, 0);
+      const diff = used - boleteria;
 
-                        if (status === 'Validada') {
-                            validatedTickets++;
-                            ingresoBruto += total;
-                        }
-                    }
-                }
+      const usedEl = document.getElementById('ticketsUsed');
+      const diffEl = document.getElementById('ticketsDiff');
 
-                passlineData.total = totalTickets;
-                passlineData.validated = validatedTickets;
-                passlineData.ingreso = ingresoBruto;
-
-                document.getElementById('plTotal').innerText = totalTickets;
-                document.getElementById('plValidated').innerText = validatedTickets;
-                document.getElementById('plRemanente').innerText = totalTickets - validatedTickets;
-                document.getElementById('plIngresoBruto').innerText = MC_UTILS.formatCurrency(ingresoBruto);
-
-                alert("Reporte Passline importado.");
-                input.value = '';
-                renderTesoroSummary();
-            } catch (err) { alert("Error Passline: " + err.message); }
-        };
-        reader.readAsText(file, 'utf-8');
+      if (usedEl) usedEl.textContent = used.toString();
+      if (diffEl) {
+        diffEl.textContent = diff.toString();
+        diffEl.classList.remove('diff-ok', 'diff-negative', 'diff-positive');
+        diffEl.classList.add(
+          diff === 0 ? 'diff-ok' : diff < 0 ? 'diff-negative' : 'diff-positive'
+        );
+      }
     }
-    
-    // === VISTA TESORERÍA (Cálculos Blindados) ===
 
     function renderTesoroSummary() {
-        const ingresoGuardarropas = parseFloat(document.getElementById('totalWardrobe').value) || 0;
-        
-        const efectivoCajas = Object.values(terminals).reduce((sum, t) => sum + t.declared_cash, 0);
-        const ingresoConsolidado = efectivoCajas + ingresoGuardarropas + passlineData.ingreso; 
-        
-        const egresoConfirmado = tesoroData.egresos;
+      const facturado = (cashTotals.systemCash + cashTotals.systemDigital) || 0;
+      const declarado = (cashTotals.declaredCash + cashTotals.declaredDigital) || 0;
+      const diff = (cashTotals.diffCash + cashTotals.diffDigital) || 0;
+      const egresos = tesoroData.egresos || 0;
 
-        const saldoFinalTeorico = ingresoConsolidado - egresoConfirmado;
-        
-        document.getElementById('tIngreso').innerText = MC_UTILS.formatCurrency(ingresoConsolidado);
-        document.getElementById('tEgreso').innerText = MC_UTILS.formatCurrency(egresoConfirmado);
-        document.getElementById('tSaldoFinal').innerText = MC_UTILS.formatCurrency(saldoFinalTeorico);
+      const fEl = document.getElementById('tesoFacturado');
+      const dEl = document.getElementById('tesoDeclarado');
+      const diffEl = document.getElementById('tesoDiferencia');
+      const eEl = document.getElementById('tesoEgresos');
 
-        calculateTesoroDiff();
+      if (fEl) fEl.textContent = formatCurrency(facturado);
+      if (dEl) dEl.textContent = formatCurrency(declarado);
+      if (diffEl) diffEl.textContent = formatCurrency(diff);
+      if (eEl) eEl.textContent = formatCurrency(egresos);
     }
 
-    function calculateTesoroDiff() {
-        const saldoFinalTeorico = parseFloat(document.getElementById('tSaldoFinal').innerText.replace(/[$,]/g, '').replace(/[\.]/g, '').replace(/,/g, '.')) || 0;
-        const conteoFisico = parseFloat(document.getElementById('tConteoFinal').value) || 0;
-        const diferencia = conteoFisico - saldoFinalTeorico;
-        
-        document.getElementById('tDiferencia').innerText = MC_UTILS.formatCurrency(diferencia);
+    async function finalizarCierre() {
+      const date = document.getElementById('eventDate').value;
+      if (!date) {
+        alert('Seleccioná una fecha de evento.');
+        return;
+      }
+      const ok = confirm(`¿Confirmás el cierre de la noche del ${date}?`);
+      if (!ok) return;
 
-        const novelty = document.getElementById('tNovedad');
-        if (Math.abs(diferencia) > 1000) {
-            novelty.innerText = diferencia > 0 ? "¡SOBRANTE! Audite la procedencia." : "¡FALTANTE! Se requiere justificación.";
-            novelty.style.color = diferencia > 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-        } else {
-            novelty.innerText = "Cuadrado (Diferencia menor a $1000)";
-            novelty.style.color = 'var(--txt-secondary)';
+      try {
+        const { data: closing, error } = await client
+          .from('cash_closings')
+          .upsert(
+            { event_date: date, status: 'closed' },
+            { onConflict: 'event_date' }
+          )
+          .select('id')
+          .maybeSingle();
+
+        if (error) throw error;
+        currentClosingId = closing?.id ?? currentClosingId;
+
+        await client.from('admin_logs').insert({
+          action: 'CIERRE_NOCHE',
+          details: `Jornada ${date} cerrada desde admin-cierre.`
+        });
+
+        alert('Cierre guardado.');
+      } catch (err) {
+        console.error('Error al guardar cierre', err);
+        alert('No se pudo guardar el cierre.');
+      }
+    }
+
+    async function handleImportGbolFacturas(file) {
+      if (!file) return;
+      if (cajasImportStatus) cajasImportStatus.textContent = 'Importando facturación...';
+
+      try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        if (!sheet) throw new Error('Hoja vacía en archivo.');
+
+        const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        let headerRowIndex = -1;
+
+        for (let i = 0; i < rawRows.length; i++) {
+          const row = rawRows[i].map(v => String(v || '').toUpperCase());
+          const joined = row.join(' ');
+          if (
+            (joined.includes('CAJA') || joined.includes('CAJANOM')) &&
+            (joined.includes('EFECTIVO') || joined.includes('IMPORTE'))
+          ) {
+            headerRowIndex = i;
+            break;
+          }
         }
+
+        if (headerRowIndex === -1) {
+          if (cajasImportStatus) {
+            cajasImportStatus.textContent = 'No se encontró la fila de encabezado (caja / efectivo). Revisá el archivo.';
+          }
+          return;
+        }
+
+        const rows = XLSX.utils.sheet_to_json(sheet, { range: headerRowIndex, defval: '' });
+        if (!rows.length) {
+          if (cajasImportStatus) {
+            cajasImportStatus.textContent = 'El archivo no contiene filas de facturación.';
+          }
+          return;
+        }
+
+        const date = document.getElementById('eventDate')?.value || null;
+
+        const payload = rows.map(r => {
+          const ptovta = Number(
+            r['ptovta'] ?? r['PTOVTA'] ?? r['PTOVTA'] ?? 0
+          ) || 0;
+
+          const cajanom =
+            r['cajanom'] ?? r['CajaNom'] ?? r['CAJANOM'] ?? r['caja'] ?? '';
+
+          let fechaRaw =
+            r['fecha'] ?? r['Fecha'] ?? r['FECHA'] ?? r['fechafc'] ?? date ?? '';
+
+          let fechaNorm = null;
+          if (fechaRaw instanceof Date) {
+            fechaNorm = fechaRaw.toISOString().split('T')[0];
+          } else {
+            const asStr = String(fechaRaw).trim();
+            if (asStr) {
+              const d = new Date(asStr);
+              if (!isNaN(d.getTime())) {
+                fechaNorm = d.toISOString().split('T')[0];
+              }
+            }
+          }
+          if (!fechaNorm && date) {
+            fechaNorm = date;
+          }
+
+          const importe = Number(
+            (r['importe'] ?? r['Importe'] ?? r['IMPORTE'] ?? '0').toString().replace(',', '.')
+          ) || 0;
+
+          const efectivo = Number(
+            (r['efectivo'] ?? r['Efectivo'] ?? r['EFECTIVO'] ?? '0').toString().replace(',', '.')
+          ) || 0;
+
+          const tarjetasRaw = Number(
+            (r['tarjetas'] ?? r['Tarjetas'] ?? r['TARJETAS'] ?? '0').toString().replace(',', '.')
+          ) || 0;
+
+          const merpagRaw = Number(
+            (r['merpag'] ?? r['MerPag'] ?? r['MERPAG'] ?? '0').toString().replace(',', '.')
+          ) || 0;
+
+          const tarjetas = tarjetasRaw + merpagRaw;
+
+          const ticketId =
+            (r['ticket'] ?? r['Ticket'] ?? r['TICKET'] ?? '').toString().trim() || null;
+
+          if (!cajanom) return null;
+          if (!fechaNorm) return null;
+
+          return {
+            ptovta: ptovta || null,
+            cajanom,
+            fecha: fechaNorm,
+            importe,
+            efectivo,
+            tarjetas,
+            ticket_id: ticketId,
+            processed: false
+          };
+        }).filter(Boolean);
+
+        if (!payload.length) {
+          if (cajasImportStatus) {
+            cajasImportStatus.textContent = 'No se encontraron filas válidas (sin caja / fecha).';
+          }
+          return;
+        }
+
+        const { error } = await client.from('import_gbol_sales').insert(payload);
+        if (error) throw error;
+
+        if (cajasImportStatus) {
+          cajasImportStatus.textContent = `Importación completada. Filas guardadas: ${payload.length}`;
+        }
+      } catch (err) {
+        console.error('Error al importar facturación Gbol', err);
+        if (cajasImportStatus) {
+          cajasImportStatus.textContent = 'Error al importar facturación. Revisá el archivo.';
+        }
+      }
     }
 
-    // --- ACCIÓN FINAL: GUARDAR CIERRE ---
-    async function saveAll() {
-        // Lógica para guardar cierre y detalles
-        const date = document.getElementById('eventDate').value;
-        const ward = parseFloat(document.getElementById('totalWardrobe').value) || 0;
-        const pass = passlineData.ingreso;
-        
-        // 1. Upsert Cabecera
-        let { data: head, error: err1 } = await client.from('cash_closings')
-            .upsert({ event_date: date, total_passline: pass, total_wardrobe: ward, status: 'closed' }, { onConflict: 'event_date' })
-            .select().single();
-            
-        if(err1) return alert("Error al crear cierre: " + err1.message);
+    async function handlePasslineImport(file) {
+      if (!file) return;
+      if (passlineImportStatus) passlineImportStatus.textContent = 'Importando Passline...';
 
-        // 2. Insertar/Actualizar Detalles (Finalizar el cierre de terminales)
-        await client.from('closing_terminals').delete().eq('closing_id', head.id);
-        const details = Object.values(terminals).map(t => ({
-            closing_id: head.id,
-            terminal_name: t.terminal_name,
-            final_count_cash: t.declared_cash,
-            system_cash: t.system_cash,
-            system_digital: t.system_digital,
-            zoco_digital: t.declared_digital, // Lo que el staff contó como digital
-            cash_withdrawals: t.withdrawals,
-        }));
-        
-        const { error: err2 } = await client.from('closing_terminals').insert(details);
-        if(err2) return alert("Error al guardar detalles: " + err2.message);
+      try {
+        const text = await file.text();
+        const workbook = XLSX.read(text, { type: 'string' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        if (!sheet) throw new Error('Hoja vacía en CSV.');
 
-        // 3. Log
-        await client.from('admin_logs').insert({ action: 'CIERRE_JORNADA', details: `Jornada ${date} cerrada por Administrador.` });
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        if (!rows.length) {
+          if (passlineImportStatus) {
+            passlineImportStatus.textContent = 'El archivo CSV no contiene filas.';
+          }
+          return;
+        }
 
-        alert("Cierre de Noche V2.1 Finalizado.");
-        window.location.href = 'administracion-index.html';
+        let totalTickets = 0;
+        let totalImporte = 0;
+        let totalService = 0;
+        let validados = 0;
+        let cortesias = 0;
+
+        rows.forEach(r => {
+          totalTickets++;
+          const total = Number(String(r['Total'] ?? '0').replace(',', '.')) || 0;
+          const cargo = Number(String(r['Cargo por Servicio'] ?? '0').replace(',', '.')) || 0;
+          totalImporte += total;
+          totalService += cargo;
+
+          const validRaw = r['Fecha/Hora Validación'] || r['Fecha/Hora Validación.1'];
+          const validStr = validRaw ? String(validRaw).trim() : '';
+          if (validStr && validStr !== '31-12-1969') {
+            validados++;
+          }
+
+          const cortRaw = r['Cortesia'] ?? r['Cortesía'];
+          if (cortRaw && String(cortRaw).trim() !== '') {
+            cortesias++;
+          }
+        });
+
+        const net = totalImporte - totalService;
+
+        passlineData.validated = validados;
+        passlineData.total = totalTickets;
+        passlineData.ingreso = net;
+
+        const inputVal = document.getElementById('inputPasslineValidated');
+        const inputTot = document.getElementById('inputPasslineTotal');
+        const inputIng = document.getElementById('inputPasslineIngreso');
+
+        if (inputVal) inputVal.value = String(validados);
+        if (inputTot) inputTot.value = String(totalTickets);
+        if (inputIng) inputIng.value = String(net.toFixed(0));
+
+        updateAccesoFromInputs();
+
+        // Actualizar total_passline en cash_closings
+        const date = document.getElementById('eventDate')?.value || null;
+        if (date) {
+          let closingId = currentClosingId;
+          if (!closingId) {
+            const { data: closing, error: closingError } = await client
+              .from('cash_closings')
+              .insert({ event_date: date })
+              .select('id')
+              .maybeSingle();
+            if (!closingError && closing) {
+              closingId = closing.id;
+              currentClosingId = closingId;
+            }
+          }
+          if (closingId) {
+            await client
+              .from('cash_closings')
+              .update({ total_passline: net })
+              .eq('id', closingId);
+          }
+        }
+
+        if (passlineImportStatus) {
+          passlineImportStatus.textContent =
+            `Importación completada. Tickets: ${totalTickets}, validados: ${validados}, cortesía: ${cortesias}`;
+        }
+      } catch (err) {
+        console.error('Error al importar Passline', err);
+        if (passlineImportStatus) {
+          passlineImportStatus.textContent = 'Error al importar Passline. Revisá el archivo.';
+        }
+      }
     }
   </script>
 </body>

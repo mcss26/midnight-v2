@@ -18,11 +18,15 @@
     });
   </script>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--accent-gold);">BARRA</span></div>
-    <div class="admin-header-right">
-      <a href="encargados-index.html" class="btn-back" aria-label="Volver a encargados">Volver</a>
-      <div class="session-chip" data-session-chip aria-live="polite"></div>
-      <button type="button" class="btn-logout" data-session-logout aria-label="Cerrar sesión">Salir</button>
+    <div class="admin-header-inner">
+      <div class="admin-header-top">
+        <div class="admin-logo">MIDNIGHT<span class="logo-accent">BARRA</span></div>
+        <div class="admin-header-right">
+          <a href="encargados-index.html" class="btn-back" aria-label="Volver a encargados">Volver</a>
+          <div class="session-chip" data-session-chip aria-live="polite"></div>
+          <button type="button" class="btn-logout" data-session-logout aria-label="Cerrar sesión">Salir</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -32,24 +36,27 @@
         <h2 class="section-title">Gestión de Logística y Turno</h2>
     </div>
 
-    <div class="dashboard-grid">
+    <div class="dash-grid">
 
-        <a href="encargado-barra-cierre-stock.html" class="dash-card" aria-label="Ir a movimientos de stock">
-            <div class="dash-icon" style="color:var(--accent-green);">🔄</div>
-            <h3 class="dash-title">Movimientos de Stock</h3>
-            <div class="dash-desc">Apertura de Depósito, transferencias a barras y cierre de jornada.</div>
+        <a href="encargado-barra-cierre-stock.html" class="dash-card dash-card-enc" aria-label="Ir a movimientos de stock">
+            <div class="dash-card-inner">
+              <h3 class="dash-title">MOVIMIENTOS DE STOCK</h3>
+              <p class="dash-card-label">Aperturas, transferencias y cierre</p>
+            </div>
         </a>
 
-        <a href="encargado-barra-pedidos.html" class="dash-card" aria-label="Ir a pedidos y merma">
-            <div class="dash-icon" style="color:var(--accent-blue);">📝</div>
-            <h3 class="dash-title">Pedidos y Merma</h3>
-            <div class="dash-desc">Consolidar solicitudes, declarar roturas y generar órdenes de compra.</div>
+        <a href="encargado-barra-pedidos.html" class="dash-card dash-card-enc" aria-label="Ir a pedidos y merma">
+            <div class="dash-card-inner">
+              <h3 class="dash-title">PEDIDOS Y MERMA</h3>
+              <p class="dash-card-label">Solicitudes y roturas</p>
+            </div>
         </a>
 
-        <a href="encargado-barra.html" class="dash-card" aria-label="Ir a reportes de staff">
-            <div class="dash-icon" style="color:var(--accent-gold);">📢</div>
-            <h3 class="dash-title">Reportes Staff</h3>
-            <div class="dash-desc">Auditoría de Staff, incidentes y novedades.</div>
+        <a href="encargado-barra.html" class="dash-card dash-card-enc" aria-label="Ir a reportes de staff">
+            <div class="dash-card-inner">
+              <h3 class="dash-title">REPORTES STAFF</h3>
+              <p class="dash-card-label">Auditoría de incidentes</p>
+            </div>
         </a>
     </div>
   </main>

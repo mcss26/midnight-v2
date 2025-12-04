@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Midnight - Órdenes & Calendario de Pagos</title>
+
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-header-inner">
+      <div class="admin-header-top">
+        <div class="admin-logo"></div>
+        <div class="admin-header-right">
+          <button class="btn-back" onclick="window.location.href='administracion-index.html'">VOLVER</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    <section class="section-header">
+      <h1 class="section-title">ÓRDENES & CALENDARIO</h1>
+      <p class="section-desc">
+        Órdenes de compra generadas desde stock administrativo y sus vencimientos de pago.
+      </p>
+    </section>
+
+    <!-- Filtros -->
+    <section class="section-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+      <input
+        type="text"
+        id="searchInput"
+        class="search-input-admin"
+        placeholder="Buscar por proveedor o insumo..."
+        oninput="renderOrders()"
+      />
+
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button type="button" class="btn-secondary" onclick="setStatusFilter('ALL')">TODAS</button>
+        <button type="button" class="btn-secondary" onclick="setStatusFilter('PENDING')">PENDIENTES</button>
+        <button type="button" class="btn-secondary" onclick="setStatusFilter('APPROVED')">APROBADAS</button>
+        <button type="button" class="btn-secondary" onclick="setStatusFilter('REALIZED')">EMITIDAS</button>
+      </div>
+    </section>
+
+    <div id="ordersStatus" class="section-desc"></div>
+
+    <div class="table-container" style="margin-top: 12px;">
+      <table class="sku-table" aria-label="Órdenes y calendario de pagos">
+        <thead>
+          <tr>
+            <th>ORDEN</th>
+            <th>VENCIMIENTO</th>
+            <th>PROVEEDOR</th>
+            <th>BANCO / ALIAS / CBU</th>
+            <th>INSUMO</th>
+            <th>CANT.</th>
+            <th>TOTAL</th>
+            <th>ESTADO</th>
+            <th>ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody id="ordersTableBody">
+          <tr>
+            <td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              Cargando órdenes...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    let currentUser = null;
+    let allOrders = [];
+    let statusFilter = 'ALL';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const session = localStorage.getItem('mc_user');
+      if (!session) {
+        // Si no hay sesión, modo dev o redirigir
+        const dev = { id: 'dev', username: 'DEV', full_name: 'Modo Desarrollador', role: 'superadmin' };
+        localStorage.setItem('mc_user', JSON.stringify(dev));
+        currentUser = dev;
+      } else {
+        currentUser = JSON.parse(session);
+      }
+
+      await loadOrders();
+    });
+
+    async function loadOrders() {
+      const statusEl = document.getElementById('ordersStatus');
+      statusEl.textContent = 'Cargando órdenes...';
+
+      try {
+        const [ordersRes, skusRes, suppsRes] = await Promise.all([
+          client
+            .from('stock_orders')
+            .select('id, created_at, event_date, sku_id, quantity, unit_cost, total_cost, status, delivery_eta, payment_day, due_date, payment_method, supplier_id')
+            .order('due_date', { ascending: true })
+            .order('created_at', { ascending: false }),
+          client
+            .from('inventory_skus')
+            .select('id, name'),
+          client
+            .from('suppliers')
+            .select('id, name, legal_name, cuit, bank_name, bank_account_alias, bank_account_cbu')
+            .eq('is_active', true)
+        ]);
+
+        if (ordersRes.error) throw ordersRes.error;
+        if (skusRes.error) throw skusRes.error;
+        if (suppsRes.error) throw suppsRes.error;
+
+        const skuMap = new Map((skusRes.data || []).map(s => [s.id, s]));
+        const supplierMap = new Map((suppsRes.data || []).map(s => [s.id, s]));
+
+        allOrders = (ordersRes.data || []).map(o => {
+          return {
+            ...o,
+            sku: skuMap.get(o.sku_id) || null,
+            supplier: supplierMap.get(o.supplier_id) || null
+          };
+        });
+
+        statusEl.textContent = `Órdenes cargadas: ${allOrders.length}`;
+        renderOrders();
+      } catch (err) {
+        console.error('Error cargando órdenes:', err);
+        statusEl.textContent = 'Error al cargar órdenes. Intenta nuevamente.';
+        const tbody = document.getElementById('ordersTableBody');
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align:center; padding:40px; color:var(--state-error);">
+              Error al cargar órdenes.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function setStatusFilter(value) {
+      statusFilter = value;
+      renderOrders();
+    }
+
+    function renderOrders() {
+      const tbody = document.getElementById('ordersTableBody');
+      const searchText = document.getElementById('searchInput').value.toLowerCase();
+
+      let list = allOrders.slice();
+
+      if (statusFilter !== 'ALL') {
+        list = list.filter(o => o.status === statusFilter);
+      }
+
+      if (searchText) {
+        list = list.filter(o => {
+          const prov = (o.supplier?.name || o.supplier?.legal_name || '').toLowerCase();
+          const skuName = (o.sku?.name || '').toLowerCase();
+          return prov.includes(searchText) || skuName.includes(searchText);
+        });
+      }
+
+      if (!list.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              No hay órdenes para los filtros actuales.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = list
+        .map(o => {
+          const createdDate = o.created_at ? o.created_at.split('T')[0] : '-';
+          const dueDateValue = o.due_date || '';
+          const dueDateLabel = dueDateValue || '—';
+
+          const provName = o.supplier
+            ? (o.supplier.legal_name || o.supplier.name)
+            : 'SIN PROVEEDOR';
+
+          const cuit = o.supplier?.cuit || '-';
+
+          const bankLine = o.supplier
+            ? [
+                o.supplier.bank_name || '',
+                o.supplier.bank_account_alias || '',
+                o.supplier.bank_account_cbu || ''
+              ].filter(Boolean).join(' / ')
+            : '-';
+
+          const skuName = o.sku?.name || 'SKU eliminado';
+
+          const qty = Number(o.quantity) || 0;
+          const total = Number(o.total_cost) || 0;
+          const totalFmt = (typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency)
+            ? MC_UTILS.formatCurrency(total)
+            : `$${total.toFixed(2)}`;
+
+          let statusLabel = 'PENDIENTE';
+          let statusClass = 'tag-gray';
+          if (o.status === 'APPROVED') {
+            statusLabel = 'APROBADO';
+            statusClass = 'tag-green';
+          } else if (o.status === 'REALIZED') {
+            statusLabel = 'EMITIDO';
+            statusClass = 'tag-red';
+          }
+
+          const canApprove = o.status === 'PENDING';
+          const canEmit = o.status === 'APPROVED';
+
+          return `
+            <tr>
+              <td>
+                <div class="row-title">#${o.id}</div>
+                <div class="row-sub-text">Creada: ${createdDate}</div>
+              </td>
+              <td style="text-align:center;">
+                <input
+                  type="date"
+                  class="table-input"
+                  value="${dueDateValue}"
+                  onchange="updateDueDate(${o.id}, this.value)"
+                  style="max-width: 140px;"
+                />
+                <div class="row-sub-text">Vence: ${dueDateLabel}</div>
+              </td>
+              <td>
+                <div class="row-title">${provName}</div>
+                <div class="row-sub-text">CUIT: ${cuit}</div>
+              </td>
+              <td>
+                <div class="row-sub-text">${bankLine}</div>
+              </td>
+              <td>
+                <div class="row-title">${skuName}</div>
+              </td>
+              <td style="text-align:center;">
+                ${qty}
+              </td>
+              <td class="col-costo">
+                ${totalFmt}
+              </td>
+              <td>
+                <span class="tag ${statusClass}">${statusLabel}</span>
+              </td>
+              <td>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    onclick="updateOrderStatus(${o.id}, 'APPROVED')"
+                    ${canApprove ? '' : 'disabled'}
+                  >
+                    APROBADO
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-primary"
+                    onclick="updateOrderStatus(${o.id}, 'REALIZED')"
+                    ${canEmit ? '' : 'disabled'}
+                  >
+                    EMITIDO
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        })
+        .join('');
+    }
+
+    async function updateDueDate(orderId, dateStr) {
+      if (!dateStr) return;
+      try {
+        const { error } = await client
+          .from('stock_orders')
+          .update({ due_date: dateStr })
+          .eq('id', orderId);
+
+        if (error) throw error;
+
+        const order = allOrders.find(o => o.id === orderId);
+        if (order) order.due_date = dateStr;
+      } catch (err) {
+        console.error('Error actualizando vencimiento:', err);
+        alert('No se pudo actualizar la fecha de vencimiento.');
+      }
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+      if (!confirm(`Confirmar cambiar estado de la orden #${orderId} a ${newStatus}?`)) {
+        return;
+      }
+
+      try {
+        const { error } = await client
+          .from('stock_orders')
+          .update({ status: newStatus })
+          .eq('id', orderId);
+
+        if (error) throw error;
+
+        // Opcional: log
+        try {
+          const userId = (currentUser && currentUser.id !== 'dev') ? currentUser.id : null;
+          await client.from('admin_logs').insert({
+            admin_id: userId,
+            action: 'CAMBIO_ESTADO_ORDEN',
+            details: `Orden ${orderId} → ${newStatus}`
+          });
+        } catch (logErr) {
+          console.warn('No se pudo registrar log de cambio de estado', logErr);
+        }
+
+        await loadOrders();
+      } catch (err) {
+        console.error('Error actualizando estado de orden:', err);
+        alert('No se pudo actualizar el estado de la orden.');
+      }
+    }
+  </script>
+</body>
+</html>

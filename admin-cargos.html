@@ -12,168 +12,86 @@
 <body>
   <header class="admin-header">
     <div class="admin-logo">MIDNIGHT<span class="logo-accent">STAFF</span></div>
-    <div class="admin-header-right">
-        <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
-    </div>
+    <div class="admin-header-right"><button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button></div>
   </header>
 
   <div class="admin-container">
     <div class="section-header">
-      <div>
-        <h2 class="section-title">Cargos & Roles</h2>
-        <p class="section-desc">Jornales base y facturación del personal.</p>
-      </div>
+      <div><h2 class="section-title">Cargos & Roles</h2><p class="section-desc">Estructura de personal.</p></div>
       <button class="btn-primary" onclick="openRoleModal()">+ NUEVO CARGO</button>
     </div>
-
-    <input
-      type="text"
-      id="searchRole"
-      class="search-input-admin"
-      placeholder="Buscar por cargo..."
-      oninput="filterRoles()"
-    >
-
-    <div class="table-container" style="margin-top:18px;">
+    <input type="text" id="searchRole" class="search-input-admin" placeholder="🔍 Buscar cargo..." oninput="filterRoles()">
+    <div class="table-container">
       <table class="sku-table">
         <thead>
-          <tr>
-            <th style="padding-left:25px;">CARGO</th>
-            <th style="text-align:right;">JORNAL BASE</th>
-            <th style="width:160px;">MODALIDAD</th>
-            <th style="width:110px;">ESTADO</th>
-            <th style="width:60px;"></th>
-          </tr>
+          <tr><th style="padding-left:25px;">CARGO</th><th style="text-align:right;">JORNAL BASE</th><th>MODALIDAD</th><th>ESTADO</th><th style="width:60px;"></th></tr>
         </thead>
-        <tbody id="rolesList">
-          <tr>
-            <td colspan="5" style="text-align:center; padding:40px; color:var(--text-secondary);">
-              Cargando cargos...
-            </td>
-          </tr>
-        </tbody>
+        <tbody id="rolesList"></tbody>
       </table>
     </div>
   </div>
 
   <div id="roleModal" class="modal-overlay">
     <div class="modal-box">
-      <h3 class="section-title" style="font-size:20px; margin-bottom:18px;">Cargo / Rol</h3>
+      <h3 class="section-title" style="font-size:20px; margin-bottom:20px;">Cargo / Rol</h3>
       <input type="hidden" id="rId">
-
-      <label class="input-label">NOMBRE DEL CARGO</label>
-      <input type="text" id="rName" class="modal-input" placeholder="Ej: CAJERO PRINCIPAL">
-
+      <label class="input-label">NOMBRE</label>
+      <input type="text" id="rName" class="modal-input" placeholder="Ej: CAJERO">
       <div style="display:flex; gap:15px; margin-top:15px;">
-        <div style="flex:1;">
-          <label class="input-label">JORNAL BASE ($)</label>
-          <input type="number" id="rPay" class="modal-input" placeholder="0">
-        </div>
-        <div style="flex:1;">
-          <label class="input-label">MODALIDAD</label>
-          <select id="rBilling" class="modal-select">
-            <option value="MONOTRIBUTO">Monotributo</option>
-            <option value="RELACION_DEPENDENCIA">Relación de dependencia</option>
-            <option value="FACTURA">Factura</option>
-            <option value="EVENTUAL">Eventual</option>
-          </select>
-        </div>
+        <div style="flex:1;"><label class="input-label">BASE ($)</label><input type="number" id="rPay" class="modal-input"></div>
+        <div style="flex:1;"><label class="input-label">MODALIDAD</label><select id="rBilling" class="modal-select"><option value="MONOTRIBUTO">MONOTRIBUTO</option><option value="EVENTUAL">EVENTUAL</option></select></div>
       </div>
-
-      <div style="margin-top:15px;">
-        <label style="font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
-          <input type="checkbox" id="rActive" checked>
-          Cargo activo
-        </label>
-      </div>
-
       <div class="modal-btns">
-        <button onclick="closeRoleModal()" class="btn-modal-cancel">Cancelar</button>
-        <button onclick="saveRole()" class="btn-modal-save">Guardar</button>
-      </div>
-      
-      <div id="dangerZone" style="margin-top:15px; border-top:1px solid var(--border-subtle); padding-top:10px; display:none;">
-          <button onclick="deleteRole()" class="btn-modal-cancel" style="width:100%; border-color:var(--accent-red); color:var(--accent-red);">ELIMINAR CARGO</button>
+        <button onclick="closeRoleModal()" class="btn-modal-cancel">CANCELAR</button>
+        <button onclick="saveRole()" class="btn-modal-save">GUARDAR</button>
       </div>
     </div>
   </div>
 
   <script>
-    let roles = [];
-    document.addEventListener('DOMContentLoaded', () => { loadRoles(); });
-
-    async function loadRoles() {
-      try {
-        const { data, error } = await client.from('staff_roles').select('*').order('role_name');
-        if (error) throw error;
-        roles = data || [];
-        renderRoles(roles);
-      } catch (err) {
-        document.getElementById('rolesList').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--state-error);">Error al cargar.</td></tr>';
-      }
+    let roles=[];
+    document.addEventListener('DOMContentLoaded',loadRoles);
+    async function loadRoles(){
+        const{data}=await client.from('staff_roles').select('*').order('role_name');
+        roles=data||[]; renderRoles(roles);
     }
-
-    function renderRoles(list) {
-      const tbody = document.getElementById('rolesList');
-      if (!list.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--text-secondary);">Sin cargos.</td></tr>'; return; }
-      tbody.innerHTML = list.map(r => `
-          <tr>
-            <td style="padding-left:25px;"><div class="row-title">${r.role_name}</div></td>
-            <td style="text-align:right;">${MC_UTILS.formatCurrency(r.base_pay || 0)}</td>
-            <td>${r.billing_condition || '-'}</td>
-            <td><span class="tag ${r.is_active !== false ? 'tag-green' : 'tag-gray'}">${r.is_active !== false ? 'ACTIVO' : 'PAUSADO'}</span></td>
+    function renderRoles(l){
+        const tb=document.getElementById('rolesList');
+        if(!l.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center; padding:30px;">Sin datos.</td></tr>';return;}
+        tb.innerHTML=l.map(r=>`<tr>
+            <td style="padding-left:25px;" class="row-title">${r.role_name}</td>
+            <td style="text-align:right;" class="col-costo">${MC_UTILS.formatCurrency(r.base_pay)}</td>
+            <td>${r.billing_condition}</td>
+            <td><span class="tag ${r.is_active?'tag-green':'tag-gray'}">${r.is_active?'ACTIVO':'OFF'}</span></td>
             <td style="text-align:center;"><button class="btn-icon" onclick="openRoleModal(${r.id})">✏️</button></td>
-          </tr>`).join('');
+        </tr>`).join('');
     }
-
-    function filterRoles() {
-      const t = document.getElementById('searchRole').value.toLowerCase();
-      renderRoles(roles.filter(r => r.role_name.toLowerCase().includes(t)));
+    function filterRoles(){renderRoles(roles.filter(r=>r.role_name.toLowerCase().includes(document.getElementById('searchRole').value.toLowerCase())));}
+    function openRoleModal(id){
+        const m=document.getElementById('roleModal'); m.style.display='flex';
+        if(id){
+            const r=roles.find(x=>x.id===id);
+            document.getElementById('rId').value=r.id;
+            document.getElementById('rName').value=r.role_name;
+            document.getElementById('rPay').value=r.base_pay;
+            document.getElementById('rBilling').value=r.billing_condition;
+        }else{
+            document.getElementById('rId').value='';
+            document.getElementById('rName').value='';
+        }
     }
-
-    function openRoleModal(id) {
-      document.getElementById('roleModal').style.display = 'flex';
-      const danger = document.getElementById('dangerZone');
-      if (id) {
-        const r = roles.find(x => x.id === id);
-        document.getElementById('rId').value = r.id;
-        document.getElementById('rName').value = r.role_name;
-        document.getElementById('rPay').value = r.base_pay;
-        document.getElementById('rBilling').value = r.billing_condition || 'MONOTRIBUTO';
-        document.getElementById('rActive').checked = r.is_active !== false;
-        danger.style.display = 'block';
-      } else {
-        document.getElementById('rId').value = '';
-        document.getElementById('rName').value = '';
-        document.getElementById('rPay').value = '';
-        document.getElementById('rBilling').value = 'MONOTRIBUTO';
-        document.getElementById('rActive').checked = true;
-        danger.style.display = 'none';
-      }
-    }
-    function closeRoleModal() { document.getElementById('roleModal').style.display = 'none'; }
-
-    async function saveRole() {
-      const id = document.getElementById('rId').value;
-      const payload = {
-        role_name: document.getElementById('rName').value.trim(),
-        base_pay: parseFloat(document.getElementById('rPay').value) || 0,
-        billing_condition: document.getElementById('rBilling').value,
-        is_active: document.getElementById('rActive').checked
-      };
-      if (!payload.role_name) return alert('Nombre obligatorio.');
-      try {
-        if (id) await client.from('staff_roles').update(payload).eq('id', id);
-        else await client.from('staff_roles').insert(payload);
-        closeRoleModal(); await loadRoles();
-      } catch (err) { alert('Error: ' + err.message); }
-    }
-
-    async function deleteRole() {
-        if(!confirm('¿Eliminar cargo?')) return;
-        const id = document.getElementById('rId').value;
-        await client.from('staff_roles').delete().eq('id', id);
-        closeRoleModal(); await loadRoles();
+    function closeRoleModal(){document.getElementById('roleModal').style.display='none';}
+    async function saveRole(){
+        const id=document.getElementById('rId').value;
+        const d={
+            role_name:document.getElementById('rName').value,
+            base_pay:parseFloat(document.getElementById('rPay').value)||0,
+            billing_condition:document.getElementById('rBilling').value,
+            is_active:true
+        };
+        if(id) await client.from('staff_roles').update(d).eq('id',id);
+        else await client.from('staff_roles').insert(d);
+        closeRoleModal(); loadRoles();
     }
   </script>
 </body>

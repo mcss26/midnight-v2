@@ -15,83 +15,83 @@
     .btn-stock-adjust {
       background: var(--bg-card);
       border: 1px solid var(--border-light);
-      color: var(--txt-primary);
+      color: var(--text-primary);
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 11px;
       font-weight: 700;
       cursor: pointer;
       transition: 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
     .btn-stock-adjust:hover { background: var(--bg-hover); }
 
-    /* Inputs "Stealth" para la tabla */
-    .table-input { 
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-primary); 
-      width: 100%;
-      text-align: center;
-      font-family: 'Inter', monospace;
-      font-size: 13px; 
-      padding: 6px;
-      border-radius: 4px;
-      transition: all 0.2s;
+    .btn-stock-request {
+      margin-top: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
-    .table-input:focus {
-      background: #000;
-      border-color: var(--accent-blue);
-      outline: none;
+
+    .request-pending {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--text-secondary);
     }
-    .table-input:hover { background: rgba(255,255,255,0.05); }
   </style>
 </head>
 <body>
   <header class="admin-header">
-    <div class="admin-logo">
-      MIDNIGHT<span style="color: var(--text-primary);">INVENTARIO</span>
+    <div class="admin-header-inner">
+      <div class="admin-header-top">
+        <div class="admin-logo"></div>
+        <div class="admin-header-right">
+          <button onclick="window.location.href='operativo-index.html'" class="btn-back">VOLVER</button>
+        </div>
+      </div>
     </div>
-    <button onclick="window.location.href='operativo-index.html'" class="btn-logout">VOLVER</button>
   </header>
 
-  <div class="admin-container">
+  <main class="admin-container">
     <div class="section-header">
-      <div>
-        <h2 class="section-title">Stock Global Operativo</h2>
-        <p class="section-desc">Monitoreo de inventario maestro y ajustes de conteo.</p>
-      </div>
+      <h2 class="section-title">STOCK GLOBAL OPERATIVO</h2>
+      <p class="section-desc">Conteo manual, ajustes y solicitudes de reposición hacia Administración.</p>
+    </div>
+
+    <div class="section-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+      <input
+        type="text"
+        id="searchInput"
+        class="search-input-admin"
+        placeholder="Buscar insumo por nombre..."
+        oninput="filterList()"
+      >
       <button onclick="loadData()" class="btn-primary">REFRESCAR</button>
     </div>
 
-    <input
-      type="text"
-      id="searchInput"
-      class="search-input-admin"
-      placeholder="🔍 Buscar insumo por nombre..."
-      oninput="filterList()"
-    >
-
-    <div class="table-container" style="margin-top: 20px;">
+    <div class="table-container" style="margin-top: 12px;">
       <table class="sku-table">
         <thead>
           <tr>
             <th style="padding-left: 25px;">INSUMO / CATEGORÍA</th>
-            <th style="text-align:center; width: 100px;">STOCK ACTUAL</th>
-            <th style="text-align:center; width: 100px;">STOCK IDEAL</th>
-            <th style="text-align:right; width: 120px;">COSTO UNITARIO</th>
-            <th style="width: 200px; text-align:center;">AJUSTE RÁPIDO</th>
+            <th style="text-align:center; width: 110px;">STOCK ACTUAL</th>
+            <th style="text-align:center; width: 110px;">STOCK IDEAL</th>
+            <th style="width: 220px; text-align:center;">AJUSTE RÁPIDO</th>
+            <th style="width: 220px; text-align:center;">SOLICITAR</th>
           </tr>
         </thead>
         <tbody id="skuList">
           <tr>
-            <td colspan="5" style="text-align:center; padding: 40px; color: var(--txt-secondary);">
+            <td colspan="5" style="text-align:center; padding: 40px; color: var(--text-secondary);">
               Cargando inventario...
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-  </div>
+  </main>
 
   <!-- MODAL AJUSTE -->
   <div id="adjustModal" class="modal-overlay" style="display:none;">
@@ -172,46 +172,70 @@
     // CARGA DE DATOS DESDE SUPABASE
     // =========================
     async function loadData() {
-      const skusRes = await client
-        .from('inventory_stock')
-        .select(`
-          sku_id,
-          stock_current,
-          stock_ideal,
-          inventory_skus (
-            id,
-            name,
-            category,
-            unit_type,
-            cost_price,
-            is_active
-          )
-        `)
-        .eq('inventory_skus.is_active', true)
-        .order('sku_id');
+      try {
+        const skusRes = await client
+          .from('inventory_stock')
+          .select(`
+            sku_id,
+            stock_current,
+            stock_ideal,
+            inventory_skus (
+              id,
+              name,
+              category,
+              unit_type,
+              cost_price,
+              is_active
+            )
+          `)
+          .eq('inventory_skus.is_active', true)
+          .order('sku_id');
 
-      if (skusRes.error) {
-        console.error('Error de carga de Supabase:', skusRes.error);
+        if (skusRes.error) {
+          console.error('Error de carga de Supabase:', skusRes.error);
+          document.getElementById('skuList').innerHTML =
+            '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--accent-red);">Error al conectar/cargar datos.</td></tr>';
+          return;
+        }
+
+        const data = skusRes.data || [];
+
+        // Pedidos pendientes de stock_requests
+        const { data: reqData, error: reqError } = await client
+          .from('stock_requests')
+          .select('sku_id, requested_qty, status');
+
+        if (reqError) {
+          console.error('Error al cargar solicitudes:', reqError);
+        }
+
+        const pendingRequests = new Map();
+        (reqData || [])
+          .filter(r => r.status === 'PENDING')
+          .forEach(r => {
+            const prev = pendingRequests.get(r.sku_id) || 0;
+            pendingRequests.set(r.sku_id, prev + (Number(r.requested_qty) || 0));
+          });
+
+        allSkus = data
+          .filter(item => item.inventory_skus)
+          .map(item => ({
+            id: item.sku_id,
+            name: item.inventory_skus.name,
+            category: item.inventory_skus.category,
+            unit_type: item.inventory_skus.unit_type,
+            cost_price: item.inventory_skus.cost_price,
+            stock_current: item.stock_current,
+            stock_ideal: item.stock_ideal,
+            pending_request: pendingRequests.get(item.sku_id) || 0
+          }));
+
+        renderList(allSkus);
+      } catch (e) {
+        console.error('Error general al cargar datos:', e);
         document.getElementById('skuList').innerHTML =
-          '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--accent-red);">Error al conectar/cargar datos.</td></tr>';
-        return;
+          '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--accent-red);">Error al cargar datos.</td></tr>';
       }
-
-      const data = skusRes.data || [];
-
-      allSkus = data
-        .filter(item => item.inventory_skus)
-        .map(item => ({
-          id: item.sku_id,
-          name: item.inventory_skus.name,
-          category: item.inventory_skus.category,
-          unit_type: item.inventory_skus.unit_type,
-          cost_price: item.inventory_skus.cost_price,
-          stock_current: item.stock_current,
-          stock_ideal: item.stock_ideal
-        }));
-
-      renderList(allSkus);
     }
 
     // =========================
@@ -222,7 +246,7 @@
 
       if (!list.length) {
         tbody.innerHTML =
-          '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--txt-secondary);">Sin insumos operativos cargados.</td></tr>';
+          '<tr><td colspan="5" style="text-align:center; padding:40px; color:var(--text-secondary);">Sin insumos operativos cargados.</td></tr>';
         return;
       }
 
@@ -235,6 +259,10 @@
                   ? 'var(--accent-gold)'
                   : 'var(--accent-green)');
 
+          const pendingText = i.pending_request > 0
+            ? `<div class="request-pending">Pendiente: ${i.pending_request} ${i.unit_type || ''}</div>`
+            : '';
+
           return `
             <tr>
               <td style="padding-left: 25px;">
@@ -246,11 +274,8 @@
               <td style="text-align:center; font-weight:700; color:${stockColor};">
                 ${i.stock_current} ${i.unit_type || ''}
               </td>
-              <td style="text-align:center; color:var(--txt-secondary);">
+              <td style="text-align:center; color:var(--text-secondary);">
                 ${i.stock_ideal ?? '-'}
-              </td>
-              <td class="col-costo">
-                ${MC_UTILS.formatCurrency(i.cost_price)}
               </td>
               <td style="text-align:center;">
                 <button
@@ -258,15 +283,33 @@
                   class="btn-stock-adjust"
                   style="border-color:var(--accent-green); color:var(--accent-green);"
                 >
-                  + ADJ
+                  + AJUSTE
                 </button>
                 <button
                   onclick="openModal(${i.id}, -1)"
                   class="btn-stock-adjust"
                   style="border-color:var(--accent-red); color:var(--accent-red); margin-left:8px;"
                 >
-                  - ADJ
+                  - AJUSTE
                 </button>
+              </td>
+              <td style="text-align:center;">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  id="req-${i.id}"
+                  class="table-input"
+                  placeholder="0"
+                />
+                <button
+                  type="button"
+                  class="btn-primary btn-stock-request"
+                  onclick="handleRequest(${i.id})"
+                >
+                  SOLICITAR
+                </button>
+                ${pendingText}
               </td>
             </tr>
           `;
@@ -394,6 +437,52 @@
       } finally {
         btn.disabled = false;
         btn.innerText = 'GUARDAR Y ACTUALIZAR STOCK';
+      }
+    }
+
+    // =========================
+    // SOLICITAR REPOSICIÓN
+    // =========================
+    async function handleRequest(skuId) {
+      const input = document.getElementById(`req-${skuId}`);
+      if (!input) return;
+
+      const qty = parseFloat(input.value);
+      if (!qty || qty <= 0) {
+        alert('Ingresa una cantidad válida para solicitar.');
+        return;
+      }
+
+      const sku = allSkus.find(x => x.id === skuId);
+      if (!sku) {
+        alert('SKU no encontrado.');
+        return;
+      }
+
+      const userId = (currentUser.id === 'dev') ? null : currentUser.id;
+
+      if (!confirm(`Confirmar solicitud de ${qty} ${sku.unit_type || ''} de "${sku.name}"?`)) {
+        return;
+      }
+
+      try {
+        const { error } = await client
+          .from('stock_requests')
+          .insert({
+            sku_id: skuId,
+            requested_qty: qty,
+            requested_by: userId,
+            status: 'PENDING'
+          });
+
+        if (error) throw error;
+
+        alert('Solicitud registrada y enviada a Administración.');
+        input.value = '';
+        await loadData();
+      } catch (e) {
+        console.error('Error al registrar solicitud:', e);
+        alert('No se pudo registrar la solicitud. Intenta nuevamente.');
       }
     }
   </script>
