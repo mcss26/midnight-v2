@@ -34,81 +34,64 @@
   </header>
 
   <div class="admin-container">
-    <!-- TITULO CENTRAL -->
-    <div class="section-header" style="flex-direction:column; align-items:center; text-align:center; gap:6px; margin-top:6px;">
-      <div>
-        <h2 class="section-title" style="text-align:center;">ACCESOS</h2>
-        <div class="section-underline"></div>
-        <p class="section-desc" style="max-width:360px; margin:6px auto 0; text-align:center;">
-          Elegí el área con la que vas a trabajar esta noche.
-        </p>
-      </div>
+    <div
+      class="dash-grid"
+      style="
+        grid-template-columns: 1fr;
+        max-width: 480px;
+        margin: 28px auto 0;
+        gap: 14px;
+      "
+    >
+      <!-- 1. STAFF -->
+      <a href="staff-index.html" class="dash-card dash-card-staff">
+        <div class="dash-card-inner">
+          <div class="dash-card-label">EQUIPO</div>
+          <h3 class="dash-title">STAFF</h3>
+        </div>
+      </a>
+
+      <!-- 2. ENCARGADOS -->
+      <a href="encargados-index.html" class="dash-card dash-card-op">
+        <div class="dash-card-inner">
+          <div class="dash-card-label">ÁREA</div>
+          <h3 class="dash-title">ENCARGADOS</h3>
+        </div>
+      </a>
+
+      <!-- 3. OPERATIVO -->
+      <a href="operativo-index.html" class="dash-card dash-card-op">
+        <div class="dash-card-inner">
+          <div class="dash-card-label">ÁREA</div>
+          <h3 class="dash-title">OPERATIVO</h3>
+        </div>
+      </a>
+
+      <!-- 4. ADMINISTRACIÓN -->
+      <a href="administracion-index.html" class="dash-card dash-card-admin">
+        <div class="dash-card-inner">
+          <div class="dash-card-label">CONTROL</div>
+          <h3 class="dash-title">ADMINISTRACIÓN</h3>
+        </div>
+      </a>
+
+      <!-- 5. GERENCIA -->
+      <a href="gerencia-index.html" class="dash-card dash-card-admin">
+        <div class="dash-card-inner">
+          <div class="dash-card-label">CONTROL</div>
+          <h3 class="dash-title">GERENCIA</h3>
+        </div>
+      </a>
+
+      <!-- 6. MASTER DATA -->
+      <a href="panel-master.html" class="dash-card dash-card-master">
+        <div class="dash-card-inner">
+          <div class="dash-card-label">CONFIG</div>
+          <h3 class="dash-title">MASTER DATA</h3>
+        </div>
+      </a>
     </div>
 
-    <!-- BLOQUE 1: OPERACIÓN -->
-    <section class="access-group">
-      <div class="access-group-title">OPERACIÓN</div>
-      <div
-        class="dash-grid"
-        style="
-          grid-template-columns: 1fr;
-          max-width: 480px;
-          margin: 10px auto 0;
-          gap: 14px;
-        "
-      >
-        <a href="operativo-index.html" class="dash-card dash-card-op">
-          <div class="dash-card-inner">
-            <div class="dash-card-label">ÁREA</div>
-            <h3 class="dash-title">OPERATIVO</h3>
-          </div>
-        </a>
-
-        <a href="encargados-index.html" class="dash-card dash-card-op">
-          <div class="dash-card-inner">
-            <div class="dash-card-label">ÁREA</div>
-            <h3 class="dash-title">ENCARGADOS</h3>
-          </div>
-        </a>
-
-        <a href="staff-index.html" class="dash-card dash-card-staff">
-          <div class="dash-card-inner">
-            <div class="dash-card-label">EQUIPO</div>
-            <h3 class="dash-title">STAFF</h3>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <!-- BLOQUE 2: BACKOFFICE -->
-    <section class="access-group">
-      <div class="access-group-title">BACKOFFICE</div>
-      <div
-        class="dash-grid"
-        style="
-          grid-template-columns: 1fr;
-          max-width: 480px;
-          margin: 10px auto 0;
-          gap: 14px;
-        "
-      >
-        <a href="administracion-index.html" class="dash-card dash-card-admin">
-          <div class="dash-card-inner">
-            <div class="dash-card-label">CONTROL</div>
-            <h3 class="dash-title">ADMINISTRACIÓN</h3>
-          </div>
-        </a>
-
-        <a href="panel-master.html" class="dash-card dash-card-master">
-          <div class="dash-card-inner">
-            <div class="dash-card-label">CONFIG</div>
-            <h3 class="dash-title">PANEL MASTER</h3>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <!-- FOOTER SIMPLE -->
     <div class="access-footer">
       Midnight ERP · uso interno
     </div>
