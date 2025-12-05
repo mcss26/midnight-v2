@@ -2,11 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Midnight - Proveedores</title>
 
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
@@ -15,204 +15,249 @@
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo">MIDNIGHT<span class="logo-accent">MASTER</span></div>
+        <div class="admin-logo"></div>
         <div class="admin-header-right">
-          <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
+          <button class="btn-back" onclick="window.location.href='administracion-index.html'">
+            VOLVER
+          </button>
         </div>
       </div>
     </div>
   </header>
 
   <main class="admin-container">
-    <!-- HEADER + BUSCADOR + CTA -->
-    <div class="section-header" style="align-items:flex-start; gap:14px; margin-bottom:16px;">
-      <div>
-        <h2 class="section-title">PROVEEDORES</h2>
-        <p class="section-desc">
-          Directorio fiscal y bancario para órdenes de compra y calendario de pagos.
-        </p>
-      </div>
+    <section class="section-header">
+      <h1 class="section-title">PROVEEDORES</h1>
+      <p class="section-desc">
+        Alta, edición y estado de proveedores para órdenes y calendario de pagos.
+      </p>
+    </section>
 
-      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:flex-end; width:100%; max-width:620px;">
+    <!-- Barra de controles: búsqueda + filtros + alta -->
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <div style="display:flex; gap:8px; align-items:center;">
         <input
-          type="text"
-          id="searchSupplier"
+          id="searchSuppliers"
           class="search-input-admin"
-          placeholder="Buscar por nombre comercial o razón social…"
-          oninput="filterSuppliers()"
-          style="flex:1; min-width:220px;"
+          type="text"
+          placeholder="Buscar por nombre, razón social o CUIT..."
         />
-        <button class="btn-primary" onclick="openSupplierModal()">+ NUEVO PROVEEDOR</button>
+      </div>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <label class="section-desc" style="margin:0; font-size:11px; display:flex; align-items:center; gap:4px;">
+          <input type="checkbox" id="showInactive" style="margin:0;" />
+          Ver inactivos
+        </label>
+        <button class="btn-primary" type="button" id="newSupplierBtn">
+          Nuevo proveedor
+        </button>
       </div>
     </div>
 
-    <!-- RESUMEN SUPERIOR -->
-    <div id="supSummary" class="stock-summary" style="margin-top:0;">
-      <!-- Se completa por JS -->
-      <div class="stock-summary-label">RESUMEN</div>
-      <div class="stock-summary-value">Sin proveedores cargados.</div>
-    </div>
+    <div id="suppliersStatus" class="section-desc"></div>
 
-    <!-- TABLA PRINCIPAL -->
-    <div class="table-container" style="margin-top:16px;">
-      <table class="sku-table">
-        <colgroup>
-          <col style="width:26%;">
-          <col style="width:28%;">
-          <col style="width:32%;">
-          <col style="width:9%;">
-          <col style="width:5%;">
-        </colgroup>
+    <div class="table-container">
+      <table class="sku-table" id="suppliersTable" aria-label="Listado de proveedores">
         <thead>
           <tr>
-            <th style="padding-left:25px;">PROVEEDOR</th>
-            <th>DATOS FISCALES</th>
-            <th>DATOS DE PAGO</th>
+            <th>PROVEEDOR</th>
+            <th>CATEGORÍA</th>
+            <th>CENTRO COSTO</th>
+            <th>FACTURACIÓN</th>
+            <th>PLAZO PAGO</th>
             <th>ESTADO</th>
-            <th style="text-align:center;">ACCIONES</th>
+            <th class="text-right">ACCIONES</th>
           </tr>
         </thead>
-        <tbody id="suppliersList"></tbody>
+        <tbody>
+          <!-- filas dinámicas -->
+        </tbody>
       </table>
     </div>
   </main>
 
-  <!-- MODAL PROVEEDOR -->
-  <div id="supplierModal" class="modal-overlay">
+  <!-- MODAL ALTA / EDICIÓN PROVEEDOR -->
+  <div class="modal-overlay" id="supplierModal">
     <div class="modal-box">
-      <h3 class="section-title" style="font-size:20px; margin-bottom:16px;">Proveedor</h3>
+      <h2 class="section-title" style="font-size:18px; letter-spacing:0.14em; text-align:left;">
+        PROVEEDOR
+      </h2>
+      <p class="section-desc" id="supplierModalSubtitle" style="text-align:left;">
+        Crear o editar proveedor.
+      </p>
 
-      <input type="hidden" id="supId" />
-
-      <label class="input-label">NOMBRE COMERCIAL</label>
-      <input
-        type="text"
-        id="supName"
-        class="modal-input"
-        placeholder="Ej: DISTRIBUIDORA X"
-      />
-
-      <div style="display:flex; gap:15px; margin-top:12px;">
-        <div style="flex:1;">
-          <label class="input-label">RAZÓN SOCIAL</label>
-          <input
-            type="text"
-            id="supLegalName"
-            class="modal-input"
-            placeholder="Ej: DISTRIBUIDORA X SRL"
-          />
+      <form id="supplierForm">
+        <!-- NOMBRE COMERCIAL | RAZÓN SOCIAL | CUIT -->
+        <div class="mt-2">
+          <label class="input-label" for="sNameCommercial">Nombre comercial</label>
+          <input id="sNameCommercial" class="modal-input" type="text" required />
         </div>
-        <div style="flex:1;">
-          <label class="input-label">CUIT</label>
-          <input
-            type="text"
-            id="supCuit"
-            class="modal-input"
-            placeholder="Ej: 30-00000000-0"
-          />
-        </div>
-      </div>
 
-      <div style="display:flex; gap:15px; margin-top:12px;">
-        <div style="flex:1;">
-          <label class="input-label">CATEGORÍA</label>
-          <select id="supCat" class="modal-select">
-            <option value="BEBIDAS">BEBIDAS</option>
-            <option value="ALIMENTOS">ALIMENTOS</option>
-            <option value="DESCARTABLES">DESCARTABLES</option>
+        <div class="mt-2">
+          <label class="input-label" for="sLegalName">Razón social</label>
+          <input id="sLegalName" class="modal-input" type="text" />
+        </div>
+
+        <div class="mt-2">
+          <label class="input-label" for="sCuit">CUIT</label>
+          <input id="sCuit" class="modal-input" type="text" placeholder="Sin puntos ni guiones" />
+        </div>
+
+        <!-- RESPONSABLE | CONTACTO -->
+        <div class="mt-2">
+          <label class="input-label" for="sResponsible">Responsable</label>
+          <input id="sResponsible" class="modal-input" type="text" placeholder="Nombre de la persona de contacto" />
+        </div>
+
+        <div class="mt-2">
+          <label class="input-label" for="sContact">Contacto</label>
+          <input id="sContact" class="modal-input" type="text" placeholder="Teléfono / email" />
+        </div>
+
+        <!-- CATEGORÍA | CENTRO DE COSTO -->
+        <div class="mt-2">
+          <label class="input-label" for="sCategory">Categoría</label>
+          <select id="sCategory" class="modal-select">
+            <option value="">Seleccionar</option>
+            <option value="INSUMOS">INSUMOS</option>
             <option value="SERVICIOS">SERVICIOS</option>
-            <option value="VARIOS">VARIOS</option>
+            <option value="INFRAESTRUCTURA">INFRAESTRUCTURA</option>
+            <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+            <option value="SISTEMAS / IT">SISTEMAS / IT</option>
+            <option value="MARKETING">MARKETING</option>
+            <option value="LEGALES & LICENCIAS">LEGALES &amp; LICENCIAS</option>
+            <option value="HONORARIOS">HONORARIOS</option>
+            <option value="RRHH EXTERNO">RRHH EXTERNO</option>
           </select>
         </div>
-        <div style="flex:1;">
-          <label class="input-label">CENTRO DE COSTO</label>
-          <input
-            type="text"
-            id="supCostCenter"
-            class="modal-input"
-            placeholder="Ej: BARRA / SERVICIOS"
-          />
-        </div>
-      </div>
 
-      <div style="display:flex; gap:15px; margin-top:12px;">
-        <div style="flex:1;">
-          <label class="input-label">COND. FACTURACIÓN</label>
-          <input
-            type="text"
-            id="supBilling"
-            class="modal-input"
-            placeholder="Ej: Factura A / B / Monotributo"
-          />
+        <div class="mt-2">
+          <label class="input-label" for="sCostCenter">Centro de costo</label>
+          <select id="sCostCenter" class="modal-select">
+            <option value="">Seleccionar</option>
+            <option value="COD">COD (Directo)</option>
+            <option value="OPEX">OPEX (Operativo)</option>
+            <option value="G&A">G&amp;A (Admin/Mkt)</option>
+          </select>
         </div>
-        <div style="flex:1;">
-          <label class="input-label">COND. DE PAGO</label>
-          <input
-            type="text"
-            id="supPaymentTerms"
-            class="modal-input"
-            placeholder="Ej: Contado / 7 días / 30 días"
-          />
+
+        <!-- TIPO DE FACTURACIÓN | PLAZO DE PAGO -->
+        <div class="mt-2">
+          <label class="input-label" for="sBillCond">Tipo de facturación</label>
+          <select id="sBillCond" class="modal-select" onchange="toggleCuit()">
+            <option value="">Seleccionar</option>
+            <option value="FACTURA_A">Factura A</option>
+            <option value="FACTURA_ALIC_RED">Factura A (Alic. Reducida)</option>
+            <option value="FACTURA_C">Factura C</option>
+            <option value="FACTURA_M">Factura M</option>
+            <option value="RECIBO_X">Recibo X / Oficial</option>
+            <option value="SIN_FACTURA">Sin Factura</option>
+          </select>
         </div>
-      </div>
 
-      <label class="input-label" style="margin-top:12px;">CONTACTO</label>
-      <textarea
-        id="supContact"
-        class="modal-input"
-        style="height:70px;"
-        placeholder="Teléfono, mail, contacto comercial…"
-      ></textarea>
-
-      <div style="margin-top:14px;">
-        <label class="input-label">DATOS BANCARIOS</label>
-        <div style="display:flex; gap:10px; margin-top:4px;">
-          <input
-            type="text"
-            id="supBankName"
-            class="modal-input"
-            placeholder="Banco / Fintech"
-            style="flex:1;"
-          />
-          <input
-            type="text"
-            id="supBankAlias"
-            class="modal-input"
-            placeholder="Alias"
-            style="flex:1;"
-          />
-          <input
-            type="text"
-            id="supBankCbu"
-            class="modal-input"
-            placeholder="CBU"
-            style="flex:1;"
-          />
+        <div class="mt-2">
+          <label class="input-label" for="sPaymentTerms">Plazo de pago</label>
+          <select id="sPaymentTerms" class="modal-select">
+            <option value="">Sin definir</option>
+            <option value="DIARIO">Diario</option>
+            <option value="SEMANAL">Semanal</option>
+            <option value="QUINCENAL">Quincenal</option>
+            <option value="MENSUAL">Mensual</option>
+            <option value="TRIMESTRAL">Trimestral</option>
+            <option value="SEMESTRAL">Semestral</option>
+            <option value="ANUAL">Anual</option>
+          </select>
         </div>
-      </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
-        <label class="input-label" style="margin:0;">ESTADO</label>
-        <label style="font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
-          <input type="checkbox" id="supIsActive" checked />
-          ACTIVO
-        </label>
-      </div>
+        <!-- BANCO | ALIAS/CBU -->
+        <div class="mt-2">
+          <label class="input-label" for="sBankName">Banco</label>
+          <input id="sBankName" class="modal-input" type="text" placeholder="Nombre del banco" />
+        </div>
+
+        <div class="mt-2">
+          <label class="input-label" for="sBankAlias">Alias / CBU</label>
+          <input id="sBankAlias" class="modal-input" type="text" placeholder="Alias o CBU" />
+        </div>
+
+        <!-- NOTAS -->
+        <div class="mt-2">
+          <label class="input-label" for="sNotes">Notas</label>
+          <textarea id="sNotes" class="modal-input" rows="3" style="resize:vertical;"></textarea>
+        </div>
+      </form>
 
       <div class="modal-btns">
-        <button onclick="closeSupplierModal()" class="btn-modal-cancel">CANCELAR</button>
-        <button onclick="saveSupplier()" class="btn-modal-save">GUARDAR</button>
+        <button type="button" class="btn-secondary" id="deleteSupplierBtn" style="margin-right:auto; display:none;">
+          Eliminar proveedor
+        </button>
+        <button type="button" class="btn-secondary" id="cancelModalBtn">
+          Cancelar
+        </button>
+        <button type="button" class="btn-primary" id="saveSupplierBtn">
+          Guardar
+        </button>
       </div>
     </div>
   </div>
 
   <script>
-    let suppliers = [];
+    const tableBody = document.querySelector('#suppliersTable tbody');
+    const statusEl = document.getElementById('suppliersStatus');
+    const searchInput = document.getElementById('searchSuppliers');
+    const showInactiveCheckbox = document.getElementById('showInactive');
+    const newSupplierBtn = document.getElementById('newSupplierBtn');
 
-    document.addEventListener('DOMContentLoaded', loadSuppliers);
+    const modal = document.getElementById('supplierModal');
+    const modalSubtitle = document.getElementById('supplierModalSubtitle');
+    const deleteSupplierBtn = document.getElementById('deleteSupplierBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+    const saveSupplierBtn = document.getElementById('saveSupplierBtn');
+
+    const sNameCommercial = document.getElementById('sNameCommercial');
+    const sLegalName = document.getElementById('sLegalName');
+    const sCuit = document.getElementById('sCuit');
+    const sResponsible = document.getElementById('sResponsible');
+    const sContact = document.getElementById('sContact');
+    const sCategory = document.getElementById('sCategory');
+    const sCostCenter = document.getElementById('sCostCenter');
+    const sBillCond = document.getElementById('sBillCond');
+    const sPaymentTerms = document.getElementById('sPaymentTerms');
+    const sBankName = document.getElementById('sBankName');
+    const sBankAlias = document.getElementById('sBankAlias');
+    const sNotes = document.getElementById('sNotes');
+
+    let allSuppliers = [];
+    let editingSupplierId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      attachListeners();
+      loadSuppliers();
+    });
+
+    function attachListeners() {
+      newSupplierBtn.addEventListener('click', () => openCreateModal());
+      cancelModalBtn.addEventListener('click', closeModal);
+      saveSupplierBtn.addEventListener('click', handleSaveSupplier);
+      deleteSupplierBtn.addEventListener('click', () => {
+        if (editingSupplierId != null) {
+          handleDeleteSupplier(editingSupplierId);
+        }
+      });
+
+      searchInput.addEventListener('input', applyFiltersAndRender);
+      showInactiveCheckbox.addEventListener('change', applyFiltersAndRender);
+
+      // Cerrar modal con ESC
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && modal.style.display === 'flex') {
+          closeModal();
+        }
+      });
+    }
 
     async function loadSuppliers() {
-      const tb = document.getElementById('suppliersList');
+      statusEl.textContent = 'Cargando proveedores...';
 
       try {
         const { data, error } = await client
@@ -220,225 +265,289 @@
           .select('*')
           .order('name', { ascending: true });
 
-        if (error) {
-          console.error('Error cargando proveedores:', error);
-          suppliers = [];
-          tb.innerHTML =
-            '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--state-error);">Error al cargar proveedores.</td></tr>';
-          updateSuppliersSummary();
-          return;
-        }
+        if (error) throw error;
 
-        suppliers = data || [];
-        updateSuppliersSummary();
-        renderSuppliers(suppliers);
+        allSuppliers = data || [];
+        statusEl.textContent = '';
+        applyFiltersAndRender();
       } catch (err) {
-        console.error('Error inesperado cargando proveedores:', err);
-        suppliers = [];
-        tb.innerHTML =
-          '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--state-error);">Error al cargar proveedores.</td></tr>';
-        updateSuppliersSummary();
+        console.error('Error al cargar proveedores', err);
+        statusEl.textContent = 'Error al cargar proveedores. Intenta nuevamente.';
       }
     }
 
-    function updateSuppliersSummary() {
-      const box = document.getElementById('supSummary');
-      if (!box) return;
+    function applyFiltersAndRender() {
+      const term = (searchInput.value || '').toLowerCase().trim();
+      const showInactive = showInactiveCheckbox.checked;
 
-      const total = suppliers.length;
-      const active = suppliers.filter(s => s.is_active !== false).length;
-      const inactive = total - active;
+      const filtered = allSuppliers.filter((sup) => {
+        if (!showInactive && sup.is_active === false) return false;
 
-      if (!total) {
-        box.innerHTML = `
-          <div class="stock-summary-label">RESUMEN</div>
-          <div class="stock-summary-value">Sin proveedores cargados.</div>
-        `;
-        return;
-      }
+        if (!term) return true;
 
-      box.innerHTML = `
-        <div class="stock-summary-label">RESUMEN</div>
-        <div class="stock-summary-value">
-          ${total} proveedor${total !== 1 ? 'es' : ''} ·
-          ${active} activo${active !== 1 ? 's' : ''} ·
-          ${inactive} inactivo${inactive !== 1 ? 's' : ''}
-        </div>
-      `;
-    }
+        const contactInfo = parseContactInfo(sup.contact_info);
+        const hayCoincidencia =
+          (sup.name || '').toLowerCase().includes(term) ||
+          (sup.legal_name || '').toLowerCase().includes(term) ||
+          (sup.cuit || '').toLowerCase().includes(term) ||
+          (sup.category || '').toLowerCase().includes(term) ||
+          (contactInfo.contact || '').toLowerCase().includes(term) ||
+          (contactInfo.responsible || '').toLowerCase().includes(term);
 
-    function renderSuppliers(list) {
-      const tb = document.getElementById('suppliersList');
-
-      if (!list.length) {
-        tb.innerHTML =
-          '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-secondary);">Sin proveedores para los filtros actuales.</td></tr>';
-        return;
-      }
-
-      tb.innerHTML = list
-        .map((s) => {
-          const provName = s.name || 'SIN NOMBRE';
-          const legal = s.legal_name || '-';
-          const cuit = s.cuit || '-';
-          const cat = s.category || 'VARIOS';
-
-          const bankLine = [
-            s.bank_name || '',
-            s.bank_account_alias || '',
-            s.bank_account_cbu || ''
-          ]
-            .filter(Boolean)
-            .join(' / ') || '-';
-
-          const billing = s.billing_condition || '-';
-          const payTerms = s.payment_terms || '-';
-
-          const estadoLabel = s.is_active ? 'ACTIVO' : 'INACTIVO';
-          const estadoClass = s.is_active ? 'tag-green' : 'tag-red';
-
-          const contactLine = s.contact_info ? `<div class="row-sub-text">${s.contact_info}</div>` : '';
-
-          let fiscalExtra = '';
-          if (billing !== '-' || payTerms !== '-') {
-            const parts = [];
-            if (billing !== '-') parts.push(`Facturación: ${billing}`);
-            if (payTerms !== '-') parts.push(`Pago: ${payTerms}`);
-            fiscalExtra = `<div class="row-sub-text">${parts.join(' · ')}</div>`;
-          }
-
-          return `
-            <tr>
-              <td style="padding-left:25px;">
-                <div class="row-title">${provName}</div>
-                <div class="row-sub-text">
-                  <span class="tag tag-gray">${cat}</span>
-                  ${s.cost_center ? `<span style="margin-left:6px;">CC: ${s.cost_center}</span>` : ''}
-                </div>
-                ${contactLine}
-              </td>
-              <td>
-                <div class="row-title">${legal}</div>
-                <div class="row-sub-text">
-                  CUIT:
-                  <span style="font-variant-numeric:tabular-nums;">${cuit}</span>
-                </div>
-                ${fiscalExtra || '<div class="row-sub-text">—</div>'}
-              </td>
-              <td>
-                <div class="row-sub-text">${bankLine}</div>
-              </td>
-              <td>
-                <span class="tag ${estadoClass}">${estadoLabel}</span>
-              </td>
-              <td style="text-align:center;">
-                <button class="btn-icon" onclick="openSupplierModal(${s.id})">✏️</button>
-              </td>
-            </tr>
-          `;
-        })
-        .join('');
-    }
-
-    function filterSuppliers() {
-      const term = document
-        .getElementById('searchSupplier')
-        .value.toLowerCase();
-
-      const filtered = suppliers.filter((s) => {
-        const name = (s.name || '').toLowerCase();
-        const legal = (s.legal_name || '').toLowerCase();
-        return name.includes(term) || legal.includes(term);
+        return hayCoincidencia;
       });
 
-      renderSuppliers(filtered);
-    }
+      renderTable(filtered);
 
-    function openSupplierModal(id) {
-      const m = document.getElementById('supplierModal');
-      m.style.display = 'flex';
-
-      if (id) {
-        const s = suppliers.find((x) => x.id === id);
-        if (!s) return;
-
-        document.getElementById('supId').value = s.id;
-        document.getElementById('supName').value = s.name || '';
-        document.getElementById('supLegalName').value = s.legal_name || '';
-        document.getElementById('supCuit').value = s.cuit || '';
-        document.getElementById('supCat').value = s.category || 'VARIOS';
-        document.getElementById('supCostCenter').value = s.cost_center || '';
-        document.getElementById('supBilling').value = s.billing_condition || '';
-        document.getElementById('supPaymentTerms').value = s.payment_terms || '';
-        document.getElementById('supContact').value = s.contact_info || '';
-        document.getElementById('supBankName').value = s.bank_name || '';
-        document.getElementById('supBankAlias').value = s.bank_account_alias || '';
-        document.getElementById('supBankCbu').value = s.bank_account_cbu || '';
-        document.getElementById('supIsActive').checked = s.is_active !== false;
+      if (!filtered.length) {
+        statusEl.textContent = 'No se encontraron proveedores con los filtros actuales.';
       } else {
-        document.getElementById('supId').value = '';
-        document.getElementById('supName').value = '';
-        document.getElementById('supLegalName').value = '';
-        document.getElementById('supCuit').value = '';
-        document.getElementById('supCat').value = 'BEBIDAS';
-        document.getElementById('supCostCenter').value = '';
-        document.getElementById('supBilling').value = '';
-        document.getElementById('supPaymentTerms').value = '';
-        document.getElementById('supContact').value = '';
-        document.getElementById('supBankName').value = '';
-        document.getElementById('supBankAlias').value = '';
-        document.getElementById('supBankCbu').value = '';
-        document.getElementById('supIsActive').checked = true;
+        statusEl.textContent = '';
       }
     }
 
-    function closeSupplierModal() {
-      document.getElementById('supplierModal').style.display = 'none';
+    function renderTable(rows) {
+      tableBody.innerHTML = '';
+
+      rows.forEach((sup) => {
+        const tr = document.createElement('tr');
+
+        const contactInfo = parseContactInfo(sup.contact_info);
+
+        // PROVEEDOR
+        const tdProv = document.createElement('td');
+        const legalLabel = sup.legal_name ? sup.legal_name : 'Razón social no cargada';
+        const extraContact = contactInfo.contact || contactInfo.responsible
+          ? `${contactInfo.responsible || ''}${contactInfo.responsible && contactInfo.contact ? ' · ' : ''}${contactInfo.contact || ''}`
+          : '';
+        tdProv.innerHTML = `
+          <div class="row-title">${sup.name || '-'}</div>
+          <div class="row-sub-text">CUIT: ${sup.cuit || '-'}</div>
+          <div class="row-sub-text">${legalLabel}</div>
+          ${extraContact ? `<div class="row-sub-text">${extraContact}</div>` : ''}
+        `;
+
+        // CATEGORÍA
+        const tdCat = document.createElement('td');
+        tdCat.textContent = sup.category || '-';
+
+        // CENTRO COSTO
+        const tdCC = document.createElement('td');
+        tdCC.textContent = sup.cost_center || '-';
+
+        // FACTURACIÓN
+        const tdFact = document.createElement('td');
+        tdFact.textContent = sup.billing_condition || '-';
+
+        // PLAZO
+        const tdPlazo = document.createElement('td');
+        tdPlazo.textContent = sup.payment_terms || '-';
+
+        // ESTADO
+        const tdEstado = document.createElement('td');
+        const tag = document.createElement('span');
+        tag.className = 'tag ' + (sup.is_active === false ? 'tag-red' : 'tag-green');
+        tag.textContent = sup.is_active === false ? 'INACTIVO' : 'ACTIVO';
+        tdEstado.appendChild(tag);
+
+        // ACCIONES
+        const tdAcciones = document.createElement('td');
+        tdAcciones.className = 'text-right';
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn-secondary';
+        editBtn.textContent = 'Editar';
+        editBtn.style.marginRight = '6px';
+        editBtn.addEventListener('click', () => openEditModal(sup.id));
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn-secondary';
+        deleteBtn.textContent = 'Eliminar';
+        deleteBtn.style.borderColor = 'rgba(255, 10, 30, 0.7)';
+        deleteBtn.style.color = '#FF0A1E';
+        deleteBtn.addEventListener('click', () => handleDeleteSupplier(sup.id));
+
+        tdAcciones.appendChild(editBtn);
+        tdAcciones.appendChild(deleteBtn);
+
+        tr.append(tdProv, tdCat, tdCC, tdFact, tdPlazo, tdEstado, tdAcciones);
+        tableBody.appendChild(tr);
+      });
     }
 
-    async function saveSupplier() {
-      const id = document.getElementById('supId').value;
-      const name = document.getElementById('supName').value.trim();
+    function openCreateModal() {
+      editingSupplierId = null;
+      modalSubtitle.textContent = 'Crear nuevo proveedor.';
+      deleteSupplierBtn.style.display = 'none';
 
-      if (!name) {
+      sNameCommercial.value = '';
+      sLegalName.value = '';
+      sCuit.value = '';
+      sResponsible.value = '';
+      sContact.value = '';
+      sCategory.value = '';
+      sCostCenter.value = '';
+      sBillCond.value = '';
+      sPaymentTerms.value = '';
+      sBankName.value = '';
+      sBankAlias.value = '';
+      sNotes.value = '';
+
+      toggleCuit();
+      openModal();
+    }
+
+    function openEditModal(id) {
+      const sup = allSuppliers.find((s) => s.id === id);
+      if (!sup) return;
+
+      editingSupplierId = id;
+      modalSubtitle.textContent = 'Editar proveedor existente.';
+      deleteSupplierBtn.style.display = 'inline-flex';
+
+      const contactInfo = parseContactInfo(sup.contact_info);
+
+      sNameCommercial.value = sup.name || '';
+      sLegalName.value = sup.legal_name || '';
+      sCuit.value = sup.cuit || '';
+      sResponsible.value = contactInfo.responsible || '';
+      sContact.value = contactInfo.contact || '';
+      sCategory.value = sup.category || '';
+      sCostCenter.value = sup.cost_center || '';
+      sBillCond.value = sup.billing_condition || '';
+      sPaymentTerms.value = sup.payment_terms || '';
+      sBankName.value = sup.bank_name || '';
+      sBankAlias.value = sup.bank_account_alias || '';
+      sNotes.value = contactInfo.notes || '';
+
+      toggleCuit();
+      openModal();
+    }
+
+    function openModal() {
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+      editingSupplierId = null;
+    }
+
+    function parseContactInfo(raw) {
+      if (!raw) {
+        return { responsible: '', contact: '', notes: '' };
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        return {
+          responsible: parsed.responsible || '',
+          contact: parsed.contact || '',
+          notes: parsed.notes || ''
+        };
+      } catch (e) {
+        // Formato viejo: texto plano (lo tratamos como "contacto")
+        return { responsible: '', contact: String(raw), notes: '' };
+      }
+    }
+
+    function toggleCuit() {
+      const value = sBillCond.value;
+      const needsCuit = value && value !== 'SIN_FACTURA' && value !== 'RECIBO_X';
+      sCuit.disabled = !needsCuit;
+      if (!needsCuit) {
+        sCuit.value = '';
+      }
+    }
+
+    async function handleSaveSupplier() {
+      const nameVal = sNameCommercial.value.trim();
+      if (!nameVal) {
         alert('El nombre comercial es obligatorio.');
         return;
       }
 
       const payload = {
-        name,
-        legal_name: document.getElementById('supLegalName').value.trim() || null,
-        cuit: document.getElementById('supCuit').value.trim() || null,
-        category: document.getElementById('supCat').value || 'VARIOS',
-        cost_center: document.getElementById('supCostCenter').value.trim() || null,
-        billing_condition: document.getElementById('supBilling').value.trim() || null,
-        payment_terms: document.getElementById('supPaymentTerms').value.trim() || null,
-        contact_info: document.getElementById('supContact').value.trim() || null,
-        bank_name: document.getElementById('supBankName').value.trim() || null,
-        bank_account_alias: document.getElementById('supBankAlias').value.trim() || null,
-        bank_account_cbu: document.getElementById('supBankCbu').value.trim() || null,
-        is_active: document.getElementById('supIsActive').checked
+        name: nameVal,
+        legal_name: sLegalName.value.trim() || null,
+        cuit: sCuit.disabled ? null : (sCuit.value.trim() || null),
+        category: sCategory.value || null,
+        cost_center: sCostCenter.value || null,
+        billing_condition: sBillCond.value || null,
+        payment_terms: sPaymentTerms.value || null,
+        bank_name: sBankName.value.trim() || null,
+        bank_account_alias: sBankAlias.value.trim() || null,
+        bank_account_cbu: null, // si luego querés diferenciar alias y CBU, se puede ampliar
+        contact_info: JSON.stringify({
+          responsible: sResponsible.value.trim() || null,
+          contact: sContact.value.trim() || null,
+          notes: sNotes.value.trim() || null
+        })
       };
 
       try {
-        if (id) {
+        saveSupplierBtn.disabled = true;
+        saveSupplierBtn.textContent = 'Guardando...';
+
+        if (editingSupplierId == null) {
+          // Alta
+          const { error } = await client
+            .from('suppliers')
+            .insert({ ...payload, is_active: true });
+
+          if (error) throw error;
+        } else {
+          // Edición
           const { error } = await client
             .from('suppliers')
             .update(payload)
-            .eq('id', id);
-          if (error) throw error;
-        } else {
-          const { error } = await client
-            .from('suppliers')
-            .insert(payload);
+            .eq('id', editingSupplierId);
+
           if (error) throw error;
         }
 
-        closeSupplierModal();
+        closeModal();
         await loadSuppliers();
+
+        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
+          MC_UTILS.showToast('Proveedor guardado correctamente.');
+        }
       } catch (err) {
-        console.error('Error guardando proveedor:', err);
-        alert('No se pudo guardar el proveedor. Revisa los datos.');
+        console.error('Error al guardar proveedor', err);
+        alert('No se pudo guardar el proveedor. Revisá los datos e intentá nuevamente.');
+      } finally {
+        saveSupplierBtn.disabled = false;
+        saveSupplierBtn.textContent = 'Guardar';
+      }
+    }
+
+    async function handleDeleteSupplier(id) {
+      const sup = allSuppliers.find((s) => s.id === id);
+      if (!sup) return;
+
+      const confirmado = confirm(
+        `¿Eliminar proveedor "${sup.name}"?\n\nSe marcará como inactivo (no se borra el histórico).`
+      );
+      if (!confirmado) return;
+
+      try {
+        const { error } = await client
+          .from('suppliers')
+          .update({ is_active: false })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        closeModal();
+        await loadSuppliers();
+
+        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
+          MC_UTILS.showToast('Proveedor eliminado (marcado como inactivo).');
+        }
+      } catch (err) {
+        console.error('Error al eliminar proveedor', err);
+        alert('No se pudo eliminar el proveedor. Intenta nuevamente.');
       }
     }
   </script>
