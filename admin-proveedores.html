@@ -185,6 +185,14 @@
           <label class="input-label" for="sNotes">Notas</label>
           <textarea id="sNotes" class="modal-input" rows="3" style="resize:vertical;"></textarea>
         </div>
+
+        <!-- TOGGLE ACTIVO -->
+        <div class="mt-2" style="display:flex; align-items:center; gap:8px;">
+          <label class="section-desc" style="margin:0; font-size:11px; display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="sIsActive" style="margin:0;" />
+            Proveedor activo
+          </label>
+        </div>
       </form>
 
       <div class="modal-btns">
@@ -226,6 +234,7 @@
     const sBankName = document.getElementById('sBankName');
     const sBankAlias = document.getElementById('sBankAlias');
     const sNotes = document.getElementById('sNotes');
+    const sIsActive = document.getElementById('sIsActive');
 
     let allSuppliers = [];
     let editingSupplierId = null;
@@ -359,7 +368,7 @@
         editBtn.className = 'btn-secondary';
         editBtn.textContent = 'Editar';
         editBtn.style.marginRight = '6px';
-        editBtn.addEventListener('click', () => openEditModal(sup.id));
+        editBtn.addEventListener('click', => openEditModal(sup.id));
 
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
@@ -394,6 +403,7 @@
       sBankName.value = '';
       sBankAlias.value = '';
       sNotes.value = '';
+      sIsActive.checked = true; // alta = activo por defecto
 
       toggleCuit();
       openModal();
@@ -421,6 +431,7 @@
       sBankName.value = sup.bank_name || '';
       sBankAlias.value = sup.bank_account_alias || '';
       sNotes.value = contactInfo.notes || '';
+      sIsActive.checked = sup.is_active !== false; // null/true => true
 
       toggleCuit();
       openModal();
@@ -478,12 +489,13 @@
         payment_terms: sPaymentTerms.value || null,
         bank_name: sBankName.value.trim() || null,
         bank_account_alias: sBankAlias.value.trim() || null,
-        bank_account_cbu: null, // si luego querés diferenciar alias y CBU, se puede ampliar
+        bank_account_cbu: null,
         contact_info: JSON.stringify({
           responsible: sResponsible.value.trim() || null,
           contact: sContact.value.trim() || null,
           notes: sNotes.value.trim() || null
-        })
+        }),
+        is_active: !!sIsActive.checked
       };
 
       try {
@@ -494,7 +506,7 @@
           // Alta
           const { error } = await client
             .from('suppliers')
-            .insert({ ...payload, is_active: true });
+            .insert(payload);
 
           if (error) throw error;
         } else {
