@@ -33,7 +33,6 @@
       </p>
     </section>
 
-    <!-- Barra de controles: búsqueda + filtros + alta -->
     <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-bottom:12px;">
       <div style="display:flex; gap:8px; align-items:center;">
         <input
@@ -69,14 +68,11 @@
             <th class="text-right">ACCIONES</th>
           </tr>
         </thead>
-        <tbody>
-          <!-- filas dinámicas -->
-        </tbody>
+        <tbody></tbody>
       </table>
     </div>
   </main>
 
-  <!-- MODAL ALTA / EDICIÓN PROVEEDOR -->
   <div class="modal-overlay" id="supplierModal">
     <div class="modal-box">
       <h2 class="section-title" style="font-size:18px; letter-spacing:0.14em; text-align:left;">
@@ -87,7 +83,6 @@
       </p>
 
       <form id="supplierForm">
-        <!-- NOMBRE COMERCIAL | RAZÓN SOCIAL | CUIT -->
         <div class="mt-2">
           <label class="input-label" for="sNameCommercial">Nombre comercial</label>
           <input id="sNameCommercial" class="modal-input" type="text" required />
@@ -100,10 +95,17 @@
 
         <div class="mt-2">
           <label class="input-label" for="sCuit">CUIT</label>
-          <input id="sCuit" class="modal-input" type="text" placeholder="Sin puntos ni guiones" />
+          <input
+            id="sCuit"
+            class="modal-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            maxlength="11"
+            placeholder="11 dígitos (sin puntos ni guiones)"
+          />
         </div>
 
-        <!-- RESPONSABLE | CONTACTO -->
         <div class="mt-2">
           <label class="input-label" for="sResponsible">Responsable</label>
           <input id="sResponsible" class="modal-input" type="text" placeholder="Nombre de la persona de contacto" />
@@ -114,7 +116,6 @@
           <input id="sContact" class="modal-input" type="text" placeholder="Teléfono / email" />
         </div>
 
-        <!-- CATEGORÍA | CENTRO DE COSTO -->
         <div class="mt-2">
           <label class="input-label" for="sCategory">Categoría</label>
           <select id="sCategory" class="modal-select">
@@ -141,10 +142,9 @@
           </select>
         </div>
 
-        <!-- TIPO DE FACTURACIÓN | PLAZO DE PAGO -->
         <div class="mt-2">
           <label class="input-label" for="sBillCond">Tipo de facturación</label>
-          <select id="sBillCond" class="modal-select" onchange="toggleCuit()">
+          <select id="sBillCond" class="modal-select">
             <option value="">Seleccionar</option>
             <option value="FACTURA_A">Factura A</option>
             <option value="FACTURA_ALIC_RED">Factura A (Alic. Reducida)</option>
@@ -169,7 +169,6 @@
           </select>
         </div>
 
-        <!-- BANCO | ALIAS/CBU -->
         <div class="mt-2">
           <label class="input-label" for="sBankName">Banco</label>
           <input id="sBankName" class="modal-input" type="text" placeholder="Nombre del banco" />
@@ -180,13 +179,11 @@
           <input id="sBankAlias" class="modal-input" type="text" placeholder="Alias o CBU" />
         </div>
 
-        <!-- NOTAS -->
         <div class="mt-2">
           <label class="input-label" for="sNotes">Notas</label>
           <textarea id="sNotes" class="modal-input" rows="3" style="resize:vertical;"></textarea>
         </div>
 
-        <!-- TOGGLE ACTIVO -->
         <div class="mt-2" style="display:flex; align-items:center; gap:8px;">
           <label class="section-desc" style="margin:0; font-size:11px; display:flex; align-items:center; gap:6px;">
             <input type="checkbox" id="sIsActive" style="margin:0;" />
@@ -248,26 +245,30 @@
       newSupplierBtn.addEventListener('click', () => openCreateModal());
       cancelModalBtn.addEventListener('click', closeModal);
       saveSupplierBtn.addEventListener('click', handleSaveSupplier);
+
       deleteSupplierBtn.addEventListener('click', () => {
-        if (editingSupplierId != null) {
-          handleDeleteSupplier(editingSupplierId);
-        }
+        if (editingSupplierId != null) handleDeleteSupplier(editingSupplierId);
       });
 
       searchInput.addEventListener('input', applyFiltersAndRender);
       showInactiveCheckbox.addEventListener('change', applyFiltersAndRender);
 
-      // Cerrar modal con ESC
+      // ✅ CUIT: permitir escribir siempre + dejar solo dígitos (hasta 11)
+      sCuit.addEventListener('input', () => {
+        const cleaned = (sCuit.value || '').replace(/\D/g, '').slice(0, 11);
+        if (sCuit.value !== cleaned) sCuit.value = cleaned;
+      });
+
+      // ✅ Antes lo deshabilitabas. Ahora solo marca "obligatorio" según facturación.
+      sBillCond.addEventListener('change', toggleCuit);
+
       document.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Escape' && modal.style.display === 'flex') {
-          closeModal();
-        }
+        if (ev.key === 'Escape' && modal.style.display === 'flex') closeModal();
       });
     }
 
     async function loadSuppliers() {
       statusEl.textContent = 'Cargando proveedores...';
-
       try {
         const { data, error } = await client
           .from('suppliers')
@@ -291,28 +292,21 @@
 
       const filtered = allSuppliers.filter((sup) => {
         if (!showInactive && sup.is_active === false) return false;
-
         if (!term) return true;
 
         const contactInfo = parseContactInfo(sup.contact_info);
-        const hayCoincidencia =
+        return (
           (sup.name || '').toLowerCase().includes(term) ||
           (sup.legal_name || '').toLowerCase().includes(term) ||
           (sup.cuit || '').toLowerCase().includes(term) ||
           (sup.category || '').toLowerCase().includes(term) ||
           (contactInfo.contact || '').toLowerCase().includes(term) ||
-          (contactInfo.responsible || '').toLowerCase().includes(term);
-
-        return hayCoincidencia;
+          (contactInfo.responsible || '').toLowerCase().includes(term)
+        );
       });
 
       renderTable(filtered);
-
-      if (!filtered.length) {
-        statusEl.textContent = 'No se encontraron proveedores con los filtros actuales.';
-      } else {
-        statusEl.textContent = '';
-      }
+      statusEl.textContent = filtered.length ? '' : 'No se encontraron proveedores con los filtros actuales.';
     }
 
     function renderTable(rows) {
@@ -320,10 +314,8 @@
 
       rows.forEach((sup) => {
         const tr = document.createElement('tr');
-
         const contactInfo = parseContactInfo(sup.contact_info);
 
-        // PROVEEDOR
         const tdProv = document.createElement('td');
         const legalLabel = sup.legal_name ? sup.legal_name : 'Razón social no cargada';
         const extraContact = contactInfo.contact || contactInfo.responsible
@@ -336,30 +328,24 @@
           ${extraContact ? `<div class="row-sub-text">${extraContact}</div>` : ''}
         `;
 
-        // CATEGORÍA
         const tdCat = document.createElement('td');
         tdCat.textContent = sup.category || '-';
 
-        // CENTRO COSTO
         const tdCC = document.createElement('td');
         tdCC.textContent = sup.cost_center || '-';
 
-        // FACTURACIÓN
         const tdFact = document.createElement('td');
         tdFact.textContent = sup.billing_condition || '-';
 
-        // PLAZO
         const tdPlazo = document.createElement('td');
         tdPlazo.textContent = sup.payment_terms || '-';
 
-        // ESTADO
         const tdEstado = document.createElement('td');
         const tag = document.createElement('span');
         tag.className = 'tag ' + (sup.is_active === false ? 'tag-red' : 'tag-green');
         tag.textContent = sup.is_active === false ? 'INACTIVO' : 'ACTIVO';
         tdEstado.appendChild(tag);
 
-        // ACCIONES
         const tdAcciones = document.createElement('td');
         tdAcciones.className = 'text-right';
 
@@ -403,7 +389,7 @@
       sBankName.value = '';
       sBankAlias.value = '';
       sNotes.value = '';
-      sIsActive.checked = true; // alta = activo por defecto
+      sIsActive.checked = true;
 
       toggleCuit();
       openModal();
@@ -421,7 +407,7 @@
 
       sNameCommercial.value = sup.name || '';
       sLegalName.value = sup.legal_name || '';
-      sCuit.value = sup.cuit || '';
+      sCuit.value = (sup.cuit || '').replace(/\D/g, '').slice(0, 11);
       sResponsible.value = contactInfo.responsible || '';
       sContact.value = contactInfo.contact || '';
       sCategory.value = sup.category || '';
@@ -431,7 +417,7 @@
       sBankName.value = sup.bank_name || '';
       sBankAlias.value = sup.bank_account_alias || '';
       sNotes.value = contactInfo.notes || '';
-      sIsActive.checked = sup.is_active !== false; // null/true => true
+      sIsActive.checked = sup.is_active !== false;
 
       toggleCuit();
       openModal();
@@ -447,9 +433,7 @@
     }
 
     function parseContactInfo(raw) {
-      if (!raw) {
-        return { responsible: '', contact: '', notes: '' };
-      }
+      if (!raw) return { responsible: '', contact: '', notes: '' };
       try {
         const parsed = JSON.parse(raw);
         return {
@@ -458,18 +442,21 @@
           notes: parsed.notes || ''
         };
       } catch (e) {
-        // Formato viejo: texto plano (lo tratamos como "contacto")
         return { responsible: '', contact: String(raw), notes: '' };
       }
     }
 
+    function requiresCuitForBilling(billingValue) {
+      const v = (billingValue || '').trim();
+      return !!(v && v !== 'SIN_FACTURA' && v !== 'RECIBO_X');
+    }
+
     function toggleCuit() {
-      const value = sBillCond.value;
-      const needsCuit = value && value !== 'SIN_FACTURA' && value !== 'RECIBO_X';
-      sCuit.disabled = !needsCuit;
-      if (!needsCuit) {
-        sCuit.value = '';
-      }
+      // ✅ NO deshabilita el input (antes lo hacías y por eso no se podía escribir)
+      const req = requiresCuitForBilling(sBillCond.value);
+      sCuit.required = req;
+      sCuit.disabled = false;
+      sCuit.placeholder = req ? '11 dígitos (sin puntos ni guiones)' : 'Opcional (11 dígitos)';
     }
 
     async function handleSaveSupplier() {
@@ -479,17 +466,25 @@
         return;
       }
 
+      const cuitClean = (sCuit.value || '').replace(/\D/g, '').trim();
+      const needsCuit = requiresCuitForBilling(sBillCond.value);
+
+      if (needsCuit && cuitClean.length !== 11) {
+        alert('CUIT inválido: deben ser 11 dígitos.');
+        return;
+      }
+
       const payload = {
         name: nameVal,
         legal_name: sLegalName.value.trim() || null,
-        cuit: sCuit.disabled ? null : (sCuit.value.trim() || null),
+        cuit: cuitClean ? cuitClean : null,
         category: sCategory.value || null,
         cost_center: sCostCenter.value || null,
         billing_condition: sBillCond.value || null,
         payment_terms: sPaymentTerms.value || null,
         bank_name: sBankName.value.trim() || null,
         bank_account_alias: sBankAlias.value.trim() || null,
-        bank_account_cbu: null,
+        // ⚠️ No mandamos bank_account_cbu para no pisarlo con null si ya existiera
         contact_info: JSON.stringify({
           responsible: sResponsible.value.trim() || null,
           contact: sContact.value.trim() || null,
@@ -503,19 +498,10 @@
         saveSupplierBtn.textContent = 'Guardando...';
 
         if (editingSupplierId == null) {
-          // Alta
-          const { error } = await client
-            .from('suppliers')
-            .insert(payload);
-
+          const { error } = await client.from('suppliers').insert(payload);
           if (error) throw error;
         } else {
-          // Edición
-          const { error } = await client
-            .from('suppliers')
-            .update(payload)
-            .eq('id', editingSupplierId);
-
+          const { error } = await client.from('suppliers').update(payload).eq('id', editingSupplierId);
           if (error) throw error;
         }
 
