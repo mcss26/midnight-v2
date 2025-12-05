@@ -4,8 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Proveedores</title>
+
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 </head>
@@ -13,7 +15,7 @@
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo"></div>
+        <div class="admin-logo">MIDNIGHT<span class="logo-accent">MASTER</span></div>
         <div class="admin-header-right">
           <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
         </div>
@@ -22,31 +24,52 @@
   </header>
 
   <main class="admin-container">
-    <div class="section-header" style="justify-content: space-between; flex-direction: row; align-items: center;">
+    <!-- HEADER + BUSCADOR + CTA -->
+    <div class="section-header" style="align-items:flex-start; gap:14px; margin-bottom:16px;">
       <div>
         <h2 class="section-title">PROVEEDORES</h2>
-        <p class="section-desc">Directorio fiscal y bancario para compras y calendario de pagos.</p>
+        <p class="section-desc">
+          Directorio fiscal y bancario para órdenes de compra y calendario de pagos.
+        </p>
       </div>
-      <button class="btn-primary" onclick="openSupplierModal()">+ NUEVO PROVEEDOR</button>
+
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:flex-end; width:100%; max-width:620px;">
+        <input
+          type="text"
+          id="searchSupplier"
+          class="search-input-admin"
+          placeholder="Buscar por nombre comercial o razón social…"
+          oninput="filterSuppliers()"
+          style="flex:1; min-width:220px;"
+        />
+        <button class="btn-primary" onclick="openSupplierModal()">+ NUEVO PROVEEDOR</button>
+      </div>
     </div>
 
-    <input
-      type="text"
-      id="searchSupplier"
-      class="search-input-admin"
-      placeholder="Buscar proveedor por nombre o razón social..."
-      oninput="filterSuppliers()"
-    />
+    <!-- RESUMEN SUPERIOR -->
+    <div id="supSummary" class="stock-summary" style="margin-top:0;">
+      <!-- Se completa por JS -->
+      <div class="stock-summary-label">RESUMEN</div>
+      <div class="stock-summary-value">Sin proveedores cargados.</div>
+    </div>
 
-    <div class="table-container" style="margin-top:12px;">
+    <!-- TABLA PRINCIPAL -->
+    <div class="table-container" style="margin-top:16px;">
       <table class="sku-table">
+        <colgroup>
+          <col style="width:26%;">
+          <col style="width:28%;">
+          <col style="width:32%;">
+          <col style="width:9%;">
+          <col style="width:5%;">
+        </colgroup>
         <thead>
           <tr>
             <th style="padding-left:25px;">PROVEEDOR</th>
-            <th>FISCAL</th>
+            <th>DATOS FISCALES</th>
             <th>DATOS DE PAGO</th>
             <th>ESTADO</th>
-            <th style="width:60px;"></th>
+            <th style="text-align:center;">ACCIONES</th>
           </tr>
         </thead>
         <tbody id="suppliersList"></tbody>
@@ -62,16 +85,31 @@
       <input type="hidden" id="supId" />
 
       <label class="input-label">NOMBRE COMERCIAL</label>
-      <input type="text" id="supName" class="modal-input" placeholder="Ej: DISTRIBUIDORA X" />
+      <input
+        type="text"
+        id="supName"
+        class="modal-input"
+        placeholder="Ej: DISTRIBUIDORA X"
+      />
 
       <div style="display:flex; gap:15px; margin-top:12px;">
         <div style="flex:1;">
           <label class="input-label">RAZÓN SOCIAL</label>
-          <input type="text" id="supLegalName" class="modal-input" placeholder="Ej: DISTRIBUIDORA X SRL" />
+          <input
+            type="text"
+            id="supLegalName"
+            class="modal-input"
+            placeholder="Ej: DISTRIBUIDORA X SRL"
+          />
         </div>
         <div style="flex:1;">
           <label class="input-label">CUIT</label>
-          <input type="text" id="supCuit" class="modal-input" placeholder="Ej: 30-00000000-0" />
+          <input
+            type="text"
+            id="supCuit"
+            class="modal-input"
+            placeholder="Ej: 30-00000000-0"
+          />
         </div>
       </div>
 
@@ -88,7 +126,12 @@
         </div>
         <div style="flex:1;">
           <label class="input-label">CENTRO DE COSTO</label>
-          <input type="text" id="supCostCenter" class="modal-input" placeholder="Ej: BARRA / SERVICIOS" />
+          <input
+            type="text"
+            id="supCostCenter"
+            class="modal-input"
+            placeholder="Ej: BARRA / SERVICIOS"
+          />
         </div>
       </div>
 
@@ -118,7 +161,7 @@
         id="supContact"
         class="modal-input"
         style="height:70px;"
-        placeholder="Teléfono, mail, contacto comercial..."
+        placeholder="Teléfono, mail, contacto comercial…"
       ></textarea>
 
       <div style="margin-top:14px;">
@@ -169,28 +212,67 @@
     document.addEventListener('DOMContentLoaded', loadSuppliers);
 
     async function loadSuppliers() {
-      const { data, error } = await client
-        .from('suppliers')
-        .select('*')
-        .order('name', { ascending: true });
+      const tb = document.getElementById('suppliersList');
 
-      if (error) {
-        console.error('Error cargando proveedores:', error);
-        const tb = document.getElementById('suppliersList');
+      try {
+        const { data, error } = await client
+          .from('suppliers')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.error('Error cargando proveedores:', error);
+          suppliers = [];
+          tb.innerHTML =
+            '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--state-error);">Error al cargar proveedores.</td></tr>';
+          updateSuppliersSummary();
+          return;
+        }
+
+        suppliers = data || [];
+        updateSuppliersSummary();
+        renderSuppliers(suppliers);
+      } catch (err) {
+        console.error('Error inesperado cargando proveedores:', err);
+        suppliers = [];
         tb.innerHTML =
           '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--state-error);">Error al cargar proveedores.</td></tr>';
+        updateSuppliersSummary();
+      }
+    }
+
+    function updateSuppliersSummary() {
+      const box = document.getElementById('supSummary');
+      if (!box) return;
+
+      const total = suppliers.length;
+      const active = suppliers.filter(s => s.is_active !== false).length;
+      const inactive = total - active;
+
+      if (!total) {
+        box.innerHTML = `
+          <div class="stock-summary-label">RESUMEN</div>
+          <div class="stock-summary-value">Sin proveedores cargados.</div>
+        `;
         return;
       }
 
-      suppliers = data || [];
-      renderSuppliers(suppliers);
+      box.innerHTML = `
+        <div class="stock-summary-label">RESUMEN</div>
+        <div class="stock-summary-value">
+          ${total} proveedor${total !== 1 ? 'es' : ''} ·
+          ${active} activo${active !== 1 ? 's' : ''} ·
+          ${inactive} inactivo${inactive !== 1 ? 's' : ''}
+        </div>
+      `;
     }
 
     function renderSuppliers(list) {
       const tb = document.getElementById('suppliersList');
+
       if (!list.length) {
         tb.innerHTML =
-          '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-secondary);">Sin proveedores cargados.</td></tr>';
+          '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-secondary);">Sin proveedores para los filtros actuales.</td></tr>';
         return;
       }
 
@@ -215,20 +297,33 @@
           const estadoLabel = s.is_active ? 'ACTIVO' : 'INACTIVO';
           const estadoClass = s.is_active ? 'tag-green' : 'tag-red';
 
+          const contactLine = s.contact_info ? `<div class="row-sub-text">${s.contact_info}</div>` : '';
+
+          let fiscalExtra = '';
+          if (billing !== '-' || payTerms !== '-') {
+            const parts = [];
+            if (billing !== '-') parts.push(`Facturación: ${billing}`);
+            if (payTerms !== '-') parts.push(`Pago: ${payTerms}`);
+            fiscalExtra = `<div class="row-sub-text">${parts.join(' · ')}</div>`;
+          }
+
           return `
             <tr>
               <td style="padding-left:25px;">
                 <div class="row-title">${provName}</div>
                 <div class="row-sub-text">
                   <span class="tag tag-gray">${cat}</span>
-                  ${s.cost_center ? ` · CC: ${s.cost_center}` : ''}
+                  ${s.cost_center ? `<span style="margin-left:6px;">CC: ${s.cost_center}</span>` : ''}
                 </div>
+                ${contactLine}
               </td>
               <td>
                 <div class="row-title">${legal}</div>
-                <div class="row-sub-text">CUIT: ${cuit}</div>
-                <div class="row-sub-text">Facturación: ${billing}</div>
-                <div class="row-sub-text">Pago: ${payTerms}</div>
+                <div class="row-sub-text">
+                  CUIT:
+                  <span style="font-variant-numeric:tabular-nums;">${cuit}</span>
+                </div>
+                ${fiscalExtra || '<div class="row-sub-text">—</div>'}
               </td>
               <td>
                 <div class="row-sub-text">${bankLine}</div>
