@@ -1203,3 +1203,34 @@ textarea.modal-input {
     min-height: 130px;
   }
 }
+
+ /* SKUs – toolbar + tabs */
+.skus-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.skus-toolbar-left,
+.skus-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.skus-toolbar-toggle {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+}
+
+.skus-tabs .tab-nav {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}

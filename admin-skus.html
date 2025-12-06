@@ -10,25 +10,30 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="session.js" defer></script>
   <script src="config.js"></script>
 </head>
 <body>
-  <!-- HEADER -->
+  <!-- HEADER ESTÁNDAR -->
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo"></div>
-        <div class="admin-header-right">
+        <div>
           <button class="btn-back" onclick="window.location.href='panel-master.html'">
-            VOLVER
+            ← Volver
           </button>
+        </div>
+        <div class="admin-logo" aria-hidden="true"></div>
+        <div class="admin-header-right">
+          <div class="session-chip" data-session-chip>Sesión no vinculada</div>
+          <button type="button" class="btn-logout" data-session-logout>Salir</button>
         </div>
       </div>
     </div>
   </header>
 
   <main class="admin-container">
-    <!-- TITULO -->
+    <!-- TITULO + DESC -->
     <section class="section-header">
       <h1 class="section-title">INSUMOS / SKUs</h1>
       <p class="section-desc">
@@ -37,21 +42,21 @@
     </section>
 
     <!-- BARRA SUPERIOR: BUSCADOR + VER INACTIVOS + BOTONES -->
-    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-bottom:12px;">
-      <div style="display:flex; gap:8px; align-items:center;">
+    <div class="skus-toolbar">
+      <div class="skus-toolbar-left">
         <input
           id="searchSkus"
           class="search-input-admin"
           type="text"
           placeholder="Buscar por nombre o código externo..."
         />
-        <label class="section-desc" style="margin:0; font-size:11px; display:flex; align-items:center; gap:4px;">
-          <input type="checkbox" id="showInactiveSkus" style="margin:0;" />
+        <label class="skus-toolbar-toggle">
+          <input type="checkbox" id="showInactiveSkus" />
           Ver inactivos
         </label>
       </div>
 
-      <div style="display:flex; gap:12px; align-items:center;">
+      <div class="skus-toolbar-right">
         <button class="btn-secondary" type="button" id="importSkusBtn">
           Importar lista precios
         </button>
@@ -61,18 +66,18 @@
       </div>
     </div>
 
-    <!-- TABS POR CATEGORÍA -->
-    <div class="mt-2">
-      <div class="tab-nav" id="skuCategoryTabs">
-        <button class="tab-btn active" data-cat="">Todos</button>
-        <button class="tab-btn" data-cat="BEBIDAS">Bebidas</button>
-        <button class="tab-btn" data-cat="INSUMOS_BARRA">Insumos barra</button>
-        <button class="tab-btn" data-cat="LIMPIEZA">Limpieza</button>
-        <button class="tab-btn" data-cat="LIBRERIA">Librería</button>
-        <button class="tab-btn" data-cat="MANTENIMIENTO">Mantenimiento</button>
-        <button class="tab-btn" data-cat="OTROS">Otros</button>
+    <!-- TABS CATEGORÍAS -->
+    <nav class="skus-tabs">
+      <div class="tab-nav">
+        <button type="button" class="tab-btn active" data-skus-category-tab="ALL">Todos</button>
+        <button type="button" class="tab-btn" data-skus-category-tab="BEBIDAS">Bebidas</button>
+        <button type="button" class="tab-btn" data-skus-category-tab="INSUMOS_BARRA">Insumos barra</button>
+        <button type="button" class="tab-btn" data-skus-category-tab="LIMPIEZA">Limpieza</button>
+        <button type="button" class="tab-btn" data-skus-category-tab="LIBRERIA">Librería</button>
+        <button type="button" class="tab-btn" data-skus-category-tab="MANTENIMIENTO">Mantenimiento</button>
+        <button type="button" class="tab-btn" data-skus-category-tab="OTROS">Otros</button>
       </div>
-    </div>
+    </nav>
 
     <div id="skusStatus" class="section-desc"></div>
 
@@ -109,24 +114,22 @@
       <form id="skuForm">
         <input type="hidden" id="skuId" />
 
-        <!-- NOMBRE -->
         <div class="mt-2">
           <label class="input-label" for="skuName">Nombre del insumo</label>
           <input id="skuName" class="modal-input" type="text" placeholder="Ej: VODKA ABSOLUT 750ML" required />
         </div>
 
-        <!-- CÓDIGO EXTERNO -->
         <div class="mt-2">
           <label class="input-label" for="skuCode">Código externo</label>
           <input id="skuCode" class="modal-input" type="text" placeholder="Código en Gbol / proveedor" />
         </div>
 
-        <!-- CATEGORÍA (DESPLEGABLE FIJO) -->
         <div class="mt-2">
           <label class="input-label" for="skuCategory">Categoría</label>
           <select id="skuCategory" class="modal-select">
+            <option value="">Sin definir</option>
             <option value="BEBIDAS">Bebidas</option>
-            <option value="INSUMOS_BARRA">Insumos barra</option>
+            <option value="INSUMOS BARRA">Insumos barra</option>
             <option value="LIMPIEZA">Limpieza</option>
             <option value="LIBRERIA">Librería</option>
             <option value="MANTENIMIENTO">Mantenimiento</option>
@@ -134,61 +137,30 @@
           </select>
         </div>
 
-        <!-- FAMILIA (OPCIONAL / LEGACY) -->
         <div class="mt-2">
           <label class="input-label" for="skuFamily">Familia (opcional)</label>
           <input id="skuFamily" class="modal-input" type="text" placeholder="Ej: BOTELLAS 750ML" />
         </div>
 
-        <!-- UNIDAD BASE + VOLUMEN -->
-        <div class="mt-2" style="display:flex; gap:10px; flex-wrap:wrap;">
-          <div style="flex:1; min-width:120px;">
-            <label class="input-label" for="skuUnit">Unidad base</label>
-            <select id="skuUnit" class="modal-select">
-              <option value="UNIDAD">UNIDAD</option>
-              <option value="LITRO">LITRO</option>
-              <option value="KG">KG</option>
-            </select>
-          </div>
-          <div style="flex:1; min-width:120px;">
-            <label class="input-label" for="skuVolume">Volumen (ml)</label>
-            <input id="skuVolume" class="modal-input" type="number" placeholder="Ej: 750" />
-          </div>
+        <div class="mt-2">
+          <label class="input-label" for="skuUnit">Unidad</label>
+          <select id="skuUnit" class="modal-select">
+            <option value="UNIDAD">UNIDAD</option>
+            <option value="LITRO">LITRO</option>
+            <option value="KG">KG</option>
+          </select>
         </div>
 
-        <!-- BLOQUE ESPECIAL BEBIDAS -->
-        <div class="mt-2" id="skuBeverageExtra">
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:120px;">
-              <label class="input-label" for="skuPackSize">Pack (unidades)</label>
-              <input id="skuPackSize" class="modal-input" type="number" min="1" placeholder="Ej: 12" />
-            </div>
-            <div style="flex:1; min-width:120px;">
-              <label class="input-label" for="skuUnitLabel">Unidad</label>
-              <select id="skuUnitLabel" class="modal-select">
-                <option value="">Sin definir</option>
-                <option value="BOTELLA">Botella</option>
-                <option value="LATA">Lata</option>
-                <option value="CAJA">Caja</option>
-                <option value="PACK">Pack</option>
-              </select>
-            </div>
-          </div>
+        <div class="mt-2">
+          <label class="input-label" for="skuVolume">Volumen (ml)</label>
+          <input id="skuVolume" class="modal-input" type="number" placeholder="Ej: 750" />
         </div>
 
-        <!-- COSTOS -->
         <div class="mt-2">
           <label class="input-label" for="skuCost">Costo unitario (ARS)</label>
-          <input id="skuCost" class="modal-input" type="number" step="0.01" placeholder="Ej: 15000" />
+          <input id="skuCost" class="modal-input" type="number" placeholder="Ej: 15000" />
         </div>
 
-        <div class="mt-1">
-          <span class="row-sub-text">
-            Costo por pack: <strong id="skuPackCostPreview">—</strong>
-          </span>
-        </div>
-
-        <!-- PROVEEDOR PREFERIDO -->
         <div class="mt-2">
           <label class="input-label" for="skuPreferredSupplier">Proveedor preferido</label>
           <select id="skuPreferredSupplier" class="modal-select">
@@ -196,7 +168,6 @@
           </select>
         </div>
 
-        <!-- ACTIVO -->
         <div class="mt-2" style="display:flex; align-items:center; gap:8px;">
           <label class="section-desc" style="margin:0; font-size:11px; display:flex; align-items:center; gap:6px;">
             <input type="checkbox" id="skuIsActive" style="margin:0;" />
@@ -228,6 +199,39 @@
   />
 
   <script>
+    // ---- Categorías para tabs ----
+    const CATEGORY_FILTERS = {
+      ALL: {
+        label: 'Todos',
+        predicate: () => true
+      },
+      BEBIDAS: {
+        label: 'Bebidas',
+        predicate: (cat) => cat === 'BEBIDAS'
+      },
+      INSUMOS_BARRA: {
+        label: 'Insumos barra',
+        predicate: (cat) => cat === 'INSUMOS BARRA' || cat === 'INSUMOS' || cat === 'DESCARTABLES'
+      },
+      LIMPIEZA: {
+        label: 'Limpieza',
+        predicate: (cat) => cat === 'LIMPIEZA'
+      },
+      LIBRERIA: {
+        label: 'Librería',
+        predicate: (cat) => cat === 'LIBRERIA'
+      },
+      MANTENIMIENTO: {
+        label: 'Mantenimiento',
+        predicate: (cat) => cat === 'MANTENIMIENTO'
+      },
+      OTROS: {
+        label: 'Otros',
+        predicate: (cat) => !cat || !['BEBIDAS','INSUMOS BARRA','INSUMOS','DESCARTABLES','LIMPIEZA','LIBRERIA','MANTENIMIENTO'].includes(cat)
+      }
+    };
+    let currentCategoryFilter = 'ALL';
+
     const skuTableBody = document.querySelector('#skuTable tbody');
     const statusEl = document.getElementById('skusStatus');
     const searchInput = document.getElementById('searchSkus');
@@ -235,7 +239,6 @@
     const newSkuBtn = document.getElementById('newSkuBtn');
     const importSkusBtn = document.getElementById('importSkusBtn');
     const xlsxInput = document.getElementById('xlsxInput');
-    const skuCategoryTabs = document.getElementById('skuCategoryTabs');
 
     const skuModal = document.getElementById('skuModal');
     const skuModalSubtitle = document.getElementById('skuModalSubtitle');
@@ -251,22 +254,26 @@
     const skuUnitEl = document.getElementById('skuUnit');
     const skuVolumeEl = document.getElementById('skuVolume');
     const skuCostEl = document.getElementById('skuCost');
-    const skuPackSizeEl = document.getElementById('skuPackSize');
-    const skuUnitLabelEl = document.getElementById('skuUnitLabel');
-    const skuPackCostPreviewEl = document.getElementById('skuPackCostPreview');
-    const skuBeverageExtraEl = document.getElementById('skuBeverageExtra');
     const skuPreferredSupplierEl = document.getElementById('skuPreferredSupplier');
     const skuIsActiveEl = document.getElementById('skuIsActive');
+
+    const categoryTabs = document.querySelectorAll('[data-skus-category-tab]');
 
     let allSkus = [];
     let allSuppliers = [];
     let stockBySku = new Map();
     let editingSkuId = null;
-    let currentCategoryFilter = '';
 
     document.addEventListener('DOMContentLoaded', () => {
       attachListeners();
       loadData();
+
+      // Sesión estándar
+      if (window.MC_SESSION && typeof MC_SESSION.ensure === 'function') {
+        MC_SESSION.ensure({ pageTitle: 'SKUs', redirectHome: 'panel-master.html' });
+      } else {
+        console.warn('MC_SESSION no disponible; SKUs funcionando sin sesión vinculada.');
+      }
     });
 
     function attachListeners() {
@@ -283,62 +290,33 @@
       importSkusBtn.addEventListener('click', () => xlsxInput && xlsxInput.click());
       xlsxInput.addEventListener('change', handleXlsxImport);
 
-      if (skuCategoryTabs) {
-        skuCategoryTabs.addEventListener('click', (ev) => {
-          const btn = ev.target.closest('.tab-btn');
-          if (!btn) return;
-          const cat = btn.getAttribute('data-cat') || '';
-          currentCategoryFilter = cat;
-
-          skuCategoryTabs.querySelectorAll('.tab-btn').forEach(b => {
-            b.classList.toggle('active', b === btn);
-          });
-
-          applyFiltersAndRender();
-        });
-      }
-
-      skuCategoryEl.addEventListener('change', () => {
-        updateBeverageVisibility();
-        updatePackCostPreview();
-      });
-
-      skuCostEl.addEventListener('input', updatePackCostPreview);
-      skuPackSizeEl.addEventListener('input', updatePackCostPreview);
-
       document.addEventListener('keydown', (ev) => {
         if (ev.key === 'Escape' && skuModal.style.display === 'flex') {
           closeSkuModal();
         }
       });
+
+      // Tabs categorías
+      categoryTabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.getAttribute('data-skus-category-tab') || 'ALL';
+          currentCategoryFilter = key;
+          updateCategoryTabsUI();
+          applyFiltersAndRender();
+        });
+      });
+      updateCategoryTabsUI();
     }
 
-    function updateBeverageVisibility() {
-      const isBeverage = skuCategoryEl.value === 'BEBIDAS';
-      skuBeverageExtraEl.classList.toggle('hidden', !isBeverage);
-    }
-
-    function updatePackCostPreview() {
-      const isBeverage = skuCategoryEl.value === 'BEBIDAS';
-      if (!isBeverage) {
-        skuPackCostPreviewEl.textContent = '—';
-        return;
-      }
-
-      const cost = parseFloat(skuCostEl.value);
-      const packSize = parseInt(skuPackSizeEl.value, 10);
-
-      if (!isFinite(cost) || !isFinite(packSize) || packSize <= 0) {
-        skuPackCostPreviewEl.textContent = '—';
-        return;
-      }
-
-      const packCost = cost * packSize;
-      if (window.MC_UTILS && typeof MC_UTILS.formatCurrency === 'function') {
-        skuPackCostPreviewEl.textContent = MC_UTILS.formatCurrency(packCost);
-      } else {
-        skuPackCostPreviewEl.textContent = packCost.toFixed(2);
-      }
+    function updateCategoryTabsUI() {
+      categoryTabs.forEach(btn => {
+        const key = btn.getAttribute('data-skus-category-tab') || 'ALL';
+        if (key === currentCategoryFilter) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
     }
 
     // CARGA INICIAL
@@ -348,7 +326,7 @@
         const [skusRes, stockRes, suppsRes] = await Promise.all([
           client
             .from('inventory_skus')
-            .select('id, external_id, name, family, category, unit_type, volume_ml, cost_price, pack_size, unit_label, pack_cost, preferred_supplier_id, is_active')
+            .select('id, external_id, name, family, category, unit_type, volume_ml, cost_price, preferred_supplier_id, is_active')
             .order('name', { ascending: true }),
           client
             .from('inventory_stock')
@@ -399,12 +377,13 @@
       const term = (searchInput.value || '').toLowerCase().trim();
       const showInactive = showInactiveCheckbox.checked;
 
+      const filterDef = CATEGORY_FILTERS[currentCategoryFilter] || CATEGORY_FILTERS.ALL;
+
       const rows = allSkus.filter(sku => {
         if (!showInactive && sku.is_active === false) return false;
 
-        if (currentCategoryFilter && sku.category !== currentCategoryFilter) {
-          return false;
-        }
+        const cat = (sku.category || '').toUpperCase().trim();
+        if (!filterDef.predicate(cat)) return false;
 
         if (!term) return true;
 
@@ -448,16 +427,10 @@
         const inactiveTag = sku.is_active === false
           ? '<span class="tag tag-red" style="margin-left:6px;">INACTIVO</span>'
           : '';
-
         const subPieces = [];
         if (sku.external_id) subPieces.push('#' + escapeHtml(String(sku.external_id)));
         if (sku.category) subPieces.push(escapeHtml(sku.category));
         if (sku.family) subPieces.push(escapeHtml(sku.family));
-        if (sku.category === 'BEBIDAS' && sku.pack_size) {
-          const label = sku.unit_label || 'UNIDAD';
-          subPieces.push(`${sku.pack_size} x ${escapeHtml(label)}`);
-        }
-
         const subText = subPieces.join(' · ');
 
         tdInsumo.innerHTML = `
@@ -494,12 +467,10 @@
         const selectHtml = buildSupplierSelectHtml(sku.id, sku.preferred_supplier_id);
         tdProv.innerHTML = selectHtml;
 
-        // Costo formateado (costo unitario)
+        // Costo formateado
         const tdCosto = document.createElement('td');
         tdCosto.className = 'text-right';
-        tdCosto.textContent = window.MC_UTILS && typeof MC_UTILS.formatCurrency === 'function'
-          ? MC_UTILS.formatCurrency(sku.cost_price || 0)
-          : (sku.cost_price || 0);
+        tdCosto.textContent = MC_UTILS.formatCurrency(sku.cost_price || 0);
 
         // Acciones (Editar + Eliminar)
         const tdAcciones = document.createElement('td');
@@ -623,18 +594,14 @@
       skuIdEl.value = '';
       skuNameEl.value = '';
       skuCodeEl.value = '';
-      skuCategoryEl.value = 'BEBIDAS';
+      skuCategoryEl.value = '';
       skuFamilyEl.value = '';
       skuUnitEl.value = 'UNIDAD';
       skuVolumeEl.value = '';
       skuCostEl.value = '';
-      skuPackSizeEl.value = '';
-      skuUnitLabelEl.value = '';
-      skuPackCostPreviewEl.textContent = '—';
       skuPreferredSupplierEl.value = '';
       skuIsActiveEl.checked = true;
 
-      updateBeverageVisibility();
       openSkuModal();
     }
 
@@ -649,22 +616,14 @@
       skuIdEl.value = sku.id;
       skuNameEl.value = sku.name || '';
       skuCodeEl.value = sku.external_id || '';
-
-      const validCategories = ['BEBIDAS', 'INSUMOS_BARRA', 'LIMPIEZA', 'LIBRERIA', 'MANTENIMIENTO', 'OTROS'];
-      const catVal = sku.category || 'OTROS';
-      skuCategoryEl.value = validCategories.includes(catVal) ? catVal : 'OTROS';
-
+      skuCategoryEl.value = sku.category || '';
       skuFamilyEl.value = sku.family || '';
       skuUnitEl.value = sku.unit_type || 'UNIDAD';
       skuVolumeEl.value = sku.volume_ml != null ? sku.volume_ml : '';
       skuCostEl.value = sku.cost_price != null ? sku.cost_price : '';
-      skuPackSizeEl.value = sku.pack_size != null ? sku.pack_size : '';
-      skuUnitLabelEl.value = sku.unit_label || '';
       skuPreferredSupplierEl.value = sku.preferred_supplier_id || '';
       skuIsActiveEl.checked = sku.is_active !== false;
 
-      updateBeverageVisibility();
-      updatePackCostPreview();
       openSkuModal();
     }
 
@@ -685,26 +644,14 @@
         return;
       }
 
-      const categoryVal = skuCategoryEl.value || 'OTROS';
-
-      const packSizeVal = skuPackSizeEl.value === '' ? null : Number(skuPackSizeEl.value);
-      const unitLabelVal = skuUnitLabelEl.value || null;
-
-      if (categoryVal === 'BEBIDAS' && packSizeVal !== null && packSizeVal <= 0) {
-        alert('El pack debe tener al menos 1 unidad.');
-        return;
-      }
-
       const payload = {
         name: nameVal,
         external_id: skuCodeEl.value.trim() || null,
-        category: categoryVal,
+        category: skuCategoryEl.value || null,
         family: skuFamilyEl.value.trim() || null,
         unit_type: skuUnitEl.value || 'UNIDAD',
         volume_ml: skuVolumeEl.value === '' ? null : Number(skuVolumeEl.value),
         cost_price: skuCostEl.value === '' ? null : Number(skuCostEl.value),
-        pack_size: categoryVal === 'BEBIDAS' ? packSizeVal : null,
-        unit_label: categoryVal === 'BEBIDAS' ? unitLabelVal : null,
         preferred_supplier_id:
           skuPreferredSupplierEl.value === '' ? null : Number(skuPreferredSupplierEl.value),
         updated_at: new Date().toISOString(),
@@ -740,11 +687,11 @@
     // ELIMINAR (soft delete)
     async function confirmDeleteSku(id) {
       const sku = allSkus.find(s => s.id === id);
-      const name = sku && sku.name ? '\\n\\n' + sku.name : '';
+      const name = sku && sku.name ? `\n\n${sku.name}` : '';
       const ok = confirm(
         '¿Eliminar este SKU del maestro?' +
         name +
-        '\\n\\nSe marcará como INACTIVO. Las recetas y movimientos históricos no se borran.'
+        '\n\nSe marcará como INACTIVO. Las recetas y movimientos históricos no se borran.'
       );
       if (!ok) return;
 
@@ -766,7 +713,7 @@
       }
     }
 
-    // IMPORT DESDE EXCEL (se deja igual por ahora)
+    // IMPORT DESDE EXCEL
     function handleXlsxImport(event) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
