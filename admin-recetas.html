@@ -7,12 +7,16 @@
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- XLSX parser (SheetJS) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
 </head>
 <body>
   <header class="admin-header">
     <div class="admin-logo">MIDNIGHT<span class="logo-accent">LAB</span></div>
-    <div class="admin-header-right"><button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button></div>
+    <div class="admin-header-right">
+      <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
+    </div>
   </header>
 
   <div class="admin-container">
@@ -24,14 +28,23 @@
       <aside class="recipes-list-panel">
         <div class="recipes-list-header">
           <button onclick="createItem()" class="btn-primary" style="width:100%; margin-bottom:10px;">+ NUEVO PRODUCTO</button>
+
+          <button onclick="openImport()" class="btn-secondary" style="width:100%; margin-bottom:10px; border-color:var(--color-admin); color:var(--color-admin);">
+            IMPORTAR RECETARIO
+          </button>
+
+          <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none;" />
+
           <input type="text" id="searchMenu" class="search-input-admin" placeholder="Buscar..." style="width:100%;">
+          <div id="importStatus" class="section-desc" style="margin-top:10px;"></div>
         </div>
+
         <div id="menuList" class="menu-list-scroll"></div>
       </aside>
 
       <section class="recipes-details-panel">
         <div id="emptyState" style="text-align:center; padding:50px; color:var(--text-secondary);">Selecciona un producto para ver su ficha.</div>
-        
+
         <div id="recipePanel" style="display:none;">
           <input type="hidden" id="currentItemId">
           <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
@@ -65,74 +78,384 @@
   </div>
 
   <script>
-    let menuItems=[], skus=[], currentItemId=null;
-    document.addEventListener('DOMContentLoaded',async()=>{
-        const [mR,sR]=await Promise.all([
-            client.from('menu_items').select('*').order('name'),
-            client.from('inventory_skus').select('id,name,cost_price,volume_ml,unit_type').eq('is_active',true).order('name')
-        ]);
-        menuItems=mR.data||[]; skus=sR.data||[];
-        document.getElementById('selSku').innerHTML='<option value="">--</option>'+skus.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-        renderMenu(menuItems);
-        document.getElementById('searchMenu').addEventListener('input',(e)=>renderMenu(menuItems.filter(i=>i.name.toLowerCase().includes(e.target.value.toLowerCase()))));
+    let menuItems = [], skus = [], currentItemId = null;
+
+    const importStatusEl = () => document.getElementById('importStatus');
+
+    const normName = (s) => (s ?? '')
+      .toString()
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, ' ');
+
+    const normExternalId = (v) => {
+      if (v == null) return '';
+      let s = (typeof v === 'number') ? String(Math.trunc(v)) : String(v);
+      s = s.trim();
+      s = s.replace(/\.0$/, '');
+      return s;
+    };
+
+    const chunk = (arr, size) => {
+      const out = [];
+      for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+      return out;
+    };
+
+    function setImportStatus(msg) {
+      importStatusEl().textContent = msg || '';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const [mR, sR] = await Promise.all([
+        client.from('menu_items').select('*').order('name'),
+        // IMPORTANTE: traemos external_id para mapear desde el Excel
+        client.from('inventory_skus').select('id,external_id,name,cost_price,volume_ml,unit_type').eq('is_active', true).order('name')
+      ]);
+
+      menuItems = mR.data || [];
+      skus = sR.data || [];
+
+      document.getElementById('selSku').innerHTML =
+        '<option value="">--</option>' +
+        skus.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+      renderMenu(menuItems);
+
+      document.getElementById('searchMenu').addEventListener('input', (e) => {
+        const q = (e.target.value || '').toLowerCase();
+        renderMenu(menuItems.filter(i => (i.name || '').toLowerCase().includes(q)));
+      });
+
+      // Import handler
+      const fileInput = document.getElementById('importFile');
+      fileInput.addEventListener('change', async (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        e.target.value = ''; // allow re-import same file
+        await importRecetarioFile(f);
+      });
     });
-    function renderMenu(l){
-        const c=document.getElementById('menuList');
-        if(!l.length){c.innerHTML='<div style="padding:20px;text-align:center;">Vacio</div>';return;}
-        c.innerHTML=l.map(i=>`<div class="menu-item-row" data-id="${i.id}" onclick="selectItem(${i.id})">
-            <div style="font-weight:600; color:#fff;">${i.name}</div>
-            <div style="font-size:11px; color:var(--text-secondary);">${MC_UTILS.formatCurrency(i.price)}</div>
-        </div>`).join('');
-        if(currentItemId) c.querySelector(`[data-id="${currentItemId}"]`)?.classList.add('active');
+
+    function renderMenu(list) {
+      const c = document.getElementById('menuList');
+      if (!list.length) {
+        c.innerHTML = '<div style="padding:20px;text-align:center;">Vacío</div>';
+        return;
+      }
+      c.innerHTML = list.map(i => `
+        <div class="menu-item-row" data-id="${i.id}" onclick="selectItem(${i.id})">
+          <div style="font-weight:600; color:#fff;">${i.name}</div>
+          <div style="font-size:11px; color:var(--text-secondary);">${MC_UTILS.formatCurrency(i.price)}</div>
+        </div>
+      `).join('');
+      if (currentItemId) c.querySelector(`[data-id="${currentItemId}"]`)?.classList.add('active');
     }
-    async function selectItem(id){
-        currentItemId=id; renderMenu(menuItems);
-        const i=menuItems.find(x=>x.id===id);
-        document.getElementById('emptyState').style.display='none';
-        document.getElementById('recipePanel').style.display='block';
-        document.getElementById('currentItemId').value=id;
-        document.getElementById('viewName').innerText=i.name;
-        document.getElementById('viewPrice').value=i.price;
-        await loadIngredients(id);
+
+    async function selectItem(id) {
+      currentItemId = id;
+      renderMenu(menuItems);
+      const i = menuItems.find(x => x.id === id);
+
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('recipePanel').style.display = 'block';
+      document.getElementById('currentItemId').value = id;
+      document.getElementById('viewName').innerText = i.name;
+      document.getElementById('viewPrice').value = i.price;
+
+      await loadIngredients(id);
     }
-    async function loadIngredients(mid){
-        const{data}=await client.from('recipe_ingredients').select('id,quantity_needed,unit_needed,inventory_skus(name,cost_price,volume_ml,unit_type)').eq('menu_item_id',mid);
-        const l=data||[]; let total=0;
-        document.getElementById('ingList').innerHTML=l.map(x=>{
-            const s=x.inventory_skus, q=Number(x.quantity_needed);
-            let cost=0;
-            if(x.unit_needed==='un'||s.unit_type==='UNIDAD') cost=s.cost_price*q;
-            else if(x.unit_needed==='ml'&&s.volume_ml>0) cost=(s.cost_price/s.volume_ml)*q;
-            total+=cost;
-            return `<div class="ing-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-subtle);">
-                <div><div style="font-weight:500;">${s.name}</div><div style="font-size:11px; color:var(--text-secondary);">${MC_UTILS.formatCurrency(s.cost_price)} (Base)</div></div>
-                <div style="text-align:right;"><div>${q} ${x.unit_needed}</div><div style="color:var(--color-admin); font-size:11px;">${MC_UTILS.formatCurrency(cost)}</div></div>
-                <button onclick="delIng(${x.id})" class="btn-icon">×</button>
-            </div>`;
-        }).join('');
-        updateKPI(total);
+
+    async function loadIngredients(mid) {
+      const { data } = await client
+        .from('recipe_ingredients')
+        .select('id,quantity_needed,unit_needed,inventory_skus(name,cost_price,volume_ml,unit_type)')
+        .eq('menu_item_id', mid);
+
+      const l = data || [];
+      let total = 0;
+
+      document.getElementById('ingList').innerHTML = l.map(x => {
+        const s = x.inventory_skus, q = Number(x.quantity_needed);
+        let cost = 0;
+        if (x.unit_needed === 'un' || s.unit_type === 'UNIDAD') cost = (Number(s.cost_price) || 0) * q;
+        else if (x.unit_needed === 'ml' && Number(s.volume_ml) > 0) cost = ((Number(s.cost_price) || 0) / Number(s.volume_ml)) * q;
+
+        total += cost;
+
+        return `
+          <div class="ing-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-subtle); gap:10px;">
+            <div style="flex:1;">
+              <div style="font-weight:500;">${s.name}</div>
+              <div style="font-size:11px; color:var(--text-secondary);">${MC_UTILS.formatCurrency(s.cost_price)} (Base)</div>
+            </div>
+            <div style="text-align:right; min-width:140px;">
+              <div>${q} ${x.unit_needed}</div>
+              <div style="color:var(--color-admin); font-size:11px;">${MC_UTILS.formatCurrency(cost)}</div>
+            </div>
+            <button onclick="delIng(${x.id})" class="btn-icon">×</button>
+          </div>
+        `;
+      }).join('');
+
+      updateKPI(total);
     }
-    function updateKPI(cost){
-        const p=parseFloat(document.getElementById('viewPrice').value)||0, m=p-cost, perc=p>0?(m/p)*100:0;
-        document.getElementById('kpiCost').innerText=MC_UTILS.formatCurrency(cost);
-        document.getElementById('kpiMargin').innerText=MC_UTILS.formatCurrency(m);
-        const pe=document.getElementById('kpiPerc'); pe.innerText=Math.round(perc)+'%';
-        pe.style.color=perc<30?'var(--color-admin)':'var(--color-operativo)';
+
+    function updateKPI(cost) {
+      const p = parseFloat(document.getElementById('viewPrice').value) || 0;
+      const m = p - cost;
+      const perc = p > 0 ? (m / p) * 100 : 0;
+
+      document.getElementById('kpiCost').innerText = MC_UTILS.formatCurrency(cost);
+      document.getElementById('kpiMargin').innerText = MC_UTILS.formatCurrency(m);
+
+      const pe = document.getElementById('kpiPerc');
+      pe.innerText = Math.round(perc) + '%';
+      pe.style.color = perc < 30 ? 'var(--color-admin)' : 'var(--color-operativo)';
     }
-    async function addIng(){
-        const mid=document.getElementById('currentItemId').value, sid=document.getElementById('selSku').value, qty=document.getElementById('newQty').value, u=document.getElementById('newUnit').value;
-        if(!sid||!qty)return;
-        await client.from('recipe_ingredients').insert({menu_item_id:mid, sku_id:sid, quantity_needed:qty, unit_needed:u});
-        document.getElementById('newQty').value=''; await loadIngredients(mid);
+
+    async function addIng() {
+      const mid = document.getElementById('currentItemId').value;
+      const sid = document.getElementById('selSku').value;
+      const qty = document.getElementById('newQty').value;
+      const u = document.getElementById('newUnit').value;
+
+      if (!sid || !qty) return;
+
+      await client.from('recipe_ingredients').insert({
+        menu_item_id: mid,
+        sku_id: sid,
+        quantity_needed: qty,
+        unit_needed: u
+      });
+
+      document.getElementById('newQty').value = '';
+      await loadIngredients(mid);
     }
-    async function delIng(id){await client.from('recipe_ingredients').delete().eq('id',id); await loadIngredients(document.getElementById('currentItemId').value);}
-    async function updatePrice(){
-        const id=document.getElementById('currentItemId').value, p=document.getElementById('viewPrice').value;
-        await client.from('menu_items').update({price:p}).eq('id',id);
-        menuItems.find(x=>x.id==id).price=p; renderMenu(menuItems); await loadIngredients(id);
+
+    async function delIng(id) {
+      await client.from('recipe_ingredients').delete().eq('id', id);
+      await loadIngredients(document.getElementById('currentItemId').value);
     }
-    async function createItem(){const n=prompt('Nombre:'); if(n) {await client.from('menu_items').insert({name:n.toUpperCase()}); location.reload();}}
-    async function deleteItem(){if(confirm('¿Eliminar?')) {await client.from('menu_items').delete().eq('id',document.getElementById('currentItemId').value); location.reload();}}
+
+    async function updatePrice() {
+      const id = document.getElementById('currentItemId').value;
+      const p = document.getElementById('viewPrice').value;
+
+      await client.from('menu_items').update({ price: p }).eq('id', id);
+      menuItems.find(x => x.id == id).price = p;
+
+      renderMenu(menuItems);
+      await loadIngredients(id);
+    }
+
+    async function createItem() {
+      const n = prompt('Nombre:');
+      if (n) {
+        await client.from('menu_items').insert({ name: n.toUpperCase() });
+        location.reload();
+      }
+    }
+
+    async function deleteItem() {
+      if (confirm('¿Eliminar?')) {
+        await client.from('menu_items').delete().eq('id', document.getElementById('currentItemId').value);
+        location.reload();
+      }
+    }
+
+    // =========================
+    // IMPORTADOR RECETARIO XLSX
+    // =========================
+    function openImport() {
+      document.getElementById('importFile').click();
+    }
+
+    function pick(row, keys) {
+      for (const k of keys) {
+        if (row[k] != null && String(row[k]).trim() !== '') return row[k];
+      }
+      return null;
+    }
+
+    function normalizeUnit(u) {
+      const s = (u ?? '').toString().trim().toLowerCase();
+      if (!s) return 'ml';
+      if (s === 'ml' || s === 'mililitros' || s === 'milliliters') return 'ml';
+      if (s === 'un' || s === 'unidad' || s === 'unidades') return 'un';
+      return (s === 'u') ? 'un' : 'ml';
+    }
+
+    async function importRecetarioFile(file) {
+      setImportStatus('Leyendo archivo...');
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array' });
+
+        // Preferimos DETALLE_INGREDIENTES (tu formato exportado)
+        const preferred = ['DETALLE_INGREDIENTES', 'DETALLE', 'INGREDIENTES', 'Hoja1'];
+        const sheetName = preferred.find(n => wb.SheetNames.includes(n)) || wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+
+        if (!rows.length) {
+          alert('El archivo no tiene filas.');
+          setImportStatus('');
+          return;
+        }
+
+        // Maps actuales
+        const menuByName = new Map(menuItems.map(m => [normName(m.name), m]));
+        const skuByExternal = new Map(skus
+          .filter(s => s.external_id != null && String(s.external_id).trim() !== '')
+          .map(s => [normExternalId(s.external_id), s]));
+        const skuByName = new Map(skus.map(s => [normName(s.name), s]));
+
+        // Parse filas → agrupar por producto
+        const byProduct = new Map(); // productNameUpper -> [{sku,qty,unit}]
+        const missingSkus = new Map(); // key -> count
+
+        for (const r of rows) {
+          const product = pick(r, ['Producto','PRODUCTO','Trago','TRAGO','Menu','MENU','Item','ITEM','Nombre','NOMBRE']);
+          const qtyRaw = pick(r, ['Cantidad','CANTIDAD','quantity_needed','QUANTITY_NEEDED','Qty','QTY']);
+          const unitRaw = pick(r, ['U_Med','U_MED','Unidad','UNIDAD','unit_needed','UNIT_NEEDED','U']);
+          const codeRaw = pick(r, ['Ingrediente_Codigo','INGREDIENTE_CODIGO','Codigo','CÓDIGO','CODIGO','SKU_CODE','Codigo_Insumo','CODIGO_INSUMO']);
+          const ingNameRaw = pick(r, ['Ingrediente','INGREDIENTE','Insumo','INSUMO','SKU_NAME','Insumo_Nombre','INSUMO_NOMBRE']);
+
+          const productName = normName(product);
+          if (!productName) continue;
+
+          const qty = Number(qtyRaw);
+          if (!Number.isFinite(qty) || qty <= 0) continue;
+
+          const unit = normalizeUnit(unitRaw);
+
+          let sku = null;
+          const code = normExternalId(codeRaw);
+
+          if (code) sku = skuByExternal.get(code) || null;
+          if (!sku && ingNameRaw) sku = skuByName.get(normName(ingNameRaw)) || null;
+
+          if (!sku) {
+            const missKey = code ? `COD:${code}` : `NOMBRE:${normName(ingNameRaw || '') || 'SIN_NOMBRE'}`;
+            missingSkus.set(missKey, (missingSkus.get(missKey) || 0) + 1);
+            continue;
+          }
+
+          if (!byProduct.has(productName)) byProduct.set(productName, []);
+          byProduct.get(productName).push({ sku_id: sku.id, quantity_needed: qty, unit_needed: unit });
+        }
+
+        if (!byProduct.size) {
+          alert('No se pudo armar ninguna receta (revisá columnas / cantidades).');
+          setImportStatus('');
+          return;
+        }
+
+        if (missingSkus.size) {
+          const top = Array.from(missingSkus.entries()).slice(0, 20).map(([k,v]) => `${k} (${v})`).join('\n');
+          alert(
+            `Faltan SKUs (no se importó nada).\n\n` +
+            `Cargá external_id en inventory_skus para los códigos del recetario.\n\n` +
+            `Primeros faltantes:\n${top}`
+          );
+          setImportStatus('Import cancelado: faltan SKUs por mapear.');
+          return;
+        }
+
+        // Crear menu_items faltantes
+        const missingMenus = [];
+        for (const pname of byProduct.keys()) {
+          if (!menuByName.has(pname)) missingMenus.push(pname);
+        }
+
+        if (missingMenus.length) {
+          setImportStatus(`Creando ${missingMenus.length} productos...`);
+          const { data: created, error } = await client
+            .from('menu_items')
+            .insert(missingMenus.map(n => ({ name: n })))
+            .select('id,name,price,is_active');
+
+          if (error) throw error;
+
+          (created || []).forEach(m => {
+            menuItems.push(m);
+            menuByName.set(normName(m.name), m);
+          });
+
+          menuItems.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+          renderMenu(menuItems);
+        }
+
+        // Confirmar acción (reemplaza recetas)
+        const totalProducts = byProduct.size;
+        let totalLines = 0;
+        for (const v of byProduct.values()) totalLines += v.length;
+
+        const ok = confirm(
+          `Se van a importar recetas:\n` +
+          `- Productos: ${totalProducts}\n` +
+          `- Líneas de ingredientes: ${totalLines}\n\n` +
+          `Acción: REEMPLAZAR (borra ingredientes actuales de esos productos y carga los nuevos).`
+        );
+        if (!ok) {
+          setImportStatus('Import cancelado.');
+          return;
+        }
+
+        // Ejecutar import por producto: delete + insert (deduplicando)
+        setImportStatus(`Importando ${totalProducts} recetas...`);
+
+        let done = 0;
+        for (const [pname, items] of byProduct.entries()) {
+          const menu = menuByName.get(pname);
+          if (!menu) continue;
+
+          // dedupe por sku_id+unit_needed (sum qty)
+          const merged = new Map();
+          for (const it of items) {
+            const k = `${it.sku_id}::${it.unit_needed}`;
+            merged.set(k, (merged.get(k) || 0) + Number(it.quantity_needed));
+          }
+          const rowsToInsert = Array.from(merged.entries()).map(([k, qty]) => {
+            const [sku_id, unit_needed] = k.split('::');
+            return {
+              menu_item_id: menu.id,
+              sku_id: Number(sku_id),
+              quantity_needed: qty,
+              unit_needed
+            };
+          });
+
+          // replace: delete old
+          const { error: delErr } = await client
+            .from('recipe_ingredients')
+            .delete()
+            .eq('menu_item_id', menu.id);
+          if (delErr) throw delErr;
+
+          // insert new (chunk)
+          for (const batch of chunk(rowsToInsert, 500)) {
+            const { error: insErr } = await client
+              .from('recipe_ingredients')
+              .insert(batch);
+            if (insErr) throw insErr;
+          }
+
+          done++;
+          setImportStatus(`Importando... ${done}/${totalProducts}`);
+        }
+
+        setImportStatus(`Listo. Importadas ${totalProducts} recetas.`);
+        if (window.MC_UTILS?.showToast) MC_UTILS.showToast('Recetario importado.');
+
+      } catch (err) {
+        console.error(err);
+        setImportStatus('Error al importar. Revisá consola.');
+        alert('Error al importar. Revisá consola (F12) para ver el detalle.');
+      }
+    }
   </script>
 </body>
 </html>
