@@ -13,10 +13,10 @@
       <div class="admin-header-top">
         <div>
           <button class="btn-back" onclick="window.location.href='operativo-index.html'">
-            ← Volver
+            Volver
           </button>
         </div>
-        <div class="admin-logo"></div>
+        <div class="admin-logo" aria-hidden="true"></div>
         <div class="admin-header-right">
           <span class="session-chip">Operativo · Evento</span>
         </div>
@@ -176,6 +176,53 @@
             </div>
           </div>
         </article>
+
+        <!-- BLOQUE INSUMOS CRÍTICOS -->
+        <article class="evento-card" id="lowStockCard">
+          <div class="evento-card-header">
+            <div>
+              <div class="input-label">Insumos con stock bajo ideal</div>
+              <div class="row-sub-text">
+                Top 6 insumos más críticos para revisar antes del evento.
+              </div>
+            </div>
+            <div class="evento-card-header-actions">
+              <button id="btnRefreshLowStock" class="btn-refresh" type="button">
+                Refrescar
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-1">
+            <div class="table-container">
+              <table class="sku-table">
+                <thead>
+                  <tr>
+                    <th>Insumo / Categoría</th>
+                    <th class="text-center">Stock actual</th>
+                    <th class="text-center">Stock ideal</th>
+                    <th class="text-center">Sugerido</th>
+                    <th class="text-right">Costo estimado</th>
+                    <th class="text-center">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="lowStockTableBody">
+                  <tr>
+                    <td colspan="6" class="text-muted text-center">
+                      Creá un evento para ver insumos críticos.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-2 text-right">
+              <a href="operativo-stock.html" class="text-muted">
+                Ver detalle completo en Operativo Stock →
+              </a>
+            </div>
+          </div>
+        </article>
       </section>
     </section>
   </main>
@@ -217,6 +264,9 @@
       const summaryStaffCount = document.getElementById('summaryStaffCount');
       const eventStaffTableBody = document.getElementById('eventStaffTableBody');
 
+      const lowStockTableBody = document.getElementById('lowStockTableBody');
+      const btnRefreshLowStock = document.getElementById('btnRefreshLowStock');
+
       // Estado en memoria
       let roles = [];
       let rolesById = {};
@@ -224,12 +274,25 @@
       let profilesById = {};
       let currentEvent = null;
       let eventStaff = [];
+      let lowStockItems = [];
+
+      // Usuario DEV (para requested_by en stock_requests, si existe)
+      let currentUser = null;
+      const devSession = localStorage.getItem('mc_user');
+      if (devSession) {
+        try {
+          currentUser = JSON.parse(devSession);
+        } catch (e) {
+          console.warn('mc_user inválido en localStorage');
+        }
+      }
 
       // Helpers de formato
       function formatDateYYYYMMDDToDDMM(dateStr) {
         if (!dateStr) return '—';
-        const [y, m, d] = dateStr.split('-');
-        if (!y || !m || !d) return dateStr;
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const [y, m, d] = parts;
         return d + '/' + m;
       }
 
@@ -237,6 +300,17 @@
         if (!timeStr) return '—';
         return timeStr.slice(0, 5);
       }
+
+      const formatCurrency =
+        window.MC_UTILS && typeof window.MC_UTILS.formatCurrency === 'function'
+          ? window.MC_UTILS.formatCurrency
+          : function (amount) {
+              return new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: 'ARS',
+                maximumFractionDigits: 0
+              }).format(amount || 0);
+            };
 
       function applyEventLockState() {
         const isLocked = currentEvent && currentEvent.status === 'LOCKED';
@@ -260,7 +334,6 @@
           currentEventStatusTag.className = 'tag tag-gray tag-small';
         }
 
-        // Por si existiera un botón de eliminar en el futuro
         const btnDeleteEvent = document.getElementById('btnDeleteEvent');
         if (btnDeleteEvent) {
           btnDeleteEvent.disabled = isLocked;
@@ -329,12 +402,12 @@
 
           tdName.innerHTML =
             '<div class="row-title">' +
-            (profile?.full_name || profile?.username || 'Sin nombre') +
+            (profile && (profile.full_name || profile.username) || 'Sin nombre') +
             '</div>';
 
           tdRole.innerHTML =
             '<div class="row-sub-text">' +
-            (role?.role_name || 'Sin rol') +
+            (role && role.role_name || 'Sin rol') +
             '</div>';
 
           tr.appendChild(tdName);
@@ -388,6 +461,81 @@
         });
       }
 
+      function renderLowStockTable() {
+        lowStockTableBody.innerHTML = '';
+
+        if (!currentEvent) {
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = 6;
+          cell.className = 'text-muted text-center';
+          cell.textContent = 'Creá un evento para ver insumos críticos.';
+          row.appendChild(cell);
+          lowStockTableBody.appendChild(row);
+          return;
+        }
+
+        if (!lowStockItems.length) {
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = 6;
+          cell.className = 'text-muted text-center';
+          cell.textContent = 'No hay insumos por debajo del stock ideal.';
+          row.appendChild(cell);
+          lowStockTableBody.appendChild(row);
+          return;
+        }
+
+        lowStockItems.forEach(item => {
+          const tr = document.createElement('tr');
+
+          const tdName = document.createElement('td');
+          tdName.innerHTML =
+            '<div class="row-title">' +
+            item.name +
+            '</div>' +
+            '<div class="row-sub-text"><span class="tag tag-gray">' +
+            (item.category || 'GRAL') +
+            '</span></div>';
+
+          const tdCurrent = document.createElement('td');
+          tdCurrent.className = 'text-center';
+          tdCurrent.textContent = item.stock_current + ' ' + (item.unit_type || '');
+
+          const tdIdeal = document.createElement('td');
+          tdIdeal.className = 'text-center text-muted';
+          tdIdeal.textContent = item.stock_ideal ?? '—';
+
+          const tdSuggested = document.createElement('td');
+          tdSuggested.className = 'text-center';
+          tdSuggested.textContent = item.suggested_qty;
+
+          const tdCost = document.createElement('td');
+          tdCost.className = 'text-right';
+          tdCost.textContent = formatCurrency(item.estimated_cost);
+
+          const tdAction = document.createElement('td');
+          tdAction.className = 'text-center';
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn-primary';
+          btn.textContent = 'Solicitar';
+          btn.addEventListener('click', () => handleLowStockRequest(item));
+
+          tdAction.appendChild(btn);
+
+          tr.appendChild(tdName);
+          tr.appendChild(tdCurrent);
+          tr.appendChild(tdIdeal);
+          tr.appendChild(tdSuggested);
+          tr.appendChild(tdCost);
+          tr.appendChild(tdAction);
+
+          lowStockTableBody.appendChild(tr);
+        });
+      }
+
       async function loadRoles() {
         const { data, error } = await supa
           .from('staff_roles')
@@ -406,7 +554,6 @@
           rolesById[r.id] = r;
         });
 
-        // Cargar opciones en el select de alta de staff
         selectNewStaffRole.innerHTML = '<option value="">Seleccionar rol…</option>';
         roles.forEach(r => {
           const opt = document.createElement('option');
@@ -461,6 +608,72 @@
         renderEventSummary();
       }
 
+      async function loadLowStock() {
+        try {
+          const { data, error } = await supa
+            .from('inventory_stock')
+            .select(`
+              sku_id,
+              stock_current,
+              stock_ideal,
+              inventory_skus (
+                id,
+                name,
+                category,
+                unit_type,
+                cost_price,
+                is_active
+              )
+            `)
+            .eq('inventory_skus.is_active', true);
+
+          if (error) {
+            console.error('Error cargando insumos críticos', error);
+            lowStockItems = [];
+            renderLowStockTable();
+            return;
+          }
+
+          const raw = (data || []).filter(item => item.inventory_skus);
+
+          const mapped = raw
+            .map(item => {
+              const sku = item.inventory_skus;
+              const stockCurrent = Number(item.stock_current) || 0;
+              const stockIdeal = item.stock_ideal != null ? Number(item.stock_ideal) : null;
+              if (stockIdeal == null) return null;
+              if (stockCurrent >= stockIdeal) return null;
+
+              const deficit = stockIdeal - stockCurrent;
+              const suggested = deficit > 0 ? deficit : 0;
+              const costPrice = Number(sku.cost_price) || 0;
+              const estimated = suggested * costPrice;
+
+              return {
+                sku_id: item.sku_id,
+                name: sku.name,
+                category: sku.category,
+                unit_type: sku.unit_type,
+                stock_current: stockCurrent,
+                stock_ideal: stockIdeal,
+                suggested_qty: suggested,
+                estimated_cost: estimated
+              };
+            })
+            .filter(Boolean);
+
+          mapped.sort((a, b) => b.suggested_qty - a.suggested_qty);
+
+          lowStockItems = mapped.slice(0, 6);
+
+          renderLowStockTable();
+        } catch (e) {
+          console.error('Error general al cargar insumos críticos', e);
+          lowStockItems = [];
+          renderLowStockTable();
+        }
+      }
+
       async function handleAddStaff() {
         const name = (inputNewStaffName.value || '').trim();
         const roleId = selectNewStaffRole.value ? Number(selectNewStaffRole.value) : null;
@@ -474,7 +687,6 @@
           return;
         }
 
-        // username simple derivado del nombre
         const baseUsername = name
           .toLowerCase()
           .normalize('NFD')
@@ -547,7 +759,7 @@
         await loadEventStaff();
       }
 
-      async function handleCreateOrOpenEvent() {
+            async function handleCreateOrOpenEvent() {
         const dateValue = inputEventDate.value;
         const startTime = inputEventStart.value;
         const endTime = inputEventEnd.value;
@@ -557,12 +769,7 @@
           alert('Elegí una fecha operativa.');
           return;
         }
-        if (!startTime || !endTime) {
-          alert('Completá hora de inicio y cierre.');
-          return;
-        }
 
-        // 1) Ver si ya existe un evento en esa fecha
         const { data: existing, error: errorSearch } = await supa
           .from('staff_events')
           .select('*')
@@ -577,10 +784,8 @@
         }
 
         if (existing && existing.length > 0) {
-          // Ya existe un evento para esa fecha: lo cargamos, no lo tocamos.
           currentEvent = existing[0];
 
-          // Sin sobreescribir: dejamos sus horarios y estado tal cual en DB.
           inputEventDate.value = currentEvent.operational_date;
           inputEventStart.value = formatTimeHHMM(currentEvent.start_time);
           inputEventEnd.value = formatTimeHHMM(currentEvent.end_time);
@@ -590,18 +795,25 @@
           alert('Ya existe un evento para esa fecha. Se cargó el existente.');
           btnLockEvent.disabled = currentEvent.status === 'LOCKED';
           renderEventSummary();
+          renderLowStockTable();
           return;
         }
 
-        // 2) No existe → creamos uno nuevo
+        const payload = {
+          operational_date: dateValue,
+          label
+        };
+
+        if (startTime) {
+          payload.start_time = startTime;
+        }
+        if (endTime) {
+          payload.end_time = endTime;
+        }
+
         const { data: created, error } = await supa
           .from('staff_events')
-          .insert({
-            operational_date: dateValue,
-            start_time: startTime,
-            end_time: endTime,
-            label
-          })
+          .insert(payload)
           .select('*')
           .single();
 
@@ -616,7 +828,8 @@
 
         await loadEventStaff();
         renderEventSummary();
-      }
+        renderLowStockTable();
+}
 
       async function handleLockEvent() {
         if (!currentEvent) {
@@ -644,15 +857,59 @@
         renderEventSummary();
       }
 
+      async function handleLowStockRequest(item) {
+        if (!currentEvent) {
+          alert('Primero creá o abrí un evento.');
+          return;
+        }
+
+        if (!item || !item.sku_id || !item.suggested_qty) {
+          alert('Insumo inválido.');
+          return;
+        }
+
+        const userId =
+          currentUser && currentUser.id && currentUser.id !== 'dev'
+            ? currentUser.id
+            : null;
+
+        if (
+          !confirm(
+            `Confirmar solicitud de ${item.suggested_qty} ${item.unit_type || ''} de "${item.name}"?`
+          )
+        ) {
+          return;
+        }
+
+        try {
+          const { error } = await supa.from('stock_requests').insert({
+            sku_id: item.sku_id,
+            requested_qty: item.suggested_qty,
+            requested_by: userId,
+            status: 'PENDING'
+          });
+
+          if (error) throw error;
+
+          alert('Solicitud registrada y enviada a Administración.');
+          await loadLowStock();
+        } catch (e) {
+          console.error('Error al registrar solicitud de insumo crítico', e);
+          alert('No se pudo registrar la solicitud. Intenta nuevamente.');
+        }
+      }
+
       // Eventos de UI
       btnAddStaff.addEventListener('click', handleAddStaff);
       btnCreateEvent.addEventListener('click', handleCreateOrOpenEvent);
       btnLockEvent.addEventListener('click', handleLockEvent);
+      btnRefreshLowStock.addEventListener('click', loadLowStock);
 
-      // Init: cargar roles y perfiles
+      // Init: cargar roles, perfiles, insumos críticos
       (async function bootstrap() {
         await loadRoles();
         await loadProfiles();
+        await loadLowStock();
         renderEventSummary();
       })();
     }
