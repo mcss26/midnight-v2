@@ -8,32 +8,55 @@
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
 
+  <script src="session.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-  <script src="session.js" defer></script>
   <script src="config.js"></script>
 </head>
 <body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.MC_SESSION && typeof MC_SESSION.ensure === 'function') {
+        MC_SESSION.ensure({
+          pageTitle: 'Master · SKUs',
+          redirectHome: 'panel-master.html'
+        });
+      }
+    });
+  </script>
+
   <!-- HEADER ESTÁNDAR -->
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
+        <!-- Izquierda: volver -->
         <div>
-          <button class="btn-back" onclick="window.location.href='panel-master.html'">
-            ← Volver
+          <button
+            type="button"
+            class="btn-back"
+            onclick="window.location.href='panel-master.html'">
+            Volver
           </button>
         </div>
+
+        <!-- Centro: logo -->
         <div class="admin-logo" aria-hidden="true"></div>
+
+        <!-- Derecha: sesión -->
         <div class="admin-header-right">
-          <div class="session-chip" data-session-chip>Sesión no vinculada</div>
-          <button type="button" class="btn-logout" data-session-logout>Salir</button>
+          <div class="session-chip" data-session-chip>
+            Master · SKUs
+          </div>
+          <button type="button" class="btn-logout" data-session-logout>
+            Salir
+          </button>
         </div>
       </div>
     </div>
   </header>
 
   <main class="admin-container">
-    <!-- TITULO + DESC -->
+    <!-- TÍTULO -->
     <section class="section-header">
       <h1 class="section-title">INSUMOS / SKUs</h1>
       <p class="section-desc">
@@ -42,21 +65,21 @@
     </section>
 
     <!-- BARRA SUPERIOR: BUSCADOR + VER INACTIVOS + BOTONES -->
-    <div class="skus-toolbar">
-      <div class="skus-toolbar-left">
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <div style="display:flex; gap:8px; align-items:center;">
         <input
           id="searchSkus"
           class="search-input-admin"
           type="text"
           placeholder="Buscar por nombre o código externo..."
         />
-        <label class="skus-toolbar-toggle">
-          <input type="checkbox" id="showInactiveSkus" />
+        <label class="section-desc" style="margin:0; font-size:11px; display:flex; align-items:center; gap:4px;">
+          <input type="checkbox" id="showInactiveSkus" style="margin:0;" />
           Ver inactivos
         </label>
       </div>
 
-      <div class="skus-toolbar-right">
+      <div style="display:flex; gap:12px; align-items:center;">
         <button class="btn-secondary" type="button" id="importSkusBtn">
           Importar lista precios
         </button>
@@ -65,19 +88,6 @@
         </button>
       </div>
     </div>
-
-    <!-- TABS CATEGORÍAS -->
-    <nav class="skus-tabs">
-      <div class="tab-nav">
-        <button type="button" class="tab-btn active" data-skus-category-tab="ALL">Todos</button>
-        <button type="button" class="tab-btn" data-skus-category-tab="BEBIDAS">Bebidas</button>
-        <button type="button" class="tab-btn" data-skus-category-tab="INSUMOS_BARRA">Insumos barra</button>
-        <button type="button" class="tab-btn" data-skus-category-tab="LIMPIEZA">Limpieza</button>
-        <button type="button" class="tab-btn" data-skus-category-tab="LIBRERIA">Librería</button>
-        <button type="button" class="tab-btn" data-skus-category-tab="MANTENIMIENTO">Mantenimiento</button>
-        <button type="button" class="tab-btn" data-skus-category-tab="OTROS">Otros</button>
-      </div>
-    </nav>
 
     <div id="skusStatus" class="section-desc"></div>
 
@@ -90,7 +100,8 @@
             <th>UNIDAD / VOLUMEN</th>
             <th>STOCK IDEAL</th>
             <th>PROVEEDOR</th>
-            <th class="text-right">COSTO</th>
+            <th class="text-right">COSTO UNIT.</th>
+            <th class="text-right">COSTO PACK</th>
             <th class="text-right">ACCIONES</th>
           </tr>
         </thead>
@@ -116,49 +127,101 @@
 
         <div class="mt-2">
           <label class="input-label" for="skuName">Nombre del insumo</label>
-          <input id="skuName" class="modal-input" type="text" placeholder="Ej: VODKA ABSOLUT 750ML" required />
+          <input
+            id="skuName"
+            class="modal-input"
+            type="text"
+            placeholder="Ej: VODKA ABSOLUT 750ML"
+            required
+          />
         </div>
 
         <div class="mt-2">
           <label class="input-label" for="skuCode">Código externo</label>
-          <input id="skuCode" class="modal-input" type="text" placeholder="Código en Gbol / proveedor" />
+          <input
+            id="skuCode"
+            class="modal-input"
+            type="text"
+            placeholder="Código en Gbol / proveedor"
+          />
         </div>
 
+        <!-- CATEGORÍA COMO SELECT -->
         <div class="mt-2">
           <label class="input-label" for="skuCategory">Categoría</label>
           <select id="skuCategory" class="modal-select">
-            <option value="">Sin definir</option>
-            <option value="BEBIDAS">Bebidas</option>
-            <option value="INSUMOS BARRA">Insumos barra</option>
-            <option value="LIMPIEZA">Limpieza</option>
-            <option value="LIBRERIA">Librería</option>
-            <option value="MANTENIMIENTO">Mantenimiento</option>
-            <option value="OTROS">Otros</option>
+            <option value="">Sin categoría</option>
+            <option value="BEBIDAS">BEBIDAS</option>
+            <option value="INSUMOS">INSUMOS</option>
+            <option value="INSUMOS BARRA">INSUMOS BARRA</option>
+            <option value="DESCARTABLES">DESCARTABLES</option>
+            <option value="LIMPIEZA">LIMPIEZA</option>
+            <option value="LIBRERIA">LIBRERIA</option>
+            <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+            <option value="OTROS">OTROS</option>
           </select>
         </div>
 
-        <div class="mt-2">
-          <label class="input-label" for="skuFamily">Familia (opcional)</label>
-          <input id="skuFamily" class="modal-input" type="text" placeholder="Ej: BOTELLAS 750ML" />
-        </div>
+        <!-- Familia: se usa internamente pero oculta -->
+        <input type="hidden" id="skuFamily" />
 
-        <div class="mt-2">
-          <label class="input-label" for="skuUnit">Unidad</label>
+        <!-- Unidad base (solo relevante en bebidas) -->
+        <div class="mt-2" id="unitBaseRow">
+          <label class="input-label" for="skuUnit">Unidad base</label>
           <select id="skuUnit" class="modal-select">
+            <option value="BOTELLA">BOTELLA</option>
+            <option value="LATA">LATA</option>
             <option value="UNIDAD">UNIDAD</option>
             <option value="LITRO">LITRO</option>
             <option value="KG">KG</option>
           </select>
         </div>
 
+        <!-- Volumen -->
         <div class="mt-2">
           <label class="input-label" for="skuVolume">Volumen (ml)</label>
-          <input id="skuVolume" class="modal-input" type="number" placeholder="Ej: 750" />
+          <input
+            id="skuVolume"
+            class="modal-input"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Ej: 700"
+          />
+        </div>
+
+        <!-- Pack (unidades) – visible para todas las categorías -->
+        <div class="mt-2" id="beveragePackRow">
+          <label class="input-label" for="skuPackSize">Pack (unidades)</label>
+          <input
+            id="skuPackSize"
+            class="modal-input"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="Ej: 12"
+          />
+        </div>
+
+        <!-- Unidad envase: UNITARIO / PACK (solo bebidas) -->
+        <div class="mt-2" id="packageModeRow">
+          <label class="input-label" for="skuPackageMode">Unidad (unitario / pack)</label>
+          <select id="skuPackageMode" class="modal-select">
+            <option value="UNITARIO">Unitario</option>
+            <option value="PACK">Pack</option>
+          </select>
         </div>
 
         <div class="mt-2">
           <label class="input-label" for="skuCost">Costo unitario (ARS)</label>
-          <input id="skuCost" class="modal-input" type="number" placeholder="Ej: 15000" />
+          <input
+            id="skuCost"
+            class="modal-input"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Ej: 15000"
+          />
         </div>
 
         <div class="mt-2">
@@ -199,39 +262,6 @@
   />
 
   <script>
-    // ---- Categorías para tabs ----
-    const CATEGORY_FILTERS = {
-      ALL: {
-        label: 'Todos',
-        predicate: () => true
-      },
-      BEBIDAS: {
-        label: 'Bebidas',
-        predicate: (cat) => cat === 'BEBIDAS'
-      },
-      INSUMOS_BARRA: {
-        label: 'Insumos barra',
-        predicate: (cat) => cat === 'INSUMOS BARRA' || cat === 'INSUMOS' || cat === 'DESCARTABLES'
-      },
-      LIMPIEZA: {
-        label: 'Limpieza',
-        predicate: (cat) => cat === 'LIMPIEZA'
-      },
-      LIBRERIA: {
-        label: 'Librería',
-        predicate: (cat) => cat === 'LIBRERIA'
-      },
-      MANTENIMIENTO: {
-        label: 'Mantenimiento',
-        predicate: (cat) => cat === 'MANTENIMIENTO'
-      },
-      OTROS: {
-        label: 'Otros',
-        predicate: (cat) => !cat || !['BEBIDAS','INSUMOS BARRA','INSUMOS','DESCARTABLES','LIMPIEZA','LIBRERIA','MANTENIMIENTO'].includes(cat)
-      }
-    };
-    let currentCategoryFilter = 'ALL';
-
     const skuTableBody = document.querySelector('#skuTable tbody');
     const statusEl = document.getElementById('skusStatus');
     const searchInput = document.getElementById('searchSkus');
@@ -253,11 +283,15 @@
     const skuFamilyEl = document.getElementById('skuFamily');
     const skuUnitEl = document.getElementById('skuUnit');
     const skuVolumeEl = document.getElementById('skuVolume');
+    const skuPackSizeEl = document.getElementById('skuPackSize');
+    const skuPackageModeEl = document.getElementById('skuPackageMode');
     const skuCostEl = document.getElementById('skuCost');
     const skuPreferredSupplierEl = document.getElementById('skuPreferredSupplier');
     const skuIsActiveEl = document.getElementById('skuIsActive');
 
-    const categoryTabs = document.querySelectorAll('[data-skus-category-tab]');
+    const unitBaseRow = document.getElementById('unitBaseRow');
+    const beveragePackRow = document.getElementById('beveragePackRow');
+    const packageModeRow = document.getElementById('packageModeRow');
 
     let allSkus = [];
     let allSuppliers = [];
@@ -267,13 +301,6 @@
     document.addEventListener('DOMContentLoaded', () => {
       attachListeners();
       loadData();
-
-      // Sesión estándar
-      if (window.MC_SESSION && typeof MC_SESSION.ensure === 'function') {
-        MC_SESSION.ensure({ pageTitle: 'SKUs', redirectHome: 'panel-master.html' });
-      } else {
-        console.warn('MC_SESSION no disponible; SKUs funcionando sin sesión vinculada.');
-      }
     });
 
     function attachListeners() {
@@ -290,31 +317,11 @@
       importSkusBtn.addEventListener('click', () => xlsxInput && xlsxInput.click());
       xlsxInput.addEventListener('change', handleXlsxImport);
 
+      skuCategoryEl.addEventListener('change', updateBeverageFieldsVisibility);
+
       document.addEventListener('keydown', (ev) => {
         if (ev.key === 'Escape' && skuModal.style.display === 'flex') {
           closeSkuModal();
-        }
-      });
-
-      // Tabs categorías
-      categoryTabs.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const key = btn.getAttribute('data-skus-category-tab') || 'ALL';
-          currentCategoryFilter = key;
-          updateCategoryTabsUI();
-          applyFiltersAndRender();
-        });
-      });
-      updateCategoryTabsUI();
-    }
-
-    function updateCategoryTabsUI() {
-      categoryTabs.forEach(btn => {
-        const key = btn.getAttribute('data-skus-category-tab') || 'ALL';
-        if (key === currentCategoryFilter) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
         }
       });
     }
@@ -326,7 +333,7 @@
         const [skusRes, stockRes, suppsRes] = await Promise.all([
           client
             .from('inventory_skus')
-            .select('id, external_id, name, family, category, unit_type, volume_ml, cost_price, preferred_supplier_id, is_active')
+            .select('id, external_id, name, family, category, unit_type, volume_ml, cost_price, preferred_supplier_id, is_active, pack_size, unit_label, pack_cost')
             .order('name', { ascending: true }),
           client
             .from('inventory_stock')
@@ -354,6 +361,7 @@
 
         populateModalSuppliers();
         applyFiltersAndRender();
+        updateBeverageFieldsVisibility();
         statusEl.textContent = '';
       } catch (err) {
         console.error('Error al cargar SKUs', err);
@@ -373,18 +381,37 @@
         });
     }
 
+    function isBebidasCategory() {
+      return (skuCategoryEl.value || '').toUpperCase() === 'BEBIDAS';
+    }
+
+    function updateBeverageFieldsVisibility() {
+      const isBebida = isBebidasCategory();
+
+      // Unidad base y modo unitario/pack solo para bebidas
+      unitBaseRow.style.display = isBebida ? 'block' : 'none';
+      packageModeRow.style.display = isBebida ? 'block' : 'none';
+      // Pack (unidades) se mantiene siempre visible: no se toca aquí
+    }
+
+    function setCategorySelectValue(category) {
+      const value = category || '';
+      const exists = Array.from(skuCategoryEl.options).some(opt => opt.value === value);
+      if (value && !exists) {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = value;
+        skuCategoryEl.appendChild(opt);
+      }
+      skuCategoryEl.value = value;
+    }
+
     function applyFiltersAndRender() {
       const term = (searchInput.value || '').toLowerCase().trim();
       const showInactive = showInactiveCheckbox.checked;
 
-      const filterDef = CATEGORY_FILTERS[currentCategoryFilter] || CATEGORY_FILTERS.ALL;
-
       const rows = allSkus.filter(sku => {
         if (!showInactive && sku.is_active === false) return false;
-
-        const cat = (sku.category || '').toUpperCase().trim();
-        if (!filterDef.predicate(cat)) return false;
-
         if (!term) return true;
 
         const n = (sku.name || '').toLowerCase();
@@ -406,7 +433,7 @@
       if (!rows.length) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 6;
+        td.colSpan = 7;
         td.style.textAlign = 'center';
         td.style.padding = '32px';
         td.style.color = 'var(--text-secondary)';
@@ -443,14 +470,23 @@
           </div>
         `;
 
-        // Columna unidad / volumen
+        // Columna UNIDAD / VOLUMEN (+ pack)
         const tdUnidad = document.createElement('td');
+        const unitLabel = sku.unit_type || '-';
+        const details = [];
+        if (sku.volume_ml) {
+          details.push(sku.volume_ml + ' ml');
+        }
+        if (sku.pack_size && Number(sku.pack_size) > 1) {
+          details.push('Pack x' + Number(sku.pack_size));
+        }
+        const unitSub = details.join(' · ') || '&nbsp;';
         tdUnidad.innerHTML = `
-          <div>${escapeHtml(sku.unit_type || '-')}</div>
-          <div class="row-sub-text">${sku.volume_ml ? sku.volume_ml + ' ml' : '&nbsp;'}</div>
+          <div>${escapeHtml(unitLabel)}</div>
+          <div class="row-sub-text">${unitSub}</div>
         `;
 
-        // Columna stock ideal (input)
+        // Columna STOCK IDEAL (input)
         const tdStockIdeal = document.createElement('td');
         tdStockIdeal.innerHTML = `
           <input
@@ -462,15 +498,23 @@
           />
         `;
 
-        // Columna proveedor (select)
+        // Columna PROVEEDOR (select)
         const tdProv = document.createElement('td');
         const selectHtml = buildSupplierSelectHtml(sku.id, sku.preferred_supplier_id);
         tdProv.innerHTML = selectHtml;
 
-        // Costo formateado
-        const tdCosto = document.createElement('td');
-        tdCosto.className = 'text-right';
-        tdCosto.textContent = MC_UTILS.formatCurrency(sku.cost_price || 0);
+        // Costo unitario
+        const tdCostoUnit = document.createElement('td');
+        tdCostoUnit.className = 'text-right';
+        tdCostoUnit.textContent = MC_UTILS.formatCurrency(sku.cost_price || 0);
+
+        // Costo pack
+        const tdCostoPack = document.createElement('td');
+        tdCostoPack.className = 'text-right';
+        const packCost = sku.pack_cost != null ? Number(sku.pack_cost) : 0;
+        tdCostoPack.textContent = packCost > 0
+          ? MC_UTILS.formatCurrency(packCost)
+          : '—';
 
         // Acciones (Editar + Eliminar)
         const tdAcciones = document.createElement('td');
@@ -494,7 +538,7 @@
         tdAcciones.appendChild(editBtn);
         tdAcciones.appendChild(deleteBtn);
 
-        tr.append(tdInsumo, tdUnidad, tdStockIdeal, tdProv, tdCosto, tdAcciones);
+        tr.append(tdInsumo, tdUnidad, tdStockIdeal, tdProv, tdCostoUnit, tdCostoPack, tdAcciones);
         skuTableBody.appendChild(tr);
       });
     }
@@ -594,14 +638,17 @@
       skuIdEl.value = '';
       skuNameEl.value = '';
       skuCodeEl.value = '';
-      skuCategoryEl.value = '';
+      setCategorySelectValue('');
       skuFamilyEl.value = '';
-      skuUnitEl.value = 'UNIDAD';
+      skuUnitEl.value = 'BOTELLA';
       skuVolumeEl.value = '';
+      skuPackSizeEl.value = '';
+      skuPackageModeEl.value = 'UNITARIO';
       skuCostEl.value = '';
       skuPreferredSupplierEl.value = '';
       skuIsActiveEl.checked = true;
 
+      updateBeverageFieldsVisibility();
       openSkuModal();
     }
 
@@ -616,14 +663,27 @@
       skuIdEl.value = sku.id;
       skuNameEl.value = sku.name || '';
       skuCodeEl.value = sku.external_id || '';
-      skuCategoryEl.value = sku.category || '';
+
+      setCategorySelectValue(sku.category || '');
       skuFamilyEl.value = sku.family || '';
+
       skuUnitEl.value = sku.unit_type || 'UNIDAD';
       skuVolumeEl.value = sku.volume_ml != null ? sku.volume_ml : '';
+
+      const packSize = sku.pack_size != null ? Number(sku.pack_size) : 0;
+      skuPackSizeEl.value = packSize > 0 ? packSize : '';
+
+      let mode = 'UNITARIO';
+      if (packSize > 1 || (sku.unit_label && sku.unit_label.toUpperCase() === 'PACK')) {
+        mode = 'PACK';
+      }
+      skuPackageModeEl.value = mode;
+
       skuCostEl.value = sku.cost_price != null ? sku.cost_price : '';
       skuPreferredSupplierEl.value = sku.preferred_supplier_id || '';
       skuIsActiveEl.checked = sku.is_active !== false;
 
+      updateBeverageFieldsVisibility();
       openSkuModal();
     }
 
@@ -644,18 +704,60 @@
         return;
       }
 
+      const isBebida = isBebidasCategory();
+
+      // PACK (unidades) – válido para todas las categorías
+      let packSizeVal = null;
+      const rawPack = skuPackSizeEl.value;
+      if (rawPack !== '') {
+        const parsed = Number(rawPack);
+        if (!parsed || parsed <= 0) {
+          alert('Pack (unidades) debe ser un número mayor a 0.');
+          return;
+        }
+        packSizeVal = parsed;
+      }
+
+      // UNITARIO / PACK – solo para BEBIDAS
+      let unitLabelVal = null;
+      if (isBebida) {
+        const mode = skuPackageModeEl.value || 'UNITARIO';
+        unitLabelVal = mode;
+
+        if (mode === 'PACK' && (!packSizeVal || packSizeVal <= 1)) {
+          alert('Para PACK, indicá cuántas unidades trae el pack (mínimo 2).');
+          return;
+        }
+      }
+
+      // unit_type: si no es BEBIDA, conservamos valor previo si estamos editando
+      let unitTypeValue;
+      if (isBebida) {
+        unitTypeValue = skuUnitEl.value || 'BOTELLA';
+      } else {
+        if (editingSkuId != null) {
+          const existing = allSkus.find(s => s.id === editingSkuId);
+          unitTypeValue = existing && existing.unit_type ? existing.unit_type : 'UNIDAD';
+        } else {
+          unitTypeValue = 'UNIDAD';
+        }
+      }
+
       const payload = {
         name: nameVal,
         external_id: skuCodeEl.value.trim() || null,
-        category: skuCategoryEl.value || null,
+        category: skuCategoryEl.value.trim() || null,
         family: skuFamilyEl.value.trim() || null,
-        unit_type: skuUnitEl.value || 'UNIDAD',
+        unit_type: unitTypeValue,
         volume_ml: skuVolumeEl.value === '' ? null : Number(skuVolumeEl.value),
         cost_price: skuCostEl.value === '' ? null : Number(skuCostEl.value),
         preferred_supplier_id:
           skuPreferredSupplierEl.value === '' ? null : Number(skuPreferredSupplierEl.value),
         updated_at: new Date().toISOString(),
-        is_active: !!skuIsActiveEl.checked
+        is_active: !!skuIsActiveEl.checked,
+        pack_size: packSizeVal,
+        unit_label: isBebida ? (unitLabelVal || 'UNITARIO') : null
+        // pack_cost lo calcula Postgres (columna generada)
       };
 
       try {
@@ -687,7 +789,7 @@
     // ELIMINAR (soft delete)
     async function confirmDeleteSku(id) {
       const sku = allSkus.find(s => s.id === id);
-      const name = sku && sku.name ? `\n\n${sku.name}` : '';
+      const name = sku && sku.name ? '\n\n' + sku.name : '';
       const ok = confirm(
         '¿Eliminar este SKU del maestro?' +
         name +
