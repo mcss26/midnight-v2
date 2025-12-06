@@ -2,310 +2,660 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Midnight ERP – Evento operativo</title>
+  <title>MIDNIGHT ERP · Operativo Evento</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="admin-styles.css" />
 </head>
 <body>
-  <!-- HEADER GLOBAL -->
+  <!-- HEADER -->
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div></div>
-
+        <div>
+          <button class="btn-back" onclick="window.location.href='operativo-index.html'">
+            ← Volver
+          </button>
+        </div>
         <div class="admin-logo"></div>
-
         <div class="admin-header-right">
-          <span class="session-chip">DEV: dev</span>
-          <button class="btn-back" onclick="window.history.back()">← Volver</button>
+          <span class="session-chip">Operativo · Evento</span>
         </div>
       </div>
     </div>
   </header>
 
+  <!-- CONTENIDO PRINCIPAL -->
   <main class="admin-container">
-    <!-- TÍTULO DE PÁGINA -->
     <section class="section-header">
-      <h1 class="section-title">EVENTO OPERATIVO</h1>
-      <p class="section-desc">Fecha operativa, horario y dotación.</p>
+      <h1 class="section-title">Operativo · Evento</h1>
+      <p class="section-desc">
+        Definí la fecha operativa y convocá personal. Un evento por fecha, sin duplicados.
+      </p>
     </section>
 
-    <!-- LAYOUT DOS COLUMNAS -->
     <section class="evento-layout">
-      <!-- =========================================
-           COLUMNA IZQUIERDA: PERSONAL
-           ========================================= -->
+      <!-- COLUMNA IZQUIERDA: PERSONAL -->
       <aside class="evento-sidebar">
-        <div class="evento-card-header">
+        <div class="modal-header">
           <div>
-            <span class="input-label">PERSONAL</span>
+            <div class="modal-title">Personal</div>
+            <div class="modal-subtitle">Biblioteca de staff</div>
           </div>
-          <button type="button" class="btn-primary" id="btnOpenNewProfile">
+        </div>
+
+        <!-- Alta rápida de persona -->
+        <div class="mt-2">
+          <label for="newStaffName" class="input-label">Nombre</label>
+          <input
+            id="newStaffName"
+            class="modal-input"
+            type="text"
+            placeholder="Nombre y apellido"
+          />
+        </div>
+        <div class="mt-2">
+          <label for="newStaffRole" class="input-label">Rol</label>
+          <select id="newStaffRole" class="modal-select">
+            <option value="">Seleccionar rol…</option>
+          </select>
+        </div>
+        <div class="mt-2">
+          <button id="btnAddStaff" class="btn-primary" type="button">
             Agregar
           </button>
         </div>
 
-        <!-- Form mini para nuevo perfil -->
-        <div id="newProfileForm" class="mt-2 hidden">
-          <div class="mb-2">
-            <label class="input-label" for="newProfileName">Nombre</label>
-            <input
-              id="newProfileName"
-              type="text"
-              class="modal-input"
-            />
-          </div>
-
-          <div class="mb-2">
-            <label class="input-label" for="newProfileRole">Rol</label>
-            <select id="newProfileRole" class="modal-select">
-              <!-- staff_roles -->
-            </select>
-          </div>
-
-          <div class="modal-btns">
-            <button type="button" class="btn-secondary" id="btnCancelNewProfile">
-              Cancelar
-            </button>
-            <button type="button" class="btn-primary" id="btnSaveNewProfile">
-              Guardar
-            </button>
-          </div>
-
-          <hr class="mt-2 mb-2" style="border: 0; border-top: 1px solid rgba(255,255,255,0.06);" />
-        </div>
-
         <!-- Listado de personal -->
-        <div class="staff-lib-header mt-2">
-          <span class="input-label">LISTA</span>
-          <input
-            type="text"
-            id="searchStaff"
-            class="search-input-admin"
-            placeholder="Buscar…"
-          />
+        <div class="staff-lib-header mt-3">
+          <span class="input-label">Lista</span>
         </div>
-
-        <div id="staffLibraryList">
-          <!-- Filas de personal -->
-        </div>
+        <div id="staffLibraryList" class="mt-1"></div>
       </aside>
 
-      <!-- =========================================
-           COLUMNA DERECHA: CREAR EVENTO + DETALLE
-           ========================================= -->
+      <!-- COLUMNA DERECHA: CREAR EVENTO + DETALLE -->
       <section class="evento-main">
-
-        <!-- ---------- BLOQUE CREAR EVENTO ---------- -->
-        <article class="evento-card">
+        <!-- BLOQUE CREAR EVENTO -->
+        <article class="evento-card" id="eventCreateCard">
           <div class="evento-card-header">
             <div>
-              <span class="input-label">CREAR EVENTO</span>
+              <div class="input-label">Crear evento</div>
+            </div>
+            <div class="evento-card-header-actions">
+              <button id="btnCreateEvent" class="btn-secondary" type="button">
+                Abrir / crear
+              </button>
+              <button id="btnLockEvent" class="btn-primary" type="button" disabled>
+                Guardar
+              </button>
             </div>
           </div>
 
-          <form id="createEventForm" class="mt-2" autocomplete="off">
-            <div class="mb-2">
-              <label class="input-label" for="eventDate">Fecha operativa</label>
-              <input
-                id="eventDate"
-                type="date"
-                class="modal-input"
-              />
+          <div class="evento-grid">
+            <div>
+              <label for="eventDate" class="input-label">Fecha operativa</label>
+              <input id="eventDate" type="date" class="modal-input" />
             </div>
-
-            <div class="mb-2">
-              <label class="input-label" for="eventStart">Hora de inicio</label>
+            <div>
+              <label for="eventLabel" class="input-label">Etiqueta</label>
               <input
-                id="eventStart"
-                type="time"
-                class="modal-input"
-              />
-            </div>
-
-            <div class="mb-3">
-              <label class="input-label" for="eventEnd">Hora de cierre</label>
-              <input
-                id="eventEnd"
-                type="time"
-                class="modal-input"
-              />
-            </div>
-
-            <div class="mb-3">
-              <label class="input-label" for="eventTag">Etiqueta</label>
-              <input
-                id="eventTag"
+                id="eventLabel"
                 type="text"
                 class="modal-input"
+                placeholder="Ej: Sábado reggaetón"
               />
             </div>
-
-            <div class="modal-btns">
-              <button type="button" class="btn-secondary" id="btnClearEvent">
-                Limpiar
-              </button>
-              <button type="submit" class="btn-primary" id="btnCreateEvent">
-                Crear
-              </button>
+            <div>
+              <label for="eventStartTime" class="input-label">Hora inicio</label>
+              <input id="eventStartTime" type="time" class="modal-input" />
             </div>
-          </form>
-
-          <!-- Eventos creados -->
-          <div class="mt-3">
-            <div class="evento-card-header" style="margin-bottom: 4px;">
-              <div>
-                <span class="input-label">EVENTOS</span>
-              </div>
-              <button type="button" class="btn-refresh" id="btnReloadEvents">
-                ⟳
-              </button>
-            </div>
-
-            <div class="evento-event-list" id="eventList">
-              <!-- Eventos -->
+            <div>
+              <label for="eventEndTime" class="input-label">Hora cierre</label>
+              <input id="eventEndTime" type="time" class="modal-input" />
             </div>
           </div>
         </article>
 
-        <!-- ---------- BLOQUE DETALLE DEL EVENTO ---------- -->
-        <article class="evento-card">
+        <!-- BLOQUE DETALLE DEL EVENTO -->
+        <article class="evento-card" id="eventDetailCard">
           <div class="evento-card-header">
             <div>
-              <span class="input-label">DETALLE DEL EVENTO</span>
-              <div id="currentEventTitle" class="row-title mt-1">
-                Sin evento seleccionado
-              </div>
+              <div class="input-label">Detalle del evento</div>
+              <div id="currentEventTitle" class="row-title">Sin evento seleccionado</div>
               <div id="currentEventSubtitle" class="row-sub-text">
-                –
+                Elegí una fecha y abrí o creá el evento.
               </div>
             </div>
-            <button type="button" class="btn-secondary text-danger" id="btnDeleteEvent">
-              Eliminar
-            </button>
+            <div>
+              <span id="currentEventStatusTag" class="tag tag-gray tag-small">
+                Sin evento
+              </span>
+            </div>
           </div>
 
-          <div class="evento-grid mt-2">
-            <div>
-              <div class="input-label">Fecha</div>
-              <div id="detailDate" class="row-title mt-1">–</div>
+          <!-- Resumen simple -->
+          <div class="stock-summary">
+            <div class="summary-card">
+              <div class="summary-row">
+                <span class="text-muted">Fecha</span>
+                <span id="summaryDate">—</span>
+              </div>
+              <div class="summary-row">
+                <span class="text-muted">Horario</span>
+                <span id="summaryTime">—</span>
+              </div>
             </div>
-
-            <div>
-              <div class="input-label">Horario</div>
-              <div id="detailTime" class="row-title mt-1">–</div>
+            <div class="summary-card">
+              <div class="summary-row">
+                <span class="text-muted">Dotación convocada</span>
+                <span id="summaryStaffCount">0</span>
+              </div>
             </div>
+          </div>
 
-            <div>
-              <div class="input-label">Dotación</div>
-              <div id="detailStaffCount" class="row-title mt-1">0</div>
+          <!-- Tabla de staff convocado -->
+          <div class="mt-2">
+            <div class="summary-row mb-1">
+              <span class="text-muted">Personal convocado</span>
             </div>
-
-            <div>
-              <div class="input-label">Costo</div>
-              <div id="detailStaffCost" class="row-title mt-1">$ 0</div>
+            <div class="table-container">
+              <table class="sku-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Rol</th>
+                  </tr>
+                </thead>
+                <tbody id="eventStaffTableBody">
+                  <tr>
+                    <td colspan="2" class="text-muted text-center">
+                      Aún no hay personal convocado.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </article>
-
       </section>
     </section>
   </main>
 
-  <!-- =========================================
-       JS – HOOKS BÁSICOS
-       ========================================= -->
-  <script type="module">
-    const createEventForm   = document.getElementById('createEventForm');
-    const btnClearEvent     = document.getElementById('btnClearEvent');
-    const btnReloadEvents   = document.getElementById('btnReloadEvents');
-    const eventList         = document.getElementById('eventList');
+  <!-- SUPABASE + CONFIG -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
 
-    const btnOpenNewProfile   = document.getElementById('btnOpenNewProfile');
-    const btnCancelNewProfile = document.getElementById('btnCancelNewProfile');
-    const btnSaveNewProfile   = document.getElementById('btnSaveNewProfile');
-    const newProfileForm      = document.getElementById('newProfileForm');
+  <!-- LÓGICA -->
+  <script>
+    document.addEventListener('DOMContentLoaded', initOperativoEvento);
 
-    const staffLibraryList  = document.getElementById('staffLibraryList');
+    function initOperativoEvento() {
+      const supa = window.client;
+      if (!supa) {
+        console.error('Supabase client no inicializado.');
+        alert('Error de conexión a la base de datos.');
+        return;
+      }
 
-    const currentEventTitle     = document.getElementById('currentEventTitle');
-    const currentEventSubtitle  = document.getElementById('currentEventSubtitle');
-    const detailDateEl          = document.getElementById('detailDate');
-    const detailTimeEl          = document.getElementById('detailTime');
-    const detailStaffCountEl    = document.getElementById('detailStaffCount');
-    const detailStaffCostEl     = document.getElementById('detailStaffCost');
-    const btnDeleteEvent        = document.getElementById('btnDeleteEvent');
+      // DOM refs
+      const inputNewStaffName = document.getElementById('newStaffName');
+      const selectNewStaffRole = document.getElementById('newStaffRole');
+      const btnAddStaff = document.getElementById('btnAddStaff');
+      const staffLibraryList = document.getElementById('staffLibraryList');
 
-    function toggleNewProfileForm(show) {
-      if (!newProfileForm) return;
-      newProfileForm.classList.toggle('hidden', !show);
+      const inputEventDate = document.getElementById('eventDate');
+      const inputEventLabel = document.getElementById('eventLabel');
+      const inputEventStart = document.getElementById('eventStartTime');
+      const inputEventEnd = document.getElementById('eventEndTime');
+      const btnCreateEvent = document.getElementById('btnCreateEvent');
+      const btnLockEvent = document.getElementById('btnLockEvent');
+
+      const currentEventTitle = document.getElementById('currentEventTitle');
+      const currentEventSubtitle = document.getElementById('currentEventSubtitle');
+      const currentEventStatusTag = document.getElementById('currentEventStatusTag');
+      const summaryDate = document.getElementById('summaryDate');
+      const summaryTime = document.getElementById('summaryTime');
+      const summaryStaffCount = document.getElementById('summaryStaffCount');
+      const eventStaffTableBody = document.getElementById('eventStaffTableBody');
+
+      // Estado en memoria
+      let roles = [];
+      let rolesById = {};
+      let profiles = [];
+      let profilesById = {};
+      let currentEvent = null;
+      let eventStaff = [];
+
+      // Helpers de formato
+      function formatDateYYYYMMDDToDDMM(dateStr) {
+        if (!dateStr) return '—';
+        const [y, m, d] = dateStr.split('-');
+        if (!y || !m || !d) return dateStr;
+        return d + '/' + m;
+      }
+
+      function formatTimeHHMM(timeStr) {
+        if (!timeStr) return '—';
+        return timeStr.slice(0, 5);
+      }
+
+      function applyEventLockState() {
+        const isLocked = currentEvent && currentEvent.status === 'LOCKED';
+
+        inputEventDate.disabled = isLocked;
+        inputEventStart.disabled = isLocked;
+        inputEventEnd.disabled = isLocked;
+        inputEventLabel.disabled = isLocked;
+
+        btnCreateEvent.disabled = isLocked;
+        btnLockEvent.disabled = !currentEvent || isLocked;
+
+        if (!currentEvent) {
+          currentEventStatusTag.textContent = 'Sin evento';
+          currentEventStatusTag.className = 'tag tag-gray tag-small';
+        } else if (isLocked) {
+          currentEventStatusTag.textContent = 'Guardado';
+          currentEventStatusTag.className = 'tag tag-green tag-small';
+        } else {
+          currentEventStatusTag.textContent = 'En edición';
+          currentEventStatusTag.className = 'tag tag-gray tag-small';
+        }
+
+        // Por si existiera un botón de eliminar en el futuro
+        const btnDeleteEvent = document.getElementById('btnDeleteEvent');
+        if (btnDeleteEvent) {
+          btnDeleteEvent.disabled = isLocked;
+          btnDeleteEvent.classList.toggle('hidden', isLocked);
+        }
+      }
+
+      function renderEventSummary() {
+        if (!currentEvent) {
+          currentEventTitle.textContent = 'Sin evento seleccionado';
+          currentEventSubtitle.textContent = 'Elegí una fecha y abrí o creá el evento.';
+          summaryDate.textContent = '—';
+          summaryTime.textContent = '—';
+          summaryStaffCount.textContent = '0';
+          applyEventLockState();
+          return;
+        }
+
+        const dateLabel = formatDateYYYYMMDDToDDMM(currentEvent.operational_date);
+        const timeLabel =
+          formatTimeHHMM(currentEvent.start_time) +
+          ' – ' +
+          formatTimeHHMM(currentEvent.end_time);
+
+        currentEventTitle.textContent = currentEvent.label || dateLabel;
+        currentEventSubtitle.textContent = dateLabel + ' · ' + timeLabel;
+        summaryDate.textContent = dateLabel;
+        summaryTime.textContent = timeLabel;
+        summaryStaffCount.textContent = String(eventStaff.length);
+
+        applyEventLockState();
+      }
+
+      function renderEventStaffTable() {
+        eventStaffTableBody.innerHTML = '';
+
+        if (!currentEvent) {
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = 2;
+          cell.className = 'text-muted text-center';
+          cell.textContent = 'Sin evento seleccionado.';
+          row.appendChild(cell);
+          eventStaffTableBody.appendChild(row);
+          return;
+        }
+
+        if (!eventStaff.length) {
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = 2;
+          cell.className = 'text-muted text-center';
+          cell.textContent = 'Aún no hay personal convocado.';
+          row.appendChild(cell);
+          eventStaffTableBody.appendChild(row);
+          return;
+        }
+
+        eventStaff.forEach(item => {
+          const profile = profilesById[item.profile_id];
+          const role = rolesById[item.role_id];
+
+          const tr = document.createElement('tr');
+          const tdName = document.createElement('td');
+          const tdRole = document.createElement('td');
+
+          tdName.innerHTML =
+            '<div class="row-title">' +
+            (profile?.full_name || profile?.username || 'Sin nombre') +
+            '</div>';
+
+          tdRole.innerHTML =
+            '<div class="row-sub-text">' +
+            (role?.role_name || 'Sin rol') +
+            '</div>';
+
+          tr.appendChild(tdName);
+          tr.appendChild(tdRole);
+          eventStaffTableBody.appendChild(tr);
+        });
+      }
+
+      function renderStaffLibrary() {
+        staffLibraryList.innerHTML = '';
+
+        if (!profiles.length) {
+          const empty = document.createElement('div');
+          empty.className = 'text-muted';
+          empty.textContent = 'Todavía no hay personal cargado.';
+          staffLibraryList.appendChild(empty);
+          return;
+        }
+
+        profiles.forEach(profile => {
+          const role = rolesById[profile.default_staff_role_id];
+
+          const row = document.createElement('div');
+          row.className = 'staff-lib-row';
+
+          const info = document.createElement('div');
+          info.className = 'staff-lib-info';
+          info.innerHTML =
+            '<div class="row-title">' +
+            (profile.full_name || profile.username) +
+            '</div>' +
+            '<div class="row-sub-text">' +
+            (role ? role.role_name : 'Sin rol') +
+            '</div>';
+
+          const controls = document.createElement('div');
+          controls.className = 'staff-lib-controls';
+
+          const addBtn = document.createElement('button');
+          addBtn.type = 'button';
+          addBtn.className = 'btn-icon';
+          addBtn.textContent = '+';
+          addBtn.title = 'Agregar al evento';
+          addBtn.addEventListener('click', () => handleAddProfileToCurrentEvent(profile));
+
+          controls.appendChild(addBtn);
+
+          row.appendChild(info);
+          row.appendChild(controls);
+          staffLibraryList.appendChild(row);
+        });
+      }
+
+      async function loadRoles() {
+        const { data, error } = await supa
+          .from('staff_roles')
+          .select('id, role_name, base_pay, is_active')
+          .eq('is_active', true)
+          .order('role_name', { ascending: true });
+
+        if (error) {
+          console.error('Error cargando roles', error);
+          return;
+        }
+
+        roles = data || [];
+        rolesById = {};
+        roles.forEach(r => {
+          rolesById[r.id] = r;
+        });
+
+        // Cargar opciones en el select de alta de staff
+        selectNewStaffRole.innerHTML = '<option value="">Seleccionar rol…</option>';
+        roles.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r.id;
+          opt.textContent = r.role_name;
+          selectNewStaffRole.appendChild(opt);
+        });
+      }
+
+      async function loadProfiles() {
+        const { data, error } = await supa
+          .from('profiles')
+          .select('id, username, full_name, default_staff_role_id')
+          .order('full_name', { ascending: true });
+
+        if (error) {
+          console.error('Error cargando profiles', error);
+          return;
+        }
+
+        profiles = data || [];
+        profilesById = {};
+        profiles.forEach(p => {
+          profilesById[p.id] = p;
+        });
+
+        renderStaffLibrary();
+      }
+
+      async function loadEventStaff() {
+        if (!currentEvent) {
+          eventStaff = [];
+          renderEventStaffTable();
+          renderEventSummary();
+          return;
+        }
+
+        const { data, error } = await supa
+          .from('staff_event_staff')
+          .select('id, event_id, profile_id, role_id, hourly_rate, estimated_hours')
+          .eq('event_id', currentEvent.id)
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          console.error('Error cargando staff del evento', error);
+          eventStaff = [];
+        } else {
+          eventStaff = data || [];
+        }
+
+        renderEventStaffTable();
+        renderEventSummary();
+      }
+
+      async function handleAddStaff() {
+        const name = (inputNewStaffName.value || '').trim();
+        const roleId = selectNewStaffRole.value ? Number(selectNewStaffRole.value) : null;
+
+        if (!name) {
+          alert('Escribí un nombre.');
+          return;
+        }
+        if (!roleId) {
+          alert('Elegí un rol.');
+          return;
+        }
+
+        // username simple derivado del nombre
+        const baseUsername = name
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '');
+        const randomSuffix = Math.floor(Math.random() * 9000 + 1000);
+        const username = (baseUsername || 'staff') + '_' + randomSuffix;
+
+        const { data, error } = await supa
+          .from('profiles')
+          .insert({
+            username,
+            full_name: name,
+            default_staff_role_id: roleId
+          })
+          .select('id, username, full_name, default_staff_role_id')
+          .single();
+
+        if (error) {
+          console.error('Error creando perfil', error);
+          alert('No se pudo crear la persona.');
+          return;
+        }
+
+        profiles.push(data);
+        profilesById[data.id] = data;
+        inputNewStaffName.value = '';
+        selectNewStaffRole.value = '';
+
+        renderStaffLibrary();
+      }
+
+      async function handleAddProfileToCurrentEvent(profile) {
+        if (!currentEvent) {
+          alert('Primero creá o abrí un evento.');
+          return;
+        }
+
+        const role = rolesById[profile.default_staff_role_id];
+        if (!role) {
+          alert('Esta persona no tiene rol asignado.');
+          return;
+        }
+
+        const already = eventStaff.some(item => item.profile_id === profile.id);
+        if (already) {
+          alert('Esta persona ya está convocada en este evento.');
+          return;
+        }
+
+        const basePay = role.base_pay || 0;
+        const estimatedHours = 1;
+
+        const { error } = await supa.from('staff_event_staff').insert({
+          event_id: currentEvent.id,
+          profile_id: profile.id,
+          role_id: role.id,
+          hourly_rate: basePay,
+          estimated_hours: estimatedHours
+          // estimated_cost la calcula Postgres (columna generada)
+        });
+
+        if (error) {
+          console.error('Error agregando staff al evento', error);
+          alert('No se pudo agregar al evento.');
+          return;
+        }
+
+        await loadEventStaff();
+      }
+
+      async function handleCreateOrOpenEvent() {
+        const dateValue = inputEventDate.value;
+        const startTime = inputEventStart.value;
+        const endTime = inputEventEnd.value;
+        const label = (inputEventLabel.value || '').trim() || null;
+
+        if (!dateValue) {
+          alert('Elegí una fecha operativa.');
+          return;
+        }
+        if (!startTime || !endTime) {
+          alert('Completá hora de inicio y cierre.');
+          return;
+        }
+
+        // 1) Ver si ya existe un evento en esa fecha
+        const { data: existing, error: errorSearch } = await supa
+          .from('staff_events')
+          .select('*')
+          .eq('operational_date', dateValue)
+          .order('created_at', { ascending: true })
+          .limit(1);
+
+        if (errorSearch) {
+          console.error('Error buscando evento existente', errorSearch);
+          alert('No se pudo verificar si ya hay un evento para esa fecha.');
+          return;
+        }
+
+        if (existing && existing.length > 0) {
+          // Ya existe un evento para esa fecha: lo cargamos, no lo tocamos.
+          currentEvent = existing[0];
+
+          // Sin sobreescribir: dejamos sus horarios y estado tal cual en DB.
+          inputEventDate.value = currentEvent.operational_date;
+          inputEventStart.value = formatTimeHHMM(currentEvent.start_time);
+          inputEventEnd.value = formatTimeHHMM(currentEvent.end_time);
+          inputEventLabel.value = currentEvent.label || '';
+
+          await loadEventStaff();
+          alert('Ya existe un evento para esa fecha. Se cargó el existente.');
+          btnLockEvent.disabled = currentEvent.status === 'LOCKED';
+          renderEventSummary();
+          return;
+        }
+
+        // 2) No existe → creamos uno nuevo
+        const { data: created, error } = await supa
+          .from('staff_events')
+          .insert({
+            operational_date: dateValue,
+            start_time: startTime,
+            end_time: endTime,
+            label
+          })
+          .select('*')
+          .single();
+
+        if (error) {
+          console.error('Error creando evento', error);
+          alert('No se pudo crear el evento.');
+          return;
+        }
+
+        currentEvent = created;
+        btnLockEvent.disabled = false;
+
+        await loadEventStaff();
+        renderEventSummary();
+      }
+
+      async function handleLockEvent() {
+        if (!currentEvent) {
+          alert('No hay evento para guardar.');
+          return;
+        }
+        if (currentEvent.status === 'LOCKED') {
+          return;
+        }
+
+        const { data, error } = await supa
+          .from('staff_events')
+          .update({ status: 'LOCKED' })
+          .eq('id', currentEvent.id)
+          .select('*')
+          .single();
+
+        if (error) {
+          console.error('Error guardando evento', error);
+          alert('No se pudo guardar el evento.');
+          return;
+        }
+
+        currentEvent = data;
+        renderEventSummary();
+      }
+
+      // Eventos de UI
+      btnAddStaff.addEventListener('click', handleAddStaff);
+      btnCreateEvent.addEventListener('click', handleCreateOrOpenEvent);
+      btnLockEvent.addEventListener('click', handleLockEvent);
+
+      // Init: cargar roles y perfiles
+      (async function bootstrap() {
+        await loadRoles();
+        await loadProfiles();
+        renderEventSummary();
+      })();
     }
-
-    if (btnOpenNewProfile) {
-      btnOpenNewProfile.addEventListener('click', () => toggleNewProfileForm(true));
-    }
-    if (btnCancelNewProfile) {
-      btnCancelNewProfile.addEventListener('click', () => toggleNewProfileForm(false));
-    }
-
-    if (createEventForm) {
-      createEventForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const date  = document.getElementById('eventDate').value;
-        const start = document.getElementById('eventStart').value;
-        const end   = document.getElementById('eventEnd').value;
-        const tag   = document.getElementById('eventTag').value;
-        console.log('Crear evento', { date, start, end, tag });
-      });
-    }
-
-    if (btnClearEvent) {
-      btnClearEvent.addEventListener('click', () => {
-        document.getElementById('eventDate').value  = '';
-        document.getElementById('eventStart').value = '';
-        document.getElementById('eventEnd').value   = '';
-        document.getElementById('eventTag').value   = '';
-      });
-    }
-
-    function loadEvents() {
-      if (!eventList) return;
-      eventList.innerHTML = `
-        <button type="button" class="evento-event-row evento-event-row--active">
-          <div class="evento-event-row-main">
-            <span class="evento-event-date">06/12</span>
-            <span class="evento-event-time">23:00 – 05:00</span>
-          </div>
-          <div class="evento-event-row-sub">
-            <span>Noche operativa</span>
-            <span class="muted">0 · $0</span>
-          </div>
-        </button>
-      `;
-    }
-
-    function loadStaffLibrary() {
-      if (!staffLibraryList) return;
-      staffLibraryList.innerHTML = `
-        <div class="staff-lib-row">
-          <div class="staff-lib-info">
-            <div class="row-title">Ejemplo</div>
-            <div class="row-sub-text">Rol: Barra</div>
-          </div>
-          <div class="staff-lib-controls">
-            <button type="button" class="btn-icon" title="Agregar">+</button>
-          </div>
-        </div>
-      `;
-    }
-
-    if (btnReloadEvents) {
-      btnReloadEvents.addEventListener('click', loadEvents);
-    }
-
-    loadEvents();
-    loadStaffLibrary();
   </script>
 </body>
 </html>

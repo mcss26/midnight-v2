@@ -1169,37 +1169,111 @@ textarea.modal-input {
    PORTALES / INDEX – ACCESOS VERTICALES
    ========================================= */
 
-/* Wrapper de sección de accesos en index (home principal) */
 .access-group {
-  margin-top: 32px;
+  margin-top: 28px;
 }
 
-/* En portales: lista vertical de accesos, estilo “barras” anchas */
+/* En portales: lista vertical de accesos */
 .access-group .dash-grid {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  width: 100%;
-  max-width: 960px;           /* ancho grande dentro del container */
-  margin: 0 auto;             /* centrado */
+  align-items: flex-start;
+  gap: 18px;
+  max-width: 420px;
+  margin: 0 auto;
 }
 
-/* Cards ocupan todo el ancho de la columna y quedan más “horizontales” */
+/* Cards ocupan todo el ancho de la columna */
 .access-group .dash-card {
   width: 100%;
-  min-height: 140px;
+  min-height: 170px;
 }
 
-/* Ajuste responsive: en mobile las barras usan todo el ancho disponible */
-@media (max-width: 768px) {
-  .access-group {
-    margin-top: 24px;
-  }
-  .access-group .dash-grid {
-    max-width: 100%;
-    padding-inline: 4px;
-  }
-  .access-group .dash-card {
-    min-height: 130px;
-  }
+/* =========================================
+   EXTENSIONES COMPARTIDAS – STOCK / MODALES
+   ========================================= */
+
+/* STOCK OPERATIVO – ACCIONES RÁPIDAS */
+.btn-stock-adjust {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.btn-stock-adjust:hover {
+  background: var(--bg-hover);
+}
+
+.btn-stock-request {
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.request-pending {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* MODALES – BOTONES DE ACCIÓN */
+.btn-modal-cancel,
+.btn-modal-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+/* Cancelar = secundario neutro */
+.btn-modal-cancel {
+  background: transparent;
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+.btn-modal-cancel:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+/* Guardar = confirmación en verde */
+.btn-modal-save {
+  background: var(--accent-green);
+  color: #000;
+  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.35);
+}
+.btn-modal-save:hover {
+  background: #d4ff33;
+}
+
+/* TOOLBAR HORIZONTAL PARA FILTROS Y ACCIONES */
+.section-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Primer hijo (ej. buscador) se estira */
+.section-toolbar > *:first-child {
+  flex: 1;
 }
