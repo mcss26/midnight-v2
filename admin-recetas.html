@@ -9,10 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
 
   <style>
-    /* Layout específico Recetas (no depende de tocar admin-styles.css) */
     .recipes-layout{
       display:grid;
       grid-template-columns: 360px minmax(0,1fr);
@@ -111,11 +111,14 @@
 
     .kpi-grid{
       display:grid;
-      grid-template-columns: repeat(4, minmax(0,1fr));
+      grid-template-columns: repeat(6, minmax(0,1fr));
       gap:10px;
       margin: 12px 0;
     }
-    @media (max-width: 980px){
+    @media (max-width: 1120px){
+      .kpi-grid{ grid-template-columns: repeat(3, minmax(0,1fr)); }
+    }
+    @media (max-width: 720px){
       .kpi-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
     }
     .kpi-card{
@@ -181,7 +184,6 @@
       background: transparent !important;
     }
 
-    /* mini loader */
     .inline-status{
       margin-left: 8px;
       font-size: 11px;
@@ -190,7 +192,6 @@
       text-transform: uppercase;
     }
 
-    /* Modal textarea */
     .modal-textarea{
       min-height: 160px;
       resize: vertical;
@@ -202,7 +203,7 @@
       padding: 10px;
       margin-top: 10px;
       background: rgba(255,255,255,0.02);
-      max-height: 170px;
+      max-height: 220px;
       overflow:auto;
     }
     .preview-line{
@@ -235,7 +236,7 @@
 
   <div class="admin-container">
     <div class="section-header">
-      <h2 class="section-title">Recetas & Fichas</h2>
+      <h2 class="section-title">Recetas</h2>
       <div class="section-underline"></div>
     </div>
 
@@ -243,13 +244,19 @@
       <!-- LISTA -->
       <aside class="recipes-list-panel">
         <div class="recipes-list-header">
-          <button id="btnNewItem" class="btn-primary" style="width:100%; margin-bottom:10px;">+ NUEVO PRODUCTO</button>
+          <div class="row-flex" style="justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <button id="btnNewItem" class="btn-primary" style="flex:1;">+ NUEVO</button>
+            <button id="btnImportXlsx" class="btn-secondary" style="flex:1;">IMPORTAR XLSX</button>
+          </div>
 
           <input type="text" id="searchMenu" class="search-input-admin" placeholder="Buscar producto..." style="width:100%; margin-bottom:10px;">
+
           <div class="row-flex" style="justify-content:space-between; align-items:center;">
             <span class="pill" id="countMenu">0 items</span>
             <span class="pill">VASO: 400ml</span>
           </div>
+
+          <input id="fileXlsx" type="file" accept=".xlsx,.xls" style="display:none;">
         </div>
 
         <div id="menuList" class="menu-list-scroll"></div>
@@ -267,12 +274,12 @@
           <div class="recipe-topbar">
             <div>
               <div class="recipe-name" id="viewName">—</div>
-              <div class="muted mt-1" id="viewMeta">—</div>
+              <div class="muted" id="viewMeta">—</div>
             </div>
 
             <div class="recipe-actions">
               <span class="pill" id="pillRecipeState">SIN RECETA</span>
-              <button id="btnPasteRecipe" class="btn-secondary">PEGAR RECETA</button>
+              <button id="btnPasteRecipe" class="btn-secondary">PEGAR</button>
               <button id="btnClearRecipe" class="btn-secondary btn-danger-outline">VACIAR</button>
               <button id="btnDeleteItem" class="btn-secondary btn-danger-outline">ELIMINAR</button>
             </div>
@@ -311,6 +318,16 @@
                 <div class="input-label">MARGEN (%)</div>
                 <div id="kpiMarginPct" class="kpi-value">0%</div>
               </div>
+
+              <div class="kpi-card">
+                <div class="input-label">COSTO (x4 vasos)</div>
+                <div id="kpiCost4" class="kpi-value">$0</div>
+              </div>
+
+              <div class="kpi-card">
+                <div class="input-label">MARGEN (x4 vasos)</div>
+                <div id="kpiMargin4" class="kpi-value">$0</div>
+              </div>
             </div>
           </div>
 
@@ -326,8 +343,8 @@
             <div class="progress-track">
               <div class="progress-fill" id="volFill"></div>
             </div>
-            <div class="small-hint mt-2">
-              *Se suma “ml” + (si el insumo tiene <b>volume_ml</b>, también suma unidades × volume_ml).
+            <div class="small-hint" style="margin-top:8px;">
+              Se suma “ml” + (si el insumo tiene <b>volume_ml</b>, también suma unidades × volume_ml).
             </div>
           </div>
 
@@ -350,7 +367,7 @@
                   <th class="text-center">CANT</th>
                   <th class="text-center">UN</th>
                   <th class="col-costo">COSTO</th>
-                  <th class="text-right"> </th>
+                  <th class="text-right"></th>
                 </tr>
               </thead>
               <tbody id="ingTableBody">
@@ -364,7 +381,7 @@
             <div class="row-flex">
               <div class="grow">
                 <label class="input-label">BUSCAR INSUMO</label>
-                <input id="skuFilter" class="modal-input" placeholder="Escribí para filtrar la lista..." />
+                <input id="skuFilter" class="modal-input" placeholder="Escribí para filtrar..." />
               </div>
               <div class="grow">
                 <label class="input-label">INSUMO</label>
@@ -384,8 +401,8 @@
               <button id="btnAddIng" class="btn-primary" style="height:42px;">+ AGREGAR</button>
             </div>
 
-            <div class="small-hint mt-2">
-              Tip: si el insumo es “UNIDAD”, usá <b>un</b>. Si es botella/pack y querés prorrateo por ml, usá <b>ml</b> (requiere volume_ml).
+            <div class="small-hint" style="margin-top:8px;">
+              Si el insumo es por botella/pack y querés prorrateo por ml, cargá <b>ml</b> (requiere <b>volume_ml</b>).
             </div>
           </div>
         </div>
@@ -393,8 +410,8 @@
     </div>
   </div>
 
-  <!-- MODAL PEGAR RECETA -->
-  <div id="bulkModal" class="modal-overlay">
+  <!-- MODAL: PEGAR RECETA -->
+  <div id="bulkModal" class="modal-overlay" style="display:none;">
     <div class="modal-box" style="max-width: 760px;">
       <div class="row-flex" style="justify-content:space-between; align-items:center;">
         <div>
@@ -404,9 +421,9 @@
         <button id="btnCloseBulk" class="btn-icon" type="button">×</button>
       </div>
 
-      <div class="mt-2">
+      <div style="margin-top:10px;">
         <textarea id="bulkText" class="modal-input modal-textarea" placeholder="Ej:
-RON BLANCO | 50 | ml
+RON BLANCO | 60 | ml
 JUGO LIMON | 20 | ml
 ALMIBAR | 15 | ml"></textarea>
       </div>
@@ -420,10 +437,38 @@ ALMIBAR | 15 | ml"></textarea>
     </div>
   </div>
 
+  <!-- MODAL: IMPORT XLSX -->
+  <div id="importModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width: 860px;">
+      <div class="row-flex" style="justify-content:space-between; align-items:center;">
+        <div>
+          <div class="section-title" style="font-size:14px;">Importar recetas desde Excel</div>
+          <div class="small-hint">
+            Se detectan columnas por nombre. Recomendado: <b>Producto/Trago</b>, <b>Ingrediente</b> o <b>Código</b>, <b>Cantidad</b>, <b>Unidad</b>.
+            <br/>Fix incluido: si viene <b>0.060</b> en ml (litros), se convierte a <b>60</b> ml.
+          </div>
+        </div>
+        <button id="btnCloseImport" class="btn-icon" type="button">×</button>
+      </div>
+
+      <div class="preview-box" id="importPreview" style="margin-top:12px;"></div>
+
+      <div class="modal-btns">
+        <button id="btnCancelImport" class="btn-secondary" type="button">Cancelar</button>
+        <button id="btnRunImport" class="btn-primary" type="button">Importar (reemplaza recetas)</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // ===== Utils =====
+    // ==========================================================
+    // Config
+    // ==========================================================
     const GLASS_ML = 400;
 
+    // ==========================================================
+    // Helpers
+    // ==========================================================
     function money(n){
       const v = Number(n) || 0;
       if (window.MC_UTILS && typeof MC_UTILS.formatCurrency === 'function') return MC_UTILS.formatCurrency(v);
@@ -438,25 +483,81 @@ ALMIBAR | 15 | ml"></textarea>
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/\s+/g, ' ');
     }
+    function escapeHtml(str){
+      return String(str ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
     function toast(msg){
       if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') return MC_UTILS.showToast(msg);
-      // fallback simple
       console.log('[toast]', msg);
     }
     function setStatus(txt){
       document.getElementById('saveStatus').textContent = txt || '—';
     }
+    function isIntegerish(x){
+      return Math.abs(x - Math.round(x)) < 1e-9;
+    }
 
-    // ===== State =====
+    // ---- IMPORT FIX: litros -> ml (0.060 => 60) ----
+    function normalizeUnit(uRaw){
+      const u = (uRaw || '').toString().trim().toLowerCase();
+      if (u === 'u') return 'un';
+      if (['un', 'unidad', 'unidades'].includes(u)) return 'un';
+      if (['ml', 'cc'].includes(u)) return 'ml';
+      if (['l', 'lt', 'lts', 'litro', 'litros'].includes(u)) return 'l';
+      return 'ml';
+    }
+
+    function normalizeQty(qRaw, unit){
+      let q = (typeof qRaw === 'string')
+        ? Number(String(qRaw).replace(',', '.'))
+        : Number(qRaw);
+
+      if (!Number.isFinite(q) || q <= 0) return q;
+
+      // litros explícitos
+      if (unit === 'l') return q * 1000;
+
+      // Heurística: si dice ml pero viene < 1, suele estar en litros (0.060 => 60ml)
+      if (unit === 'ml' && q > 0 && q < 1) {
+        const asMl = q * 1000;
+
+        // Convertimos solo si queda "ml plausible" para vaso 400ml
+        if (asMl >= 5 && asMl <= 400 && isIntegerish(asMl)) {
+          return Math.round(asMl);
+        }
+      }
+
+      return q;
+    }
+
+    function chunk(arr, size){
+      const out = [];
+      for (let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size));
+      return out;
+    }
+
+    // ==========================================================
+    // State
+    // ==========================================================
     let menuItems = [];
     let skus = [];
     let currentItemId = null;
 
-    // Name maps for bulk paste matching
-    const skuById = new Map();
-    const skuIdsByNormName = new Map(); // normName -> [ids]
+    // Maps (for matching)
+    const skuById = new Map();             // id -> sku
+    const skuIdsByNormName = new Map();    // name -> [id]
+    const skuIdByExternalId = new Map();   // external_id -> id
+    const menuItemByNormName = new Map();  // name -> item
 
-    // ===== DOM =====
+    // Import staging
+    let importPlan = null; // { affectedMenuIds, created, missingSkus, rowsByMenuId }
+
+    // ==========================================================
+    // DOM
+    // ==========================================================
     const elMenuList   = document.getElementById('menuList');
     const elSearchMenu = document.getElementById('searchMenu');
     const elCountMenu  = document.getElementById('countMenu');
@@ -474,6 +575,8 @@ ALMIBAR | 15 | ml"></textarea>
     const elKpiCostPct = document.getElementById('kpiCostPct');
     const elKpiMargin  = document.getElementById('kpiMargin');
     const elKpiMarginPct = document.getElementById('kpiMarginPct');
+    const elKpiCost4   = document.getElementById('kpiCost4');
+    const elKpiMargin4 = document.getElementById('kpiMargin4');
 
     const elVolText = document.getElementById('volText');
     const elVolFill = document.getElementById('volFill');
@@ -492,6 +595,11 @@ ALMIBAR | 15 | ml"></textarea>
     const bulkText    = document.getElementById('bulkText');
     const bulkPreview = document.getElementById('bulkPreview');
 
+    // Import modal
+    const importModal   = document.getElementById('importModal');
+    const importPreview = document.getElementById('importPreview');
+    const fileXlsx      = document.getElementById('fileXlsx');
+
     // Buttons
     document.getElementById('btnNewItem').addEventListener('click', createItem);
     document.getElementById('btnDeleteItem').addEventListener('click', deleteItem);
@@ -502,18 +610,35 @@ ALMIBAR | 15 | ml"></textarea>
     document.getElementById('btnCancelBulk').addEventListener('click', closeBulk);
     document.getElementById('btnApplyBulk').addEventListener('click', applyBulk);
 
-    // ===== Init =====
+    document.getElementById('btnImportXlsx').addEventListener('click', () => fileXlsx.click());
+    fileXlsx.addEventListener('change', onPickXlsx);
+
+    document.getElementById('btnCloseImport').addEventListener('click', closeImport);
+    document.getElementById('btnCancelImport').addEventListener('click', closeImport);
+    document.getElementById('btnRunImport').addEventListener('click', runImport);
+
+    // ==========================================================
+    // Init
+    // ==========================================================
     document.addEventListener('DOMContentLoaded', async () => {
       setStatus('CARGANDO…');
 
       const [mR, sR] = await Promise.all([
         client.from('menu_items').select('*').order('name'),
-        client.from('inventory_skus').select('id,name,cost_price,volume_ml,unit_type').eq('is_active', true).order('name')
+        // IMPORTANTE: traigo external_id para matchear por código
+        client.from('inventory_skus').select('id,external_id,name,cost_price,volume_ml,unit_type').eq('is_active', true).order('name')
       ]);
 
-      menuItems = (mR.data || []).map(x => ({ ...x, name: (x.name || '').toString() }));
+      menuItems = (mR.data || []).map(x => ({
+        ...x,
+        id: Number(x.id),
+        name: (x.name || '').toString()
+      }));
+
       skus = (sR.data || []).map(x => ({
         ...x,
+        id: Number(x.id),
+        external_id: x.external_id == null ? null : String(x.external_id),
         name: (x.name || '').toString(),
         cost_price: Number(x.cost_price) || 0,
         volume_ml: x.volume_ml == null ? null : Number(x.volume_ml),
@@ -522,15 +647,25 @@ ALMIBAR | 15 | ml"></textarea>
 
       skuById.clear();
       skuIdsByNormName.clear();
+      skuIdByExternalId.clear();
+      menuItemByNormName.clear();
 
       for (const s of skus) {
-        skuById.set(String(s.id), s);
+        const sid = String(s.id);
+        skuById.set(sid, s);
+
         const k = norm(s.name);
         if (!skuIdsByNormName.has(k)) skuIdsByNormName.set(k, []);
-        skuIdsByNormName.get(k).push(String(s.id));
+        skuIdsByNormName.get(k).push(sid);
+
+        if (s.external_id) skuIdByExternalId.set(norm(s.external_id), sid);
       }
 
-      renderSkuSelect(''); // no filter
+      for (const it of menuItems){
+        menuItemByNormName.set(norm(it.name), it);
+      }
+
+      renderSkuSelect('');
       renderMenu(menuItems);
       elCountMenu.textContent = `${menuItems.length} items`;
 
@@ -552,15 +687,20 @@ ALMIBAR | 15 | ml"></textarea>
         t = setTimeout(() => updatePrice(), 450);
       });
 
-      // ESC para cerrar modal
+      // ESC para cerrar modales
       document.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Escape' && bulkModal.style.display === 'flex') closeBulk();
+        if (ev.key === 'Escape') {
+          if (bulkModal.style.display === 'flex') closeBulk();
+          if (importModal.style.display === 'flex') closeImport();
+        }
       });
 
       setStatus('—');
     });
 
-    // ===== Render menu =====
+    // ==========================================================
+    // Menu render + select
+    // ==========================================================
     function renderMenu(list){
       if (!list.length){
         elMenuList.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);">Sin productos</div>`;
@@ -585,7 +725,6 @@ ALMIBAR | 15 | ml"></textarea>
       });
     }
 
-    // ===== Select item =====
     async function selectItem(id){
       currentItemId = id;
       elCurrentId.value = id;
@@ -593,7 +732,6 @@ ALMIBAR | 15 | ml"></textarea>
       const item = menuItems.find(x => Number(x.id) === Number(id));
       if (!item) return;
 
-      // highlight in list (re-render current list based on current search)
       const term = norm(elSearchMenu.value);
       const filtered = !term ? menuItems : menuItems.filter(i => norm(i.name).includes(term));
       renderMenu(filtered);
@@ -608,7 +746,9 @@ ALMIBAR | 15 | ml"></textarea>
       await loadIngredients(id);
     }
 
-    // ===== Ingredients =====
+    // ==========================================================
+    // Ingredients
+    // ==========================================================
     function calcCostAndLiquid(ing){
       const s = ing.inventory_skus || {};
       const qty = Number(ing.quantity_needed) || 0;
@@ -617,7 +757,6 @@ ALMIBAR | 15 | ml"></textarea>
       const base = Number(s.cost_price) || 0;
       const vol = s.volume_ml == null ? null : Number(s.volume_ml);
 
-      // Costo
       let cost = 0;
       if (unit === 'un' || (s.unit_type || '').toUpperCase() === 'UNIDAD') {
         cost = base * qty;
@@ -627,7 +766,6 @@ ALMIBAR | 15 | ml"></textarea>
         cost = 0; // no se puede prorratear sin volume_ml
       }
 
-      // Volumen (para vaso 400ml)
       let ml = 0;
       if (unit === 'ml') ml += qty;
       if (unit === 'un' && vol && vol > 0) ml += qty * vol;
@@ -709,7 +847,6 @@ ALMIBAR | 15 | ml"></textarea>
           `;
         }).join('');
 
-        // listeners inline (después de render)
         elIngBody.querySelectorAll('button[data-del]').forEach(btn => {
           btn.addEventListener('click', () => delIng(Number(btn.dataset.del)));
         });
@@ -717,8 +854,7 @@ ALMIBAR | 15 | ml"></textarea>
         elIngBody.querySelectorAll('input[data-field="quantity_needed"]').forEach(inp => {
           inp.addEventListener('blur', async () => {
             const id = Number(inp.dataset.ing);
-            const val = inp.value;
-            await updateIngredient(id, { quantity_needed: val });
+            await updateIngredient(id, { quantity_needed: inp.value });
           });
           inp.addEventListener('keydown', (ev) => {
             if (ev.key === 'Enter') inp.blur();
@@ -829,7 +965,9 @@ ALMIBAR | 15 | ml"></textarea>
       toast('Receta vaciada');
     }
 
-    // ===== KPI / Volume =====
+    // ==========================================================
+    // KPI / Volume
+    // ==========================================================
     function updateKPIs(cost){
       const p = Number(elViewPrice.value) || 0;
       const margin = p - cost;
@@ -841,10 +979,13 @@ ALMIBAR | 15 | ml"></textarea>
       elKpiMargin.textContent = money(margin);
       elKpiMarginPct.textContent = pct(marginPct);
 
-      // Bar KPI rules (COGS target <= 30%)
+      elKpiCost4.textContent = money(cost * 4);
+      elKpiMargin4.textContent = money(margin * 4);
+
       elKpiCostPct.style.color = costPct <= 30 ? 'var(--accent-green)' : 'var(--accent-red)';
       elKpiMarginPct.style.color = marginPct >= 70 ? 'var(--accent-green)' : 'var(--accent-red)';
       elKpiMargin.style.color = margin >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+      elKpiMargin4.style.color = (margin * 4) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
     }
 
     function updateVolume(totalML){
@@ -862,7 +1003,9 @@ ALMIBAR | 15 | ml"></textarea>
       elVolPill.style.borderColor = overflow ? 'rgba(255,10,30,0.35)' : 'rgba(204,255,0,0.35)';
     }
 
-    // ===== Price =====
+    // ==========================================================
+    // Price
+    // ==========================================================
     async function updatePrice(){
       if (!currentItemId) return;
 
@@ -880,18 +1023,19 @@ ALMIBAR | 15 | ml"></textarea>
       const it = menuItems.find(x => Number(x.id) === Number(currentItemId));
       if (it) it.price = p;
 
-      // refresca list (respetando filtro actual)
       const term = norm(elSearchMenu.value);
       const filtered = !term ? menuItems : menuItems.filter(i => norm(i.name).includes(term));
       renderMenu(filtered);
 
       setStatus('—');
       toast('Precio actualizado');
-      // Recalcular KPI (por si cambió el %)
+
       await loadIngredients(currentItemId);
     }
 
-    // ===== Items =====
+    // ==========================================================
+    // Items
+    // ==========================================================
     async function createItem(){
       const n = prompt('Nombre del producto:');
       if (!n) return;
@@ -899,7 +1043,7 @@ ALMIBAR | 15 | ml"></textarea>
       setStatus('CREANDO…');
 
       const payload = { name: String(n).toUpperCase().trim(), price: 0 };
-      const { error } = await client.from('menu_items').insert(payload);
+      const { data, error } = await client.from('menu_items').insert(payload).select('*').single();
 
       if (error){
         console.error(error);
@@ -909,7 +1053,13 @@ ALMIBAR | 15 | ml"></textarea>
       }
 
       toast('Producto creado');
-      location.reload();
+      menuItems.push({ ...data, id: Number(data.id), name: String(data.name) });
+      menuItemByNormName.set(norm(String(data.name)), menuItems[menuItems.length-1]);
+      menuItems.sort((a,b)=> String(a.name).localeCompare(String(b.name), 'es'));
+
+      renderMenu(menuItems);
+      elCountMenu.textContent = `${menuItems.length} items`;
+      setStatus('—');
     }
 
     async function deleteItem(){
@@ -929,10 +1079,19 @@ ALMIBAR | 15 | ml"></textarea>
       }
 
       toast('Producto eliminado');
-      location.reload();
+      menuItems = menuItems.filter(x => Number(x.id) !== Number(currentItemId));
+      currentItemId = null;
+
+      renderMenu(menuItems);
+      elCountMenu.textContent = `${menuItems.length} items`;
+      elRecipePanel.style.display = 'none';
+      elEmptyState.style.display = 'block';
+      setStatus('—');
     }
 
-    // ===== SKU select filter =====
+    // ==========================================================
+    // SKU select filter
+    // ==========================================================
     function renderSkuSelect(term){
       const t = norm(term);
       const list = !t ? skus : skus.filter(s => norm(s.name).includes(t));
@@ -941,11 +1100,14 @@ ALMIBAR | 15 | ml"></textarea>
         const meta = [];
         if (s.unit_type) meta.push(s.unit_type);
         if (s.volume_ml != null && Number(s.volume_ml) > 0) meta.push(`${Math.round(Number(s.volume_ml))}ml`);
+        if (s.external_id) meta.push(`cod:${s.external_id}`);
         return `<option value="${s.id}">${escapeHtml(s.name)}${meta.length ? ' · ' + meta.join(' · ') : ''}</option>`;
       }).join('');
     }
 
-    // ===== Bulk paste =====
+    // ==========================================================
+    // Bulk paste
+    // ==========================================================
     function openBulk(){
       if (!currentItemId) return;
       bulkText.value = '';
@@ -957,6 +1119,64 @@ ALMIBAR | 15 | ml"></textarea>
     }
     function closeBulk(){
       bulkModal.style.display = 'none';
+    }
+
+    function parseBulk(text){
+      const lines = (text || '').split('\n').map(l => l.trim()).filter(Boolean);
+      const out = [];
+
+      for (const raw of lines){
+        const parts = raw.split(/[|;\t,]/).map(x => x.trim()).filter(Boolean);
+        if (parts.length < 2){
+          out.push({ raw, ok:false, reason:'Formato' });
+          continue;
+        }
+
+        const nameOrId = parts[0];
+
+        let unit = normalizeUnit(parts[2] || 'ml');
+        let qty = normalizeQty(parts[1], unit);
+        if (unit === 'l') unit = 'ml';
+
+        if (!Number.isFinite(qty) || qty <= 0){
+          out.push({ raw, ok:false, reason:'Cantidad' });
+          continue;
+        }
+
+        // Match SKU: id directo o nombre
+        let matchedId = null;
+        let matchedName = null;
+
+        if (/^\d+$/.test(nameOrId) && skuById.has(String(nameOrId))){
+          matchedId = String(nameOrId);
+          matchedName = skuById.get(matchedId).name;
+        } else {
+          const key = norm(nameOrId);
+
+          // exact
+          const exactIds = skuIdsByNormName.get(key);
+          if (exactIds && exactIds.length){
+            matchedId = exactIds[0];
+            matchedName = skuById.get(matchedId).name;
+          } else {
+            // contains fallback
+            const found = skus.find(s => norm(s.name).includes(key));
+            if (found){
+              matchedId = String(found.id);
+              matchedName = found.name;
+            }
+          }
+        }
+
+        if (!matchedId){
+          out.push({ raw, ok:false, reason:'Sin match' });
+          continue;
+        }
+
+        out.push({ raw, ok:true, sku_id: Number(matchedId), matchedName, qty, unit });
+      }
+
+      return out;
     }
 
     function previewBulk(){
@@ -983,65 +1203,7 @@ ALMIBAR | 15 | ml"></textarea>
         </div>
       `).join('');
 
-      bulkPreview.innerHTML = head + lines + (parsed.length > 30 ? `<div class="small-hint mt-2">Mostrando 30 de ${parsed.length} líneas…</div>` : '');
-    }
-
-    function parseBulk(text){
-      const lines = (text || '').split('\n').map(l => l.trim()).filter(Boolean);
-      const out = [];
-
-      for (const raw of lines){
-        const parts = raw.split(/[|;\t,]/).map(x => x.trim()).filter(Boolean);
-        if (parts.length < 2){
-          out.push({ raw, ok:false, reason:'Formato' });
-          continue;
-        }
-
-        const nameOrId = parts[0];
-        const qty = Number(String(parts[1]).replace(',', '.'));
-        let unit = (parts[2] || 'ml').toString().trim().toLowerCase();
-        if (unit === 'u') unit = 'un';
-        if (unit !== 'ml' && unit !== 'un') unit = 'ml';
-
-        if (!Number.isFinite(qty) || qty <= 0){
-          out.push({ raw, ok:false, reason:'Cantidad' });
-          continue;
-        }
-
-        // Match SKU: id directo o nombre
-        let matchedId = null;
-        let matchedName = null;
-
-        if (/^\d+$/.test(nameOrId) && skuById.has(String(nameOrId))){
-          matchedId = String(nameOrId);
-          matchedName = skuById.get(matchedId).name;
-        } else {
-          const key = norm(nameOrId);
-
-          // exact
-          const exactIds = skuIdsByNormName.get(key);
-          if (exactIds && exactIds.length){
-            matchedId = exactIds[0];
-            matchedName = skuById.get(matchedId).name;
-          } else {
-            // contains fallback (primero que matchee)
-            const found = skus.find(s => norm(s.name).includes(key));
-            if (found){
-              matchedId = String(found.id);
-              matchedName = found.name;
-            }
-          }
-        }
-
-        if (!matchedId){
-          out.push({ raw, ok:false, reason:'Sin match' });
-          continue;
-        }
-
-        out.push({ raw, ok:true, sku_id: Number(matchedId), matchedName, qty, unit });
-      }
-
-      return out;
+      bulkPreview.innerHTML = head + lines + (parsed.length > 30 ? `<div class="small-hint" style="margin-top:8px;">Mostrando 30 de ${parsed.length} líneas…</div>` : '');
     }
 
     async function applyBulk(){
@@ -1063,12 +1225,17 @@ ALMIBAR | 15 | ml"></textarea>
 
       setStatus('CARGANDO LOTE…');
 
-      const rows = ok.map(x => ({
-        menu_item_id: currentItemId,
-        sku_id: x.sku_id,
-        quantity_needed: x.qty,
-        unit_needed: x.unit
-      }));
+      // dedupe by (sku_id, unit)
+      const agg = new Map();
+      for (const x of ok){
+        const k = `${x.sku_id}__${x.unit}`;
+        agg.set(k, (agg.get(k) || 0) + Number(x.qty));
+      }
+
+      const rows = Array.from(agg.entries()).map(([k, qty]) => {
+        const [sku_id, unit_needed] = k.split('__');
+        return { menu_item_id: currentItemId, sku_id: Number(sku_id), quantity_needed: Number(qty), unit_needed };
+      });
 
       const { error } = await client.from('recipe_ingredients').insert(rows);
       if (error){
@@ -1080,15 +1247,281 @@ ALMIBAR | 15 | ml"></textarea>
 
       closeBulk();
       await loadIngredients(currentItemId);
-      toast(`Cargadas ${ok.length} líneas`);
+      toast(`Cargadas ${rows.length} líneas`);
+      setStatus('—');
     }
 
-    // ===== HTML escape =====
-    function escapeHtml(str){
-      return String(str ?? '')
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-        .replace(/'/g,'&#039;');
+    // ==========================================================
+    // Import XLSX
+    // ==========================================================
+    async function onPickXlsx(ev){
+      const f = ev.target.files?.[0];
+      if (!f) return;
+
+      try{
+        setStatus('LEYENDO XLSX…');
+        const buf = await f.arrayBuffer();
+        const wb = XLSX.read(buf, { type:'array' });
+        const wsName = wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
+
+        importPlan = await buildImportPlan(rows);
+        renderImportPreview(importPlan);
+        openImport();
+      }catch(err){
+        console.error(err);
+        alert('No se pudo leer el archivo.');
+        setStatus('ERROR');
+      }finally{
+        // reset input
+        fileXlsx.value = '';
+      }
+    }
+
+    function openImport(){
+      if (!importPlan) return;
+      importModal.style.display = 'flex';
+      setStatus('—');
+    }
+    function closeImport(){
+      importModal.style.display = 'none';
+      importPlan = null;
+    }
+
+    function detectKey(row, keys){
+      const rKeys = Object.keys(row || {});
+      const map = new Map(rKeys.map(k => [norm(k), k]));
+      for (const cand of keys){
+        const hit = map.get(norm(cand));
+        if (hit) return hit;
+      }
+      // fallback: contains
+      for (const [nk, orig] of map.entries()){
+        for (const cand of keys){
+          if (nk.includes(norm(cand))) return orig;
+        }
+      }
+      return null;
+    }
+
+    async function buildImportPlan(sheetRows){
+      // Detect columns from first non-empty row
+      const sample = sheetRows.find(r => r && Object.values(r).some(v => v != null && String(v).trim() !== '')) || {};
+      const kProduct = detectKey(sample, ['producto','trago','menu_item','menu item','item','coctel','cocktail','drink','nombre']);
+      const kSkuCode = detectKey(sample, ['codigo','código','sku','sku_codigo','ingrediente_codigo','articulo_id','external_id','external id']);
+      const kSkuName = detectKey(sample, ['ingrediente','insumo','sku_name','sku nombre','detalle','nombre_insumo','nombre insumo','sku']);
+      const kQty     = detectKey(sample, ['cantidad','qty','cantidad_ml','ml','cant','cantidad (ml)','cantidad_ml']);
+      const kUnit    = detectKey(sample, ['unidad','u_med','u med','unit','medida']);
+
+      if (!kProduct || !kQty || (!kSkuCode && !kSkuName)){
+        throw new Error('No se detectaron columnas mínimas.');
+      }
+
+      const missingSkus = [];
+      const created = [];
+      const rowsByMenuId = new Map(); // menuId -> [{sku_id, quantity_needed, unit_needed}]
+      const affectedMenuIds = new Set();
+
+      // This pass: resolve/create menu items and resolve skus
+      for (const r of sheetRows){
+        const prodRaw = r[kProduct];
+        const qtyRaw = r[kQty];
+        const codeRaw = kSkuCode ? r[kSkuCode] : null;
+        const nameRaw = kSkuName ? r[kSkuName] : null;
+        const unitRaw = kUnit ? r[kUnit] : 'ml';
+
+        const prodName = String(prodRaw ?? '').trim();
+        if (!prodName) continue;
+
+        let unit = normalizeUnit(unitRaw || 'ml');
+        let qty = normalizeQty(qtyRaw, unit);
+        if (unit === 'l') unit = 'ml';
+
+        if (!Number.isFinite(qty) || qty <= 0) continue;
+
+        // Menu item: match or create
+        const keyProd = norm(prodName.toUpperCase());
+        let menu = menuItemByNormName.get(keyProd);
+        if (!menu){
+          // create
+          const payload = { name: prodName.toUpperCase().trim(), price: 0 };
+          const { data, error } = await client.from('menu_items').insert(payload).select('*').single();
+          if (error) throw error;
+
+          menu = { ...data, id: Number(data.id), name: String(data.name) };
+          menuItems.push(menu);
+          menuItemByNormName.set(norm(menu.name), menu);
+          created.push(menu.name);
+        }
+
+        // SKU: prefer code, else name
+        let skuId = null;
+
+        if (codeRaw != null && String(codeRaw).trim() !== ''){
+          const codeKey = norm(String(codeRaw).trim());
+          skuId = skuIdByExternalId.get(codeKey) || null;
+        }
+
+        if (!skuId && nameRaw != null && String(nameRaw).trim() !== ''){
+          const nameKey = norm(String(nameRaw).trim());
+          const exactIds = skuIdsByNormName.get(nameKey);
+          if (exactIds && exactIds.length) skuId = exactIds[0];
+          if (!skuId){
+            const found = skus.find(s => norm(s.name).includes(nameKey));
+            if (found) skuId = String(found.id);
+          }
+        }
+
+        if (!skuId){
+          missingSkus.push({
+            producto: prodName,
+            codigo: codeRaw,
+            ingrediente: nameRaw,
+            cantidad: qty,
+            unidad: unit
+          });
+          continue;
+        }
+
+        const menuId = Number(menu.id);
+        affectedMenuIds.add(menuId);
+
+        if (!rowsByMenuId.has(menuId)) rowsByMenuId.set(menuId, []);
+        rowsByMenuId.get(menuId).push({
+          menu_item_id: menuId,
+          sku_id: Number(skuId),
+          quantity_needed: Number(qty),
+          unit_needed: unit
+        });
+      }
+
+      // Dedupe/sum within each recipe
+      for (const [menuId, rows] of rowsByMenuId.entries()){
+        const agg = new Map();
+        for (const x of rows){
+          const k = `${x.sku_id}__${x.unit_needed}`;
+          agg.set(k, (agg.get(k) || 0) + Number(x.quantity_needed));
+        }
+        const deduped = Array.from(agg.entries()).map(([k, q]) => {
+          const [sku_id, unit_needed] = k.split('__');
+          return {
+            menu_item_id: Number(menuId),
+            sku_id: Number(sku_id),
+            quantity_needed: Math.round(Number(q) * 1000) / 1000,
+            unit_needed
+          };
+        });
+        rowsByMenuId.set(menuId, deduped);
+      }
+
+      // keep menuItems sorted in UI if we created
+      if (created.length){
+        menuItems.sort((a,b)=> String(a.name).localeCompare(String(b.name), 'es'));
+        renderMenu(!norm(elSearchMenu.value) ? menuItems : menuItems.filter(i => norm(i.name).includes(norm(elSearchMenu.value))));
+        elCountMenu.textContent = `${menuItems.length} items`;
+      }
+
+      return {
+        detected: { kProduct, kSkuCode, kSkuName, kQty, kUnit },
+        created,
+        missingSkus,
+        affectedMenuIds: Array.from(affectedMenuIds),
+        rowsByMenuId
+      };
+    }
+
+    function renderImportPreview(plan){
+      const miss = plan.missingSkus || [];
+      const created = plan.created || [];
+      const affected = plan.affectedMenuIds || [];
+      let totalRows = 0;
+      for (const rows of plan.rowsByMenuId.values()) totalRows += rows.length;
+
+      const head = `
+        <div class="preview-line">
+          <div><b>${affected.length}</b> productos afectados · <b>${totalRows}</b> ingredientes</div>
+          <div class="${miss.length ? 'bad' : 'ok'}">${miss.length ? `${miss.length} sin match` : 'TODO OK'}</div>
+        </div>
+      `;
+
+      const blocks = [];
+
+      blocks.push(`<div class="preview-line"><div><b>Modo:</b> reemplaza recetas de productos afectados</div><div>—</div></div>`);
+
+      if (created.length){
+        blocks.push(`<div class="preview-line"><div><b>Productos creados:</b> ${created.length}</div><div class="ok">OK</div></div>`);
+        blocks.push(`<div class="small-hint" style="margin-top:6px;">${created.slice(0,10).map(escapeHtml).join(' · ')}${created.length>10?' …':''}</div>`);
+      } else {
+        blocks.push(`<div class="preview-line"><div><b>Productos creados:</b> 0</div><div class="ok">OK</div></div>`);
+      }
+
+      if (miss.length){
+        const shown = miss.slice(0, 20);
+        blocks.push(`<div class="preview-line"><div><b>Sin match SKU:</b> ${miss.length}</div><div class="bad">REVISAR</div></div>`);
+        blocks.push(shown.map(x => {
+          const code = x.codigo == null ? '' : ` · cod:${escapeHtml(String(x.codigo))}`;
+          const ing  = x.ingrediente == null ? '' : ` · ${escapeHtml(String(x.ingrediente))}`;
+          return `<div class="small-hint">• ${escapeHtml(String(x.producto))}${code}${ing} · ${x.cantidad} ${x.unidad}</div>`;
+        }).join('') + (miss.length>20 ? `<div class="small-hint" style="margin-top:6px;">Mostrando 20 de ${miss.length}…</div>` : ''));
+      }
+
+      importPreview.innerHTML = head + blocks.join('');
+    }
+
+    async function runImport(){
+      if (!importPlan) return;
+
+      const miss = importPlan.missingSkus || [];
+      if (miss.length){
+        const ok = confirm(`Hay ${miss.length} ingredientes sin match (no se cargarán). ¿Continuar importación igual?`);
+        if (!ok) return;
+      }
+
+      const affected = importPlan.affectedMenuIds || [];
+      if (!affected.length){
+        alert('No hay productos/ingredientes válidos para importar.');
+        return;
+      }
+
+      setStatus('IMPORTANDO…');
+
+      // 1) delete existing recipes for affected menu items
+      {
+        const { error } = await client.from('recipe_ingredients').delete().in('menu_item_id', affected);
+        if (error){
+          console.error(error);
+          setStatus('ERROR');
+          alert('No se pudo borrar recetas anteriores.');
+          return;
+        }
+      }
+
+      // 2) insert new rows (chunked)
+      const allRows = [];
+      for (const rows of importPlan.rowsByMenuId.values()){
+        for (const r of rows) allRows.push(r);
+      }
+
+      for (const part of chunk(allRows, 500)){
+        const { error } = await client.from('recipe_ingredients').insert(part);
+        if (error){
+          console.error(error);
+          setStatus('ERROR');
+          alert('Error insertando recetas (lote).');
+          return;
+        }
+      }
+
+      closeImport();
+      setStatus('—');
+      toast(`Importación OK: ${affected.length} productos`);
+
+      // refresh current selection if it was affected
+      const cur = Number(currentItemId);
+      if (cur && affected.includes(cur)){
+        await loadIngredients(cur);
+      }
     }
   </script>
 </body>

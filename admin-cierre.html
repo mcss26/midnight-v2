@@ -347,6 +347,14 @@
   </main>
 
   <script>
+    // ================= CONFIGURACIÓN GBOL =================
+    // Token obtenido de la sesión (Vence en Dic 2025)
+    const GBOL_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiI3UUhyZHJTaWNmUDJjOWowT2RMc1VjNmJVcFFkVFRSMEpFZ3JTSDBGM2pieVlWaHpNeDRYTEJhcUlEVWR0VDR2OSt4a1kxTzliUHhDc3grMVBQNVo3RmVYN2I0RGR2dk5UaGh2dzJOWWVpcz0iLCJleHAiOjE3NjU1OTEwMjd9.qUXEqRBV2oArhWug01KMNaTQ-VYGQ3EVVNv816hWmao";
+    
+    // NUEVA URL: Endpoint de Facturación Detallada
+    const GBOL_API_URL = "https://sd-2515114-h00190.ferozo.net/gbol/api/tickets/facturacionElectronicaConsulta";
+    // ======================================================
+
     let currentClosingId = null;
     let terminals = {};
     let passlineData = { validated: 0, total: 0, ingreso: 0 };
@@ -368,6 +376,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       const dateInput = document.getElementById('eventDate');
 
+      // Botones e Inputs
       facturaFileInput = document.getElementById('facturaFileInput');
       facturaImportBtn = document.getElementById('facturaImportBtn');
       cajasImportStatus = document.getElementById('cajasImportStatus');
@@ -376,15 +385,10 @@
       passlineImportBtn = document.getElementById('passlineImportBtn');
       passlineImportStatus = document.getElementById('passlineImportStatus');
 
-      if (facturaImportBtn && facturaFileInput) {
-        facturaImportBtn.addEventListener('click', () => facturaFileInput.click());
-        facturaFileInput.addEventListener('change', async (e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          await handleImportGbolFacturas(file);
-          await loadData();
-          facturaFileInput.value = '';
-        });
+      // BOTÓN CONECTAR A GBOL
+      if (facturaImportBtn) {
+        facturaImportBtn.textContent = "CONECTAR Y DESCARGAR DE GBOL (REAL)";
+        facturaImportBtn.onclick = handleImportGbolServer; 
       }
 
       if (passlineImportBtn && passlineFileInput) {
@@ -402,6 +406,124 @@
       }
       await loadData();
     });
+
+    // --- FUNCIÓN MAESTRA: IMPORTAR DESDE SERVIDOR GBOL (DETALLADO) ---
+    // --- VERSIÓN CORREGIDA Y ROBUSTA ---
+    async function handleImportGbolServer() {
+      const dateStr = document.getElementById('eventDate').value; 
+      if (!dateStr) {
+        alert("Seleccioná una fecha primero.");
+        return;
+      }
+
+      if (cajasImportStatus) {
+        cajasImportStatus.textContent = 'Consultando tickets detallados...';
+        cajasImportStatus.style.color = 'var(--text-primary)';
+      }
+
+      try {
+        // TRUCO: Enviamos el JSON como cadena de texto exacta para evitar cambios de formato automáticos
+        // Usamos exactamente los mismos valores que vimos en tu "Network"
+        const rawBody = JSON.stringify({
+            "estado": -1,
+            "metodoDePago": -1,
+            "puntoDeVenta": "T-0", // Si falla, probaremos con 0 o "0"
+            "noche": dateStr,      // Ej: "2025-11-29"
+            "tipoBusqueda": 1
+        });
+
+        console.log("Enviando a GBol:", rawBody);
+
+        const response = await fetch(GBOL_API_URL, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json;charset=UTF-8',
+            'Authorization': 'Bearer ' + GBOL_TOKEN
+          },
+          body: rawBody
+        });
+
+        // LECTURA DE ERROR DETALLADO
+        if (!response.ok) {
+            // Intentamos leer qué nos dice el servidor
+            const errorText = await response.text();
+            console.error("Respuesta de error del servidor:", errorText);
+            throw new Error(`GBol respondió ${response.status}: ${errorText.substring(0, 100)}...`);
+        }
+
+        const data = await response.json();
+        
+        // --- PROCESAMIENTO ---
+        if (!data.facturacion || !Array.isArray(data.facturacion)) {
+            // A veces devuelve 200 pero sin datos
+            throw new Error("La respuesta no contiene lista de facturación.");
+        }
+
+        if (data.facturacion.length === 0) {
+            throw new Error("Gbol dice que hay 0 tickets para esta fecha.");
+        }
+
+        // Agrupar Tickets por Caja
+        const ventasPorCaja = {};
+
+        data.facturacion.forEach(ticket => {
+            const nombreCaja = (ticket.cajanom || "CAJA_DESCONOCIDA").trim().toUpperCase();
+
+            if (!ventasPorCaja[nombreCaja]) {
+                ventasPorCaja[nombreCaja] = { efectivo: 0, digital: 0, total: 0, tickets: 0 };
+            }
+
+            const efvo = parseFloat(ticket.efectivo) || 0;
+            const tarjeta = parseFloat(ticket.tarjetas) || 0;
+            const merpag = parseFloat(ticket.merpag) || 0;
+            const importe = parseFloat(ticket.importe) || 0;
+
+            ventasPorCaja[nombreCaja].efectivo += efvo;
+            ventasPorCaja[nombreCaja].digital += (tarjeta + merpag);
+            ventasPorCaja[nombreCaja].total += importe;
+            ventasPorCaja[nombreCaja].tickets += 1;
+        });
+
+        // Insertar en Supabase
+        const itemsToInsert = Object.keys(ventasPorCaja).map(nombre => {
+            const v = ventasPorCaja[nombre];
+            return {
+                 cajanom: nombre,
+                 fecha: dateStr,
+                 importe: v.total,
+                 efectivo: v.efectivo,
+                 tarjetas: v.digital,
+                 ticket_id: `AUTO-${v.tickets}T-${Date.now()}`,
+                 processed: false
+            };
+        });
+
+        // Limpiar previo e insertar nuevo
+        const { error: deleteError } = await client.from('import_gbol_sales').delete().eq('fecha', dateStr);
+        if (deleteError) throw deleteError;
+
+        const { error: insertError } = await client.from('import_gbol_sales').insert(itemsToInsert);
+        if (insertError) throw insertError;
+
+        if (cajasImportStatus) {
+            cajasImportStatus.textContent = `¡Éxito! Procesados ${data.facturacion.length} tickets.`;
+            cajasImportStatus.style.color = 'var(--accent-green)';
+        }
+        
+        await loadData(); 
+
+      } catch (err) {
+        console.error("Fallo Importación:", err);
+        if (cajasImportStatus) {
+            cajasImportStatus.textContent = `Error: ${err.message}`;
+            cajasImportStatus.style.color = 'var(--state-error)';
+        }
+        alert(err.message);
+      }
+    }
+    // -------------------------------------------------------
+
 
     function switchTab(view, btn) {
       const views = ['cajas', 'acceso', 'tesoreria', 'stock'];
@@ -476,6 +598,7 @@
         }
 
         // 3) Teórico por terminal desde import_gbol_sales (Gbol)
+        // NOTA: Ahora estos datos vienen EXACTOS desde la API
         const { data: gbolRows, error: gbolError } = await client
           .from('import_gbol_sales')
           .select('cajanom, fecha, efectivo, tarjetas')
@@ -727,132 +850,6 @@
       } catch (err) {
         console.error('Error al guardar cierre', err);
         alert('No se pudo guardar el cierre.');
-      }
-    }
-
-    async function handleImportGbolFacturas(file) {
-      if (!file) return;
-      if (cajasImportStatus) cajasImportStatus.textContent = 'Importando facturación...';
-
-      try {
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        if (!sheet) throw new Error('Hoja vacía en archivo.');
-
-        const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-        let headerRowIndex = -1;
-
-        for (let i = 0; i < rawRows.length; i++) {
-          const row = rawRows[i].map(v => String(v || '').toUpperCase());
-          const joined = row.join(' ');
-          if (
-            (joined.includes('CAJA') || joined.includes('CAJANOM')) &&
-            (joined.includes('EFECTIVO') || joined.includes('IMPORTE'))
-          ) {
-            headerRowIndex = i;
-            break;
-          }
-        }
-
-        if (headerRowIndex === -1) {
-          if (cajasImportStatus) {
-            cajasImportStatus.textContent = 'No se encontró la fila de encabezado (caja / efectivo). Revisá el archivo.';
-          }
-          return;
-        }
-
-        const rows = XLSX.utils.sheet_to_json(sheet, { range: headerRowIndex, defval: '' });
-        if (!rows.length) {
-          if (cajasImportStatus) {
-            cajasImportStatus.textContent = 'El archivo no contiene filas de facturación.';
-          }
-          return;
-        }
-
-        const date = document.getElementById('eventDate')?.value || null;
-
-        const payload = rows.map(r => {
-          const ptovta = Number(
-            r['ptovta'] ?? r['PTOVTA'] ?? r['PTOVTA'] ?? 0
-          ) || 0;
-
-          const cajanom =
-            r['cajanom'] ?? r['CajaNom'] ?? r['CAJANOM'] ?? r['caja'] ?? '';
-
-          let fechaRaw =
-            r['fecha'] ?? r['Fecha'] ?? r['FECHA'] ?? r['fechafc'] ?? date ?? '';
-
-          let fechaNorm = null;
-          if (fechaRaw instanceof Date) {
-            fechaNorm = fechaRaw.toISOString().split('T')[0];
-          } else {
-            const asStr = String(fechaRaw).trim();
-            if (asStr) {
-              const d = new Date(asStr);
-              if (!isNaN(d.getTime())) {
-                fechaNorm = d.toISOString().split('T')[0];
-              }
-            }
-          }
-          if (!fechaNorm && date) {
-            fechaNorm = date;
-          }
-
-          const importe = Number(
-            (r['importe'] ?? r['Importe'] ?? r['IMPORTE'] ?? '0').toString().replace(',', '.')
-          ) || 0;
-
-          const efectivo = Number(
-            (r['efectivo'] ?? r['Efectivo'] ?? r['EFECTIVO'] ?? '0').toString().replace(',', '.')
-          ) || 0;
-
-          const tarjetasRaw = Number(
-            (r['tarjetas'] ?? r['Tarjetas'] ?? r['TARJETAS'] ?? '0').toString().replace(',', '.')
-          ) || 0;
-
-          const merpagRaw = Number(
-            (r['merpag'] ?? r['MerPag'] ?? r['MERPAG'] ?? '0').toString().replace(',', '.')
-          ) || 0;
-
-          const tarjetas = tarjetasRaw + merpagRaw;
-
-          const ticketId =
-            (r['ticket'] ?? r['Ticket'] ?? r['TICKET'] ?? '').toString().trim() || null;
-
-          if (!cajanom) return null;
-          if (!fechaNorm) return null;
-
-          return {
-            ptovta: ptovta || null,
-            cajanom,
-            fecha: fechaNorm,
-            importe,
-            efectivo,
-            tarjetas,
-            ticket_id: ticketId,
-            processed: false
-          };
-        }).filter(Boolean);
-
-        if (!payload.length) {
-          if (cajasImportStatus) {
-            cajasImportStatus.textContent = 'No se encontraron filas válidas (sin caja / fecha).';
-          }
-          return;
-        }
-
-        const { error } = await client.from('import_gbol_sales').insert(payload);
-        if (error) throw error;
-
-        if (cajasImportStatus) {
-          cajasImportStatus.textContent = `Importación completada. Filas guardadas: ${payload.length}`;
-        }
-      } catch (err) {
-        console.error('Error al importar facturación Gbol', err);
-        if (cajasImportStatus) {
-          cajasImportStatus.textContent = 'Error al importar facturación. Revisá el archivo.';
-        }
       }
     }
 
