@@ -3,123 +3,177 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Midnight - Master SKUs</title>
+  <title>Midnight ERP · Maestro de SKUs</title>
 
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet"/>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
 </head>
-
 <body>
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span class="logo-accent">DATA</span></div>
-    <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
+    <div class="admin-header-inner">
+      <div class="admin-header-top">
+        <div>
+          <button type="button" class="btn-back" onclick="window.location.href='panel-master.html'">
+            VOLVER
+          </button>
+        </div>
+        <div class="admin-logo">
+          MIDNIGHT<span class="logo-accent">DATA</span>
+        </div>
+        <div class="admin-header-right">
+          <div class="session-chip">
+            <span class="session-chip-dot"></span>
+            MASTER DATA · SKUs
+          </div>
+        </div>
+      </div>
+    </div>
   </header>
 
-  <div class="admin-container">
-    <div class="section-header">
-      <div>
-        <h2 class="section-title">Maestro de Insumos</h2>
-        <p class="section-desc">Artículos, costos y stock ideal operativo.</p>
+  <main class="admin-container">
+    <section class="section-header">
+      <h1 class="section-title">MAESTRO DE INSUMOS</h1>
+      <p class="section-desc">
+        Gestioná todos los SKUs de inventario: nombre, unidad, proveedor y stock ideal por barra.
+      </p>
+    </section>
+
+    <div style="display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center; margin-bottom:18px;">
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input-admin"
+          placeholder="Buscar insumo por nombre o código..."
+          oninput="filterList()"
+        />
+        <label style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary);">
+          <input type="checkbox" id="showInactive" onchange="filterList()" style="width:13px; height:13px;" />
+          Ver inactivos
+        </label>
       </div>
-      <div style="display:flex; gap:10px;">
-        <input type="file" id="fileInput" hidden accept=".xlsx,.xls,.csv" onchange="handleFile(this)">
-        <button onclick="document.getElementById('fileInput').click()" class="btn-secondary">
-          Importar precios
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="btn-secondary" onclick="triggerXlsxInput()">
+          Importar lista precios
         </button>
-        <button onclick="openModal()" class="btn-primary">+ Nuevo SKU</button>
+        <button type="button" class="btn-primary" onclick="openCreateModal()">
+          + Nuevo SKU
+        </button>
       </div>
     </div>
 
-    <input
-      type="text"
-      id="searchInput"
-      class="search-input-admin"
-      placeholder="Buscar insumo por nombre o código..."
-      oninput="filterList()"
-    >
-
-    <div class="table-container" style="margin-top: 20px;">
+    <div class="table-container" style="margin-top: 4px;">
       <table class="sku-table">
         <thead>
           <tr>
             <th style="padding-left: 25px;">INSUMO / CATEGORÍA</th>
-            <th style="text-align:center; width: 100px;">UNIDAD</th>
-            <th style="text-align:center; width: 120px;">STOCK IDEAL</th>
+            <th class="text-center" style="width: 140px;">UNIDAD / VOLUMEN</th>
+            <th class="text-center" style="width: 120px;">STOCK IDEAL</th>
             <th style="width: 220px;">PROVEEDOR</th>
-            <th style="text-align:right; width: 120px;">COSTO</th>
-            <th style="width: 60px;"></th>
+            <th class="text-right" style="width: 120px;">COSTO</th>
+            <th class="text-center" style="width: 90px;">STOCK ACT.</th>
+            <th style="width: 90px;"></th>
           </tr>
         </thead>
         <tbody id="skuList">
           <tr>
-            <td colspan="6" style="text-align:center; padding: 40px; color: var(--text-secondary);">
+            <td colspan="7" style="text-align:center; padding: 40px; color: var(--text-secondary);">
               Cargando inventario...
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-  </div>
+  </main>
 
   <!-- MODAL SKU -->
   <div id="skuModal" class="modal-overlay">
     <div class="modal-box">
-      <h3 class="section-title" style="font-size:20px; margin-bottom:25px;">Datos del Insumo</h3>
-      <input type="hidden" id="skuId">
+      <h2 style="margin:0 0 8px; font-size:16px;">SKU de inventario</h2>
+      <p style="margin:0 0 16px; font-size:12px; color:var(--text-secondary);">
+        Completá los datos básicos del insumo. El código externo suele ser el código de Gbol / proveedor.
+      </p>
 
-      <label class="input-label">NOMBRE DEL PRODUCTO</label>
-      <input type="text" id="skuName" class="modal-input" placeholder="Ej: VODKA ABSOLUT">
+      <input type="hidden" id="skuId" />
 
-      <div style="display:flex; gap:15px; margin-top:15px;">
-        <div style="flex:1;">
-          <label class="input-label">CATEGORÍA</label>
-          <select id="skuCat" class="modal-select">
-            <option value="BEBIDAS">BEBIDAS</option>
-            <option value="INSUMOS">INSUMOS BARRA</option>
-            <option value="LIMPIEZA">LIMPIEZA</option>
-            <option value="LIBRERIA">LIBRERÍA / OFICINA</option>
-            <option value="MANTENIMIENTO">MANTENIMIENTO</option>
-          </select>
+      <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px;">
+        <div style="grid-column: 1 / -1;">
+          <label class="input-label" for="skuName">Nombre del insumo</label>
+          <input id="skuName" type="text" class="modal-input" placeholder="Ej: VODKA ABSOLUT 750ML" />
         </div>
-        <div style="flex:1;">
-          <label class="input-label">FAMILIA / TIPO</label>
-          <input type="text" id="skuFam" class="modal-input" placeholder="Ej: VODKA">
-        </div>
-      </div>
 
-      <div style="display:flex; gap:15px; margin-top:15px;">
-        <div style="flex:1;">
-          <label class="input-label">UNIDAD</label>
+        <div>
+          <label class="input-label" for="skuCode">Código externo</label>
+          <input id="skuCode" type="text" class="modal-input" placeholder="Articulo / código sistema" />
+        </div>
+
+        <div>
+          <label class="input-label" for="skuCategory">Categoría</label>
+          <input id="skuCategory" type="text" class="modal-input" placeholder="Ej: BEBIDAS BLANCAS" />
+        </div>
+
+        <div>
+          <label class="input-label" for="skuFamily">Familia</label>
+          <input id="skuFamily" type="text" class="modal-input" placeholder="Ej: BOTELLAS 750ML" />
+        </div>
+
+        <div>
+          <label class="input-label" for="skuUnit">Unidad</label>
           <select id="skuUnit" class="modal-select">
             <option value="UNIDAD">UNIDAD</option>
             <option value="LITRO">LITRO</option>
             <option value="KG">KG</option>
           </select>
         </div>
-        <div style="flex:1;">
-          <label class="input-label">VOLUMEN (ml)</label>
-          <input type="number" id="skuVol" class="modal-input" value="0">
+
+        <div>
+          <label class="input-label" for="skuVolume">Volumen (ml)</label>
+          <input id="skuVolume" type="number" class="modal-input" placeholder="Ej: 750" />
+        </div>
+
+        <div>
+          <label class="input-label" for="skuCost">Costo unitario (ARS)</label>
+          <input id="skuCost" type="number" class="modal-input" placeholder="Ej: 15000" />
+        </div>
+
+        <div>
+          <label class="input-label" for="skuPreferredSupplier">Proveedor preferido</label>
+          <select id="skuPreferredSupplier" class="modal-select">
+            <option value="">---</option>
+          </select>
         </div>
       </div>
 
-      <label class="input-label">COSTO REFERENCIA ($)</label>
-      <input type="number" id="skuCost" class="modal-input">
-
       <div class="modal-btns">
-        <button onclick="closeModal()" class="btn-modal-cancel">Cancelar</button>
-        <button onclick="saveSku()" class="btn-modal-save">Guardar</button>
+        <button type="button" class="btn-secondary btn-modal-cancel" onclick="closeModal()">
+          Cancelar
+        </button>
+        <button type="button" class="btn-primary btn-modal-save" onclick="saveSku()">
+          Guardar
+        </button>
       </div>
     </div>
   </div>
+
+  <!-- INPUT OCULTO PARA EXCEL -->
+  <input
+    type="file"
+    id="xlsxInput"
+    accept=".xlsx,.xls"
+    style="display:none"
+    onchange="handleXlsxImport(this)"
+  />
 
   <script>
     let allSkus = [];
     let allSupps = [];
     let stockBySku = new Map();
+    let editingSkuId = null;
 
     window.addEventListener('DOMContentLoaded', () => {
       loadData();
@@ -129,134 +183,209 @@
     async function loadData() {
       try {
         const [skusRes, stockRes, suppsRes] = await Promise.all([
-          client.from('inventory_skus').select('*').order('name'),
-          client.from('inventory_stock').select('sku_id, stock_ideal, stock_current'),
-          client.from('suppliers').select('id, name').eq('is_active', true).order('name')
+          client
+            .from('inventory_skus')
+            .select('id, external_id, name, family, category, unit_type, volume_ml, cost_price, preferred_supplier_id, is_active')
+            .order('name'),
+          client
+            .from('inventory_stock')
+            .select('sku_id, stock_ideal, stock_current'),
+          client
+            .from('suppliers')
+            .select('id, name')
+            .eq('is_active', true)
+            .order('name')
         ]);
 
         if (skusRes.error) throw skusRes.error;
         if (stockRes.error) throw stockRes.error;
         if (suppsRes.error) throw suppsRes.error;
 
-        stockBySku = new Map();
-        (stockRes.data || []).forEach(row => {
-          stockBySku.set(row.sku_id, row);
-        });
-
+        allSkus = skusRes.data || [];
         allSupps = suppsRes.data || [];
 
-        allSkus = (skusRes.data || []).map(sku => ({
-          ...sku,
-          stock_ideal: stockBySku.get(sku.id)?.stock_ideal ?? null
-        }));
+        stockBySku = new Map();
+        (stockRes.data || []).forEach(row => {
+          stockBySku.set(row.sku_id, {
+            stock_ideal: row.stock_ideal,
+            stock_current: row.stock_current
+          });
+        });
 
-        renderList(allSkus);
+        populateModalSuppliers();
+        renderList();
       } catch (err) {
-        console.error('Error cargando SKUs:', err);
-        document.getElementById('skuList').innerHTML =
-          '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--state-error);">Error al cargar datos.</td></tr>';
+        console.error('Error cargando datos', err);
+        const tbody = document.getElementById('skuList');
+        if (tbody) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align:center; padding: 32px; color: var(--accent-red);">
+                Error cargando datos: ${err.message}
+              </td>
+            </tr>`;
+        }
       }
     }
 
-    // RENDER LISTA
-    function renderList(list) {
+    // Suppliers para el modal
+    function populateModalSuppliers() {
+      const select = document.getElementById('skuPreferredSupplier');
+      if (!select) return;
+      select.innerHTML = '<option value="">---</option>';
+      allSupps.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        select.appendChild(opt);
+      });
+    }
+
+    function buildSupplierOptions(selectedId) {
+      const options = ['<option value="">---</option>'];
+      allSupps.forEach(s => {
+        const selected = selectedId === s.id ? 'selected' : '';
+        options.push(
+          `<option value="${s.id}" ${selected}>${escapeHtml(s.name)}</option>`
+        );
+      });
+      return options.join('');
+    }
+
+    // RENDER TABLA
+    function renderList() {
       const tbody = document.getElementById('skuList');
-      if (!list.length) {
-        tbody.innerHTML =
-          '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">Sin insumos cargados.</td></tr>';
+      if (!tbody) return;
+
+      const searchInput = document.getElementById('searchInput');
+      const showInactiveEl = document.getElementById('showInactive');
+      const term = (searchInput ? searchInput.value : '').toLowerCase().trim();
+      const showInactive = showInactiveEl ? showInactiveEl.checked : false;
+
+      if (!allSkus.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align:center; padding: 40px; color: var(--text-secondary);">
+              No hay insumos cargados todavía.
+            </td>
+          </tr>`;
         return;
       }
 
-      tbody.innerHTML = list.map(i => {
-        const suppOpts =
-          '<option value="">-- Sin Asignar --</option>' +
-          allSupps
-            .map(
-              s =>
-                `<option value="${s.id}" ${
-                  i.preferred_supplier_id == s.id ? 'selected' : ''
-                }>${s.name}</option>`
-            )
-            .join('');
+      const rows = allSkus.filter(sku => {
+        if (!showInactive && sku.is_active === false) return false;
+        const name = (sku.name || '').toLowerCase();
+        const code = (sku.external_id || '').toLowerCase();
+        return !term || name.includes(term) || code.includes(term);
+      });
 
-        let catClass = 'tag-gray';
-        if (i.category === 'BEBIDAS') catClass = 'tag-red';
-        if (i.category === 'LIMPIEZA') catClass = 'tag-green';
+      if (!rows.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align:center; padding: 40px; color: var(--text-secondary);">
+              No se encontraron SKUs para este filtro.
+            </td>
+          </tr>`;
+        return;
+      }
 
-        const stockIdeal = i.stock_ideal ?? '';
+      tbody.innerHTML = rows.map(sku => {
+        const stock = stockBySku.get(sku.id) || {};
+        const stockIdeal = stock.stock_ideal ?? '';
+        const stockCurrent = stock.stock_current ?? null;
+        const suppOptions = buildSupplierOptions(sku.preferred_supplier_id);
+        const unitLabel = sku.unit_type || '-';
+        const volumeLabel = sku.volume_ml ? `${sku.volume_ml} ml` : '';
+
+        const inactiveTag = sku.is_active === false
+          ? '<span class="tag tag-red" style="margin-left:6px;">INACTIVO</span>'
+          : '';
+
+        const subTextParts = [];
+        if (sku.external_id) subTextParts.push('#' + escapeHtml(String(sku.external_id)));
+        if (sku.category) subTextParts.push(escapeHtml(sku.category));
+        if (sku.family) subTextParts.push(escapeHtml(sku.family));
+        const subText = subTextParts.join(' · ');
 
         return `
           <tr>
-            <td style="padding-left: 25px;">
-              <div class="row-title">${i.name}</div>
-              <div style="margin-top:6px;">
-                <span class="tag ${catClass}">${i.category || 'GRAL'}</span>
-                <span style="font-family:monospace; color:var(--text-muted); font-size:11px; margin-left:8px;">ID: ${
-                  i.external_id || '-'
-                }</span>
+            <td>
+              <div class="row-title">
+                ${escapeHtml(sku.name || '')}
+                ${inactiveTag}
+              </div>
+              <div class="row-sub-text">
+                ${subText || '&nbsp;'}
               </div>
             </td>
-            <td style="text-align:center;">
-              <div style="color:var(--text-secondary); font-size:12px;">${i.unit_type || '-'}</div>
-              ${
-                i.volume_ml > 0
-                  ? `<div style="color:var(--accent-blue); font-size:11px; font-weight:600;">${i.volume_ml} ml</div>`
-                  : ''
-              }
+            <td class="text-center">
+              <div>${unitLabel}</div>
+              <div class="row-sub-text">${volumeLabel || '&nbsp;'}</div>
             </td>
-            <td>
+            <td class="text-center">
               <input
                 type="number"
                 class="table-input"
                 value="${stockIdeal}"
-                onchange="updateField(${i.id}, 'stock_ideal', this.value)"
+                onchange="updateField(${sku.id}, 'stock_ideal', this.value)"
                 placeholder="-"
               >
             </td>
             <td>
               <select
-                class="table-select"
-                onchange="updateField(${i.id}, 'preferred_supplier_id', this.value)"
+                class="modal-select"
+                onchange="updateField(${sku.id}, 'preferred_supplier_id', this.value)"
               >
-                ${suppOpts}
+                ${suppOptions}
               </select>
             </td>
             <td class="col-costo">
-              ${MC_UTILS.formatCurrency(i.cost_price)}
+              ${MC_UTILS.formatCurrency(sku.cost_price || 0)}
             </td>
-            <td style="text-align:center;">
-              <button onclick="editSku(${i.id})" class="btn-icon">✏️</button>
+            <td class="text-center">
+              ${stockCurrent != null ? Number(stockCurrent).toFixed(2) : '-'}
             </td>
-          </tr>`;
+            <td style="text-align:right; white-space: nowrap;">
+              <button type="button" class="btn-icon" title="Editar SKU" onclick="editSku(${sku.id})">✏️</button>
+              <button type="button" class="btn-icon" title="Eliminar SKU" onclick="confirmDeleteSku(${sku.id})">🗑️</button>
+            </td>
+          </tr>
+        `;
       }).join('');
     }
 
-    // FILTRO BUSCADOR
     function filterList() {
-      const t = document.getElementById('searchInput').value.toLowerCase();
-      renderList(
-        allSkus.filter(
-          i =>
-            i.name.toLowerCase().includes(t) ||
-            (i.external_id && i.external_id.toLowerCase().includes(t))
-        )
-      );
+      renderList();
     }
 
-    // UPDATE GENERICO + STOCK IDEAL EN inventory_stock
-    async function updateField(id, field, val) {
-      if (field === 'stock_ideal') {
-        await updateStockIdeal(id, val);
-        return;
-      }
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
 
-      const payload = { [field]: val === '' ? null : val };
+    // UPDATE CAMPOS INLINE
+    async function updateField(id, field, val) {
       try {
-        const { error } = await client
-          .from('inventory_skus')
-          .update(payload)
-          .eq('id', id);
-        if (error) throw error;
+        if (field === 'stock_ideal') {
+          await updateStockIdeal(id, val);
+          return;
+        }
+
+        if (field === 'preferred_supplier_id') {
+          const payload = {
+            preferred_supplier_id: val === '' ? null : Number(val)
+          };
+          const { error } = await client
+            .from('inventory_skus')
+            .update(payload)
+            .eq('id', id);
+          if (error) throw error;
+          return;
+        }
       } catch (err) {
         console.error('Error actualizando campo', field, err);
         alert('Error al guardar: ' + err.message);
@@ -266,47 +395,157 @@
     async function updateStockIdeal(skuId, rawVal) {
       const value = rawVal === '' ? null : parseFloat(rawVal);
       if (rawVal !== '' && (isNaN(value) || value < 0)) {
-        alert('Ingresá un número válido para el stock ideal.');
+        alert('Ingresá un número válido para stock ideal.');
         return;
       }
 
       try {
-        const existing = stockBySku.get(skuId);
-        if (existing) {
+        const current = stockBySku.get(skuId);
+        if (!current) {
           const { error } = await client
-            .from('inventory_stock')
-            .update({ stock_ideal: value })
-            .eq('sku_id', skuId);
-          if (error) throw error;
-          existing.stock_ideal = value;
-        } else {
-          const { data, error } = await client
             .from('inventory_stock')
             .insert({
               sku_id: skuId,
-              stock_current: 0,
-              stock_ideal: value
-            })
-            .select()
-            .single();
+              stock_ideal: value ?? 0,
+              stock_current: 0
+            });
           if (error) throw error;
-          stockBySku.set(skuId, data);
+        } else {
+          const { error } = await client
+            .from('inventory_stock')
+            .update({ stock_ideal: value ?? 0 })
+            .eq('sku_id', skuId);
+          if (error) throw error;
         }
-        const sku = allSkus.find(s => s.id === skuId);
-        if (sku) sku.stock_ideal = value;
+
+        await loadData();
       } catch (err) {
-        console.error('Error guardando stock ideal', err);
-        alert('Error al guardar stock ideal: ' + err.message);
+        console.error('Error actualizando stock ideal', err);
+        alert('Error al guardar: ' + err.message);
       }
     }
 
-    // IMPORTADOR EXCEL
-    async function handleFile(input) {
-      const file = input.files[0];
+    // MODAL
+    function openCreateModal() {
+      editingSkuId = null;
+      setModalValues({
+        name: '',
+        external_id: '',
+        category: '',
+        family: '',
+        unit_type: 'UNIDAD',
+        volume_ml: '',
+        cost_price: '',
+        preferred_supplier_id: null
+      });
+      toggleModal(true);
+    }
+
+    function editSku(id) {
+      const sku = allSkus.find(s => s.id === id);
+      if (!sku) return;
+      editingSkuId = id;
+      setModalValues(sku);
+      toggleModal(true);
+    }
+
+    function setModalValues(sku) {
+      document.getElementById('skuId').value = sku.id || '';
+      document.getElementById('skuName').value = sku.name || '';
+      document.getElementById('skuCode').value = sku.external_id || '';
+      document.getElementById('skuCategory').value = sku.category || '';
+      document.getElementById('skuFamily').value = sku.family || '';
+      document.getElementById('skuUnit').value = sku.unit_type || 'UNIDAD';
+      document.getElementById('skuVolume').value =
+        sku.volume_ml != null ? sku.volume_ml : '';
+      document.getElementById('skuCost').value =
+        sku.cost_price != null ? sku.cost_price : '';
+      const suppSelect = document.getElementById('skuPreferredSupplier');
+      if (suppSelect) {
+        suppSelect.value = sku.preferred_supplier_id || '';
+      }
+    }
+
+    function toggleModal(show) {
+      const overlay = document.getElementById('skuModal');
+      if (!overlay) return;
+      overlay.style.display = show ? 'flex' : 'none';
+    }
+
+    function closeModal() {
+      toggleModal(false);
+    }
+
+    // GUARDAR SKU (alta/edición)
+    async function saveSku() {
+      const name = document.getElementById('skuName').value.trim();
+      const external_id = document.getElementById('skuCode').value.trim();
+      const category = document.getElementById('skuCategory').value.trim() || null;
+      const family = document.getElementById('skuFamily').value.trim() || null;
+      const unit_type = document.getElementById('skuUnit').value || 'UNIDAD';
+      const volumeRaw = document.getElementById('skuVolume').value;
+      const costRaw = document.getElementById('skuCost').value;
+      const preferredSupplierVal = document.getElementById('skuPreferredSupplier').value;
+
+      if (!name) {
+        alert('El nombre del insumo es obligatorio.');
+        return;
+      }
+
+      const volume_ml = volumeRaw === '' ? null : Number(volumeRaw);
+      const cost_price = costRaw === '' ? null : Number(costRaw);
+      const preferred_supplier_id =
+        preferredSupplierVal === '' ? null : Number(preferredSupplierVal);
+
+      const payload = {
+        name,
+        external_id: external_id || null,
+        category,
+        family,
+        unit_type,
+        volume_ml,
+        cost_price,
+        preferred_supplier_id,
+        updated_at: new Date().toISOString(),
+        is_active: true
+      };
+
+      try {
+        let error;
+        if (editingSkuId) {
+          ({ error } = await client
+            .from('inventory_skus')
+            .update(payload)
+            .eq('id', editingSkuId));
+        } else {
+          ({ error } = await client
+            .from('inventory_skus')
+            .insert(payload));
+        }
+        if (error) throw error;
+
+        closeModal();
+        await loadData();
+      } catch (err) {
+        console.error('Error guardando SKU', err);
+        alert('Error al guardar: ' + err.message);
+      }
+    }
+
+    // IMPORT EXCEL
+    function triggerXlsxInput() {
+      const input = document.getElementById('xlsxInput');
+      if (input) {
+        input.click();
+      }
+    }
+
+    function handleXlsxImport(input) {
+      const file = input.files && input.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = async e => {
+      reader.onload = async (e) => {
         try {
           const data = new Uint8Array(e.target.result);
           const wb = XLSX.read(data, { type: 'array' });
@@ -327,19 +566,16 @@
           }
 
           if (headerRowIndex === -1) {
-            throw new Error(
-              'Formato inválido. Se busca: Articulo, Detalle, Precio.'
-            );
+            throw new Error('Formato inválido. Se busca: Articulo, Detalle, Precio.');
           }
 
           const json = XLSX.utils.sheet_to_json(ws, { range: headerRowIndex });
-          let processed = 0,
-            updated = 0;
+
+          let processed = 0;
+          let updated = 0;
 
           for (const row of json) {
-            const codigo = row['Articulo']
-              ? String(row['Articulo']).trim()
-              : null;
+            const codigo = row['Articulo'] ? String(row['Articulo']).trim() : null;
             const nombre = row['Detalle']
               ? String(row['Detalle']).trim().toUpperCase()
               : null;
@@ -362,21 +598,26 @@
                 cost_price: precio,
                 volume_ml: volume_ml,
                 unit_type: unidad,
-                updated_at: new Date(),
+                updated_at: new Date().toISOString(),
                 is_active: true
               };
 
               const { error } = await client
                 .from('inventory_skus')
-                .upsert({ ...payload, external_id: codigo }, { onConflict: 'external_id' });
+                .upsert(
+                  { ...payload, external_id: codigo },
+                  { onConflict: 'external_id' }
+                );
 
-              if (!error) updated++;
+              if (!error) {
+                updated++;
+              }
             }
           }
 
           const user = await MC_UTILS.getCurrentUser();
           await client.from('admin_logs').insert({
-            admin_id: user?.id || null,
+            admin_id: user && user.id ? user.id : null,
             action: 'IMPORT_SKU',
             details: `Excel Costos: ${updated} items actualizados.`
           });
@@ -387,77 +628,37 @@
           await loadData();
           input.value = '';
         } catch (err) {
-          console.error(err);
+          console.error('Error importando SKUs', err);
           alert('Error importando: ' + err.message);
         }
       };
       reader.readAsArrayBuffer(file);
     }
 
-    // MODAL SKU
-    function openModal() {
-      document.getElementById('skuModal').style.display = 'flex';
-      document.getElementById('skuId').value = '';
-      resetForm();
-    }
-
-    function closeModal() {
-      document.getElementById('skuModal').style.display = 'none';
-    }
-
-    function resetForm() {
-      document.getElementById('skuName').value = '';
-      document.getElementById('skuCost').value = '';
-      document.getElementById('skuFam').value = '';
-      document.getElementById('skuVol').value = '0';
-    }
-
-    function editSku(id) {
-      const s = allSkus.find(x => x.id === id);
-      if (!s) return;
-      document.getElementById('skuId').value = s.id;
-      document.getElementById('skuName').value = s.name;
-      document.getElementById('skuCat').value = s.category || 'BEBIDAS';
-      document.getElementById('skuFam').value = s.family || '';
-      document.getElementById('skuUnit').value = s.unit_type || 'UNIDAD';
-      document.getElementById('skuVol').value = s.volume_ml || 0;
-      document.getElementById('skuCost').value = s.cost_price || 0;
-      document.getElementById('skuModal').style.display = 'flex';
-    }
-
-    async function saveSku() {
-      const id = document.getElementById('skuId').value;
-      const d = {
-        name: document.getElementById('skuName').value.toUpperCase(),
-        category: document.getElementById('skuCat').value,
-        family: document.getElementById('skuFam').value.toUpperCase(),
-        unit_type: document.getElementById('skuUnit').value,
-        volume_ml: parseFloat(document.getElementById('skuVol').value) || 0,
-        cost_price: parseFloat(document.getElementById('skuCost').value) || 0
-      };
-
-      if (!d.name) {
-        alert('El nombre es obligatorio.');
-        return;
-      }
+    // ELIMINAR (soft delete: is_active = false)
+    async function confirmDeleteSku(id) {
+      const sku = allSkus.find(s => s.id === id);
+      const name = sku && sku.name ? `\n\n${sku.name}` : '';
+      const ok = confirm(
+        '¿Eliminar este SKU del maestro?' +
+        name +
+        '\n\nSe marcará como INACTIVO. Las recetas y movimientos históricos no se borran.'
+      );
+      if (!ok) return;
 
       try {
-        let error;
-        if (id) {
-          ({ error } = await client
-            .from('inventory_skus')
-            .update(d)
-            .eq('id', id));
-        } else {
-          ({ error } = await client.from('inventory_skus').insert(d));
-        }
+        const { error } = await client
+          .from('inventory_skus')
+          .update({
+            is_active: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id);
         if (error) throw error;
-
-        closeModal();
         await loadData();
       } catch (err) {
-        console.error(err);
-        alert('Error al guardar: ' + err.message);
+        console.error('Error eliminando SKU', err);
+        alert('Error al eliminar: ' + err.message);
       }
     }
   </script>
