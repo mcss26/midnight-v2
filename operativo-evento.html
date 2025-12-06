@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Midnight ERP – Evento operativo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin-styles.css" />
+</head>
+<body>
+  <!-- HEADER GLOBAL -->
+  <header class="admin-header">
+    <div class="admin-header-inner">
+      <div class="admin-header-top">
+        <div></div>
+
+        <div class="admin-logo"></div>
+
+        <div class="admin-header-right">
+          <span class="session-chip">DEV: dev</span>
+          <button class="btn-back" onclick="window.history.back()">← Volver</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    <!-- TÍTULO DE PÁGINA -->
+    <section class="section-header">
+      <h1 class="section-title">EVENTO OPERATIVO</h1>
+      <p class="section-desc">
+        Crear fecha operativa, horario y dotación estimada para cada noche de trabajo.
+      </p>
+    </section>
+
+    <!-- LAYOUT DOS COLUMNAS -->
+    <section class="evento-layout">
+      <!-- =========================================
+           COLUMNA IZQUIERDA: PERSONAL
+           ========================================= -->
+      <aside class="evento-sidebar">
+        <div class="evento-card-header">
+          <div>
+            <span class="input-label">PERSONAL</span>
+            <p class="text-muted mt-1">
+              Biblioteca de perfiles. Asigná rol y usá el botón <strong>+</strong> para convocarlos al evento.
+            </p>
+          </div>
+          <button type="button" class="btn-primary" id="btnOpenNewProfile">
+            Agregar
+          </button>
+        </div>
+
+        <!-- Form mini para nuevo perfil (se puede mostrar/ocultar con JS) -->
+        <div id="newProfileForm" class="mt-2 hidden">
+          <div class="mb-2">
+            <label class="input-label" for="newProfileName">Nombre y apellido</label>
+            <input
+              id="newProfileName"
+              type="text"
+              class="modal-input"
+              placeholder="Ej: Juan Pérez"
+            />
+          </div>
+
+          <div class="mb-2">
+            <label class="input-label" for="newProfileRole">Rol (staff_roles)</label>
+            <select id="newProfileRole" class="modal-select">
+              <!-- Opciones cargadas desde Supabase -->
+            </select>
+          </div>
+
+          <div class="modal-btns">
+            <button type="button" class="btn-secondary" id="btnCancelNewProfile">
+              Cancelar
+            </button>
+            <button type="button" class="btn-primary" id="btnSaveNewProfile">
+              Guardar
+            </button>
+          </div>
+
+          <hr class="mt-2 mb-2" style="border: 0; border-top: 1px solid rgba(255,255,255,0.06);" />
+        </div>
+
+        <!-- Listado de personal -->
+        <div class="staff-lib-header mt-2">
+          <span class="input-label">LISTADO DE PERSONAL</span>
+          <input
+            type="text"
+            id="searchStaff"
+            class="search-input-admin"
+            placeholder="Buscar por nombre..."
+          />
+        </div>
+
+        <div id="staffLibraryList">
+          <!-- Filas de personal (se llenan por JS) -->
+          <!--
+          <div class="staff-lib-row">
+            <div class="staff-lib-info">
+              <div class="row-title">Juan Pérez</div>
+              <div class="row-sub-text">Barra – Jornal $8.000</div>
+            </div>
+            <div class="staff-lib-controls">
+              <button class="btn-icon" title="Agregar al evento">+</button>
+            </div>
+          </div>
+          -->
+        </div>
+      </aside>
+
+      <!-- =========================================
+           COLUMNA DERECHA: CREAR EVENTO + DETALLE
+           ========================================= -->
+      <section class="evento-main">
+
+        <!-- ---------- BLOQUE CREAR EVENTO ---------- -->
+        <article class="evento-card">
+          <div class="evento-card-header">
+            <div>
+              <span class="input-label">CREAR EVENTO</span>
+              <p class="text-muted mt-1">
+                Definí la fecha operativa y el horario de trabajo para esta noche.
+              </p>
+            </div>
+          </div>
+
+          <form id="createEventForm" class="mt-2" autocomplete="off">
+            <div class="mb-2">
+              <label class="input-label" for="eventDate">Fecha operativa</label>
+              <input
+                id="eventDate"
+                type="date"
+                class="modal-input"
+              />
+            </div>
+
+            <div class="mb-2">
+              <label class="input-label" for="eventStart">Hora de inicio</label>
+              <input
+                id="eventStart"
+                type="time"
+                class="modal-input"
+              />
+            </div>
+
+            <div class="mb-3">
+              <label class="input-label" for="eventEnd">Hora de cierre</label>
+              <input
+                id="eventEnd"
+                type="time"
+                class="modal-input"
+              />
+            </div>
+
+            <!-- Etiqueta opcional por si la querés usar más adelante -->
+            <div class="mb-3">
+              <label class="input-label" for="eventTag">Etiqueta (opcional)</label>
+              <input
+                id="eventTag"
+                type="text"
+                class="modal-input"
+                placeholder="Ej: Noche Reggaetón"
+              />
+            </div>
+
+            <div class="modal-btns">
+              <button type="button" class="btn-secondary" id="btnClearEvent">
+                Limpiar
+              </button>
+              <button type="submit" class="btn-primary" id="btnCreateEvent">
+                Crear evento
+              </button>
+            </div>
+          </form>
+
+          <!-- Eventos creados -->
+          <div class="mt-3">
+            <div class="evento-card-header" style="margin-bottom: 4px;">
+              <div>
+                <span class="input-label">EVENTOS CREADOS</span>
+              </div>
+              <button type="button" class="btn-refresh" id="btnReloadEvents">
+                ⟳ Actualizar
+              </button>
+            </div>
+
+            <div class="evento-event-list" id="eventList">
+              <!-- Se llena por JS con los eventos creados -->
+            </div>
+          </div>
+        </article>
+
+        <!-- ---------- BLOQUE DETALLE DEL EVENTO ---------- -->
+        <article class="evento-card">
+          <div class="evento-card-header">
+            <div>
+              <span class="input-label">DETALLE DEL EVENTO</span>
+              <div id="currentEventTitle" class="row-title mt-1">
+                Sin evento seleccionado
+              </div>
+              <div id="currentEventSubtitle" class="row-sub-text">
+                Elegí un evento de la lista para ver el resumen.
+              </div>
+            </div>
+            <button type="button" class="btn-secondary text-danger" id="btnDeleteEvent">
+              Eliminar evento
+            </button>
+          </div>
+
+          <div class="evento-grid mt-2">
+            <div>
+              <div class="input-label">Fecha operativa</div>
+              <div id="detailDate" class="row-title mt-1">–</div>
+            </div>
+
+            <div>
+              <div class="input-label">Horario</div>
+              <div id="detailTime" class="row-title mt-1">–</div>
+            </div>
+
+            <div>
+              <div class="input-label">Dotación convocada</div>
+              <div id="detailStaffCount" class="row-title mt-1">0 personas</div>
+            </div>
+
+            <div>
+              <div class="input-label">Costo estimado</div>
+              <div id="detailStaffCost" class="row-title mt-1">$ 0</div>
+            </div>
+          </div>
+
+          <div class="convocado-summary mt-2">
+            <span>Dotación convocada: <strong id="summaryStaffCount">0 personas</strong></span>
+            <span>Costo total estimado: <strong id="summaryStaffCost">$ 0</strong></span>
+          </div>
+        </article>
+
+      </section>
+    </section>
+  </main>
+
+  <!-- =========================================
+       JS – HOOKS BÁSICOS (COMPLETAR CON SUPABASE)
+       ========================================= -->
+  <script type="module">
+    // TODO: reemplazar por tu config real
+    /*
+    const supabaseUrl = "https://xxxxx.supabase.co";
+    const supabaseKey = "public-anon-key";
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    */
+
+    // Elementos principales
+    const createEventForm   = document.getElementById('createEventForm');
+    const btnClearEvent     = document.getElementById('btnClearEvent');
+    const btnReloadEvents   = document.getElementById('btnReloadEvents');
+    const eventList         = document.getElementById('eventList');
+
+    const btnOpenNewProfile   = document.getElementById('btnOpenNewProfile');
+    const btnCancelNewProfile = document.getElementById('btnCancelNewProfile');
+    const btnSaveNewProfile   = document.getElementById('btnSaveNewProfile');
+    const newProfileForm      = document.getElementById('newProfileForm');
+
+    const staffLibraryList  = document.getElementById('staffLibraryList');
+    const searchStaffInput  = document.getElementById('searchStaff');
+
+    const currentEventTitle     = document.getElementById('currentEventTitle');
+    const currentEventSubtitle  = document.getElementById('currentEventSubtitle');
+    const detailDateEl          = document.getElementById('detailDate');
+    const detailTimeEl          = document.getElementById('detailTime');
+    const detailStaffCountEl    = document.getElementById('detailStaffCount');
+    const detailStaffCostEl     = document.getElementById('detailStaffCost');
+    const summaryStaffCountEl   = document.getElementById('summaryStaffCount');
+    const summaryStaffCostEl    = document.getElementById('summaryStaffCost');
+    const btnDeleteEvent        = document.getElementById('btnDeleteEvent');
+
+    // --- UI helpers básicos ---
+
+    function toggleNewProfileForm(show) {
+      if (!newProfileForm) return;
+      newProfileForm.classList.toggle('hidden', !show);
+    }
+
+    // Abrir / cerrar mini-form de nuevo perfil
+    if (btnOpenNewProfile) {
+      btnOpenNewProfile.addEventListener('click', () => toggleNewProfileForm(true));
+    }
+    if (btnCancelNewProfile) {
+      btnCancelNewProfile.addEventListener('click', () => toggleNewProfileForm(false));
+    }
+
+    // Crear evento (hook; acá después conectás Supabase)
+    if (createEventForm) {
+      createEventForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        // TODO: leer campos y guardar en Supabase
+        // Por ahora solo log:
+        const date  = document.getElementById('eventDate').value;
+        const start = document.getElementById('eventStart').value;
+        const end   = document.getElementById('eventEnd').value;
+        const tag   = document.getElementById('eventTag').value;
+        console.log('Crear evento', { date, start, end, tag });
+      });
+    }
+
+    if (btnClearEvent) {
+      btnClearEvent.addEventListener('click', () => {
+        document.getElementById('eventDate').value  = '';
+        document.getElementById('eventStart').value = '';
+        document.getElementById('eventEnd').value   = '';
+        document.getElementById('eventTag').value   = '';
+      });
+    }
+
+    // Carga inicial (TODO: conectar realmente)
+    function loadEvents() {
+      // Ejemplo fake para que veas el layout funcionando
+      if (!eventList) return;
+      eventList.innerHTML = `
+        <button type="button" class="evento-event-row evento-event-row--active">
+          <div class="evento-event-row-main">
+            <span class="evento-event-date">06/12</span>
+            <span class="evento-event-time">23:00 – 05:00 hs</span>
+          </div>
+          <div class="evento-event-row-sub">
+            <span>Noche operativa</span>
+            <span class="muted">0 personas · $0</span>
+          </div>
+        </button>
+      `;
+    }
+
+    function loadStaffLibrary() {
+      if (!staffLibraryList) return;
+      staffLibraryList.innerHTML = `
+        <div class="staff-lib-row">
+          <div class="staff-lib-info">
+            <div class="row-title">Ejemplo – Barra</div>
+            <div class="row-sub-text">Rol: Barra · Jornal $0</div>
+          </div>
+          <div class="staff-lib-controls">
+            <button type="button" class="btn-icon" title="Agregar al evento">+</button>
+          </div>
+        </div>
+      `;
+    }
+
+    if (btnReloadEvents) {
+      btnReloadEvents.addEventListener('click', loadEvents);
+    }
+
+    // Init UI de demo
+    loadEvents();
+    loadStaffLibrary();
+  </script>
+</body>
+</html>

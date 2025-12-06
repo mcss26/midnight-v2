@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Gerencia</title>
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo">MIDNIGHT<span class="logo-accent">CEO</span></div>
+        <div class="admin-logo" aria-hidden="true"></div>
         <div class="admin-header-right">
           <button onclick="window.location.href='index.html'" class="btn-back">VOLVER</button>
         </div>
@@ -18,37 +19,39 @@
     </div>
   </header>
 
-  <div class="admin-container">
+  <main class="admin-container">
     <div class="section-header">
-        <h2 class="section-title">DIRECCIÓN GENERAL</h2>
+      <h2 class="section-title">DIRECCIÓN GENERAL</h2>
     </div>
 
-    <div class="dash-grid">
+    <section class="access-group">
+      <div class="dash-grid">
         <a href="reporte-pnl.html" class="dash-card dash-card-gerencia">
-            <div class="dash-card-inner">
-              <h3 class="dash-title">REPORTE P&L</h3>
-              <p class="dash-card-label">Rentabilidad mensual</p>
-            </div>
+          <div class="dash-card-inner">
+            <h3 class="dash-title">REPORTE P&L</h3>
+            <p class="dash-card-label">Rentabilidad mensual</p>
+          </div>
         </a>
         <a href="admin-pagos.html" class="dash-card dash-card-gerencia">
-            <div class="dash-card-inner">
-              <h3 class="dash-title">CALENDARIO PAGOS</h3>
-              <p class="dash-card-label">Visión financiera</p>
-            </div>
+          <div class="dash-card-inner">
+            <h3 class="dash-title">CALENDARIO PAGOS</h3>
+            <p class="dash-card-label">Visión financiera</p>
+          </div>
         </a>
         <a href="admin-logs.html" class="dash-card dash-card-gerencia">
-            <div class="dash-card-inner">
-              <h3 class="dash-title">AUDITORÍA</h3>
-              <p class="dash-card-label">Logs de seguridad</p>
-            </div>
+          <div class="dash-card-inner">
+            <h3 class="dash-title">AUDITORÍA</h3>
+            <p class="dash-card-label">Logs de seguridad</p>
+          </div>
         </a>
         <a href="panel-operativo.html" class="dash-card dash-card-gerencia">
-            <div class="dash-card-inner">
-              <h3 class="dash-title">VISTA GLOBAL</h3>
-              <p class="dash-card-label">Tablero operativo</p>
-            </div>
+          <div class="dash-card-inner">
+            <h3 class="dash-title">VISTA GLOBAL</h3>
+            <p class="dash-card-label">Tablero operativo</p>
+          </div>
         </a>
-    </div>
-  </div>
+      </div>
+    </section>
+  </main>
 </body>
 </html>

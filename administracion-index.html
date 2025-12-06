@@ -20,7 +20,7 @@
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo">MIDNIGHT<span class="logo-accent">ADMIN</span></div>
+        <div class="admin-logo" aria-hidden="true"></div>
         <div class="admin-header-right">
           <button onclick="window.location.href='index.html'" class="btn-back">VOLVER</button>
         </div>
@@ -28,29 +28,31 @@
     </div>
   </header>
 
-  <div class="admin-container">
+  <main class="admin-container">
     <div class="section-header">
       <h2 class="section-title">ADMINISTRACIÓN</h2>
       <p class="section-desc">Herramientas de backoffice y control.</p>
     </div>
 
-    <div class="dash-grid">
-      <a href="admin-cierre.html" class="dash-card dash-card-admin">
-        <div class="dash-card-inner">
-          <h3 class="dash-title">CIERRES DE CAJA</h3>
-        </div>
-      </a>
-      <a href="admin-pos.html" class="dash-card dash-card-admin">
-        <div class="dash-card-inner">
-          <h3 class="dash-title">POS & TERMINALES</h3>
-        </div>
-      </a>
-      <a href="admin-logs.html" class="dash-card dash-card-admin">
-        <div class="dash-card-inner">
-          <h3 class="dash-title">AUDITORÍA LOGS</h3>
-        </div>
-      </a>
-    </div>
-  </div>
+    <section class="access-group">
+      <div class="dash-grid">
+        <a href="admin-cierre.html" class="dash-card dash-card-admin">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">CIERRES DE CAJA</h3>
+          </div>
+        </a>
+        <a href="admin-pos.html" class="dash-card dash-card-admin">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">POS & TERMINALES</h3>
+          </div>
+        </a>
+        <a href="admin-logs.html" class="dash-card dash-card-admin">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">AUDITORÍA LOGS</h3>
+          </div>
+        </a>
+      </div>
+    </section>
+  </main>
 </body>
 </html>

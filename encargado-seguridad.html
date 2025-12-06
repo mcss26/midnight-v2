@@ -44,10 +44,14 @@
 <body>
 
   <header class="admin-header">
-    <div class="admin-logo">MIDNIGHT<span style="color: var(--mc-red);">SEGURIDAD</span></div>
-    <div style="display:flex; align-items:center; gap:10px;">
-        <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700;">ENCARGADO</span>
-        <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+    <div class="admin-header-inner">
+      <div class="admin-header-top">
+        <div class="admin-logo" aria-hidden="true"></div>
+        <div class="admin-header-right">
+          <span id="userDisplay" style="font-size:10px; color:#888; font-weight:700;">ENCARGADO</span>
+          <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+        </div>
+      </div>
     </div>
   </header>
 

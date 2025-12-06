@@ -20,7 +20,7 @@
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo">MIDNIGHT<span class="logo-accent">ENCARGADOS</span></div>
+        <div class="admin-logo" aria-hidden="true"></div>
         <div class="admin-header-right">
           <button onclick="window.location.href='index.html'" class="btn-back">VOLVER</button>
         </div>
@@ -28,34 +28,36 @@
     </div>
   </header>
 
-  <div class="admin-container">
+  <main class="admin-container">
     <div class="section-header">
       <h2 class="section-title">ENCARGADOS</h2>
       <p class="section-desc">Accesos por área de responsabilidad.</p>
     </div>
 
-    <div class="dash-grid">
-      <a href="encargado-barra.html" class="dash-card dash-card-enc">
-        <div class="dash-card-inner">
-          <h3 class="dash-title">BARRA</h3>
-        </div>
-      </a>
-      <a href="encargado-caja.html" class="dash-card dash-card-enc">
-        <div class="dash-card-inner">
-          <h3 class="dash-title">CAJA</h3>
-        </div>
-      </a>
-      <a href="encargado-limpieza.html" class="dash-card dash-card-enc">
-        <div class="dash-card-inner">
-          <h3 class="dash-title">LIMPIEZA</h3>
-        </div>
-      </a>
-      <a href="encargado-seguridad.html" class="dash-card dash-card-enc">
-        <div class="dash-card-inner">
-          <h3 class="dash-title">SEGURIDAD</h3>
-        </div>
-      </a>
-    </div>
-  </div>
+    <section class="access-group">
+      <div class="dash-grid">
+        <a href="encargado-barra.html" class="dash-card dash-card-enc">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">BARRA</h3>
+          </div>
+        </a>
+        <a href="encargado-caja.html" class="dash-card dash-card-enc">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">CAJA</h3>
+          </div>
+        </a>
+        <a href="encargado-limpieza.html" class="dash-card dash-card-enc">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">LIMPIEZA</h3>
+          </div>
+        </a>
+        <a href="encargado-seguridad.html" class="dash-card dash-card-enc">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">SEGURIDAD</h3>
+          </div>
+        </a>
+      </div>
+    </section>
+  </main>
 </body>
 </html>

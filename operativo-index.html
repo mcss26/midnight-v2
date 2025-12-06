@@ -21,7 +21,7 @@
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo">MIDNIGHT<span class="logo-accent">OPS</span></div>
+        <div class="admin-logo" aria-hidden="true"></div>
         <div class="admin-header-right">
           <a href="index.html" class="btn-back" aria-label="Volver al inicio">Volver</a>
           <div class="session-chip" data-session-chip aria-live="polite"></div>
@@ -34,24 +34,25 @@
   <main class="admin-container">
     <div class="section-header">
       <h2 class="section-title">OPERATIVO</h2>
-      <p class="section-desc">Herramientas para controlar la noche.</p>
+      <p class="section-desc">Logistica y Operativo</p>
     </div>
-
-    <div class="dash-grid">
-      <a href="operativo-stock.html" class="dash-card dash-card-op" aria-label="Ir a stock global">
-        <div class="dash-card-inner">
-          <h3 class="dash-title">STOCK GLOBAL</h3>
-          <p class="dash-card-label">Inventario en tiempo real</p>
-        </div>
-      </a>
-      
-      <a href="admin-cierre.html" class="dash-card dash-card-op" aria-label="Ir a cierre de caja">
-        <div class="dash-card-inner">
-          <h3 class="dash-title">CIERRE DE CAJA</h3>
-          <p class="dash-card-label">Arqueos y liquidaciones</p>
-        </div>
-      </a>
-    </div>
+    <section class="access-group">
+      <div class="dash-grid">
+        <a href="operativo-evento.html" class="dash-card dash-card-op" aria-label="Ir a planificación de eventos">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">PLANIFICAR</h3>
+            <p class="dash-card-label">Crear evento y dotación personal</p>
+          </div>
+        </a>
+        
+        <a href="operativo-stock.html" class="dash-card dash-card-op" aria-label="Ir a stock operativo">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">STOCK OPERATIVO</h3>
+            <p class="dash-card-label">Seguimiento y control de stock</p>
+          </div>
+        </a>
+      </div>
+    </section>
   </main>
 </body>
 </html>
