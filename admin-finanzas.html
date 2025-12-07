@@ -11,434 +11,424 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
-
-  <style>
-    /* Estilos específicos para el módulo de Finanzas */
-    .finance-kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
-    }
-    
-    .kpi-box {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      min-height: 140px;
-      box-shadow: var(--shadow-card);
-    }
-
-    .kpi-header {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-    }
-
-    .kpi-number {
-      font-family: 'Outfit', sans-serif;
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 12px;
-    }
-
-    .btn-export-mini {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      font-size: 10px;
-      padding: 6px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: all 0.2s;
-      width: 100%;
-    }
-    .btn-export-mini:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #fff;
-      border-color: var(--text-secondary);
-    }
-
-    /* Colores de borde para identificar tipos */
-    .border-total { border-left: 4px solid var(--text-primary); }
-    .border-digital { border-left: 4px solid var(--accent-blue); }
-    .border-fiscal { border-left: 4px solid var(--accent-green); } /* B */
-    .border-internal { border-left: 4px solid var(--accent-gold); } /* X */
-
-  </style>
 </head>
 <body>
 
+  <!-- HEADER ESTÁNDAR CMS -->
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo">MIDNIGHT<span class="logo-accent">FINANZAS</span></div>
+        <div>
+          <button
+            type="button"
+            class="btn-back"
+            onclick="window.location.href='administracion-index.html'">
+            VOLVER
+          </button>
+        </div>
+
+        <div class="admin-logo" aria-hidden="true"></div>
+
         <div class="admin-header-right">
-          <button class="btn-back" onclick="window.location.href='administracion-index.html'">VOLVER</button>
+          <span class="session-chip">Administración</span>
         </div>
       </div>
     </div>
   </header>
 
   <main class="admin-container">
-    
-    <div class="section-header">
+    <!-- TÍTULO -->
+    <section class="section-header">
       <h1 class="section-title">CONTABILIDAD Y FACTURACIÓN</h1>
       <p class="section-desc">Auditoría fiscal y exportación para estudio contable.</p>
+    </section>
+
+    <!-- FECHA + SINCRONIZACIÓN -->
+    <div class="box-soft" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+      <div style="min-width:220px;">
+        <label class="input-label" for="queryDate">FECHA DE CIERRE (FISCAL)</label>
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:4px;">
+          <input
+            type="date"
+            id="queryDate"
+            class="modal-input"
+            style="width:160px; font-weight:700;" />
+          <span
+            id="statusMsg"
+            class="section-desc"
+            style="margin:0; font-size:11px;">
+            Selecciona fecha para sincronizar.
+          </span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onclick="syncGbolData()"
+        id="btnSync"
+        class="btn-primary"
+        style="min-width:220px;">
+        🔄 SINCRONIZAR DESDE GBOL
+      </button>
     </div>
 
-    <div style="background:var(--bg-card); padding:16px; border-radius:var(--radius-lg); border:1px solid var(--border-subtle); margin-bottom:25px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
-        <div style="display:flex; gap:15px; align-items:center;">
-            <div>
-                <label class="input-label">FECHA DE CIERRE (FISCAL)</label>
-                <input type="date" id="queryDate" class="modal-input" style="width: 160px; font-weight:700;">
-            </div>
-            <div id="statusMsg" style="font-size:12px; color:var(--text-secondary); margin-top:18px;">
-                Selecciona fecha para sincronizar.
-            </div>
-        </div>
-        
-        <button onclick="syncGbolData()" id="btnSync" class="btn-primary">
-            🔄 SINCRONIZAR DESDE GBOL
+    <!-- KPIs usando summary-card / border-* del design system -->
+    <div class="summary-row">
+      <div class="summary-card border-total">
+        <div class="summary-label">FACTURACIÓN TOTAL</div>
+        <div class="summary-value" id="valTotal">$ 0</div>
+        <button
+          type="button"
+          class="btn-secondary"
+          style="width:100%; margin-top:8px; font-size:10px;"
+          onclick="exportExcel('TOTAL')">
+          📥 DESCARGAR TODO
         </button>
+      </div>
+
+      <div class="summary-card border-digital">
+        <div class="summary-label">DIGITAL (TARJETA / QR)</div>
+        <div class="summary-value" id="valDigital" style="color:var(--accent-blue);">$ 0</div>
+        <button
+          type="button"
+          class="btn-secondary"
+          style="width:100%; margin-top:8px; font-size:10px;"
+          onclick="exportExcel('DIGITAL')">
+          📥 DESCARGAR DIGITAL
+        </button>
+      </div>
+
+      <div class="summary-card border-fiscal">
+        <div class="summary-label">EFECTIVO FACT. B (BLANCO)</div>
+        <div class="summary-value" id="valFiscal" style="color:var(--accent-green);">$ 0</div>
+        <button
+          type="button"
+          class="btn-secondary"
+          style="width:100%; margin-top:8px; font-size:10px;"
+          onclick="exportExcel('FISCAL')">
+          📥 DESCARGAR FISCAL (B)
+        </button>
+      </div>
+
+      <div class="summary-card border-internal">
+        <div class="summary-label">EFECTIVO INTERNO (X)</div>
+        <div class="summary-value" id="valInternal" style="color:var(--accent-gold);">$ 0</div>
+        <button
+          type="button"
+          class="btn-secondary"
+          style="width:100%; margin-top:8px; font-size:10px;"
+          onclick="exportExcel('INTERNAL')">
+          📥 DESCARGAR INTERNO (X)
+        </button>
+      </div>
     </div>
 
-    <div class="finance-kpi-grid">
-        
-        <div class="kpi-box border-total">
-            <div>
-                <div class="kpi-header">FACTURACIÓN TOTAL</div>
-                <div class="kpi-number" id="valTotal">$ 0</div>
-            </div>
-            <button class="btn-export-mini" onclick="exportExcel('TOTAL')">
-                📥 DESCARGAR TODO
-            </button>
-        </div>
-
-        <div class="kpi-box border-digital">
-            <div>
-                <div class="kpi-header">DIGITAL (TARJETA/QR)</div>
-                <div class="kpi-number" id="valDigital" style="color:var(--accent-blue);">$ 0</div>
-            </div>
-            <button class="btn-export-mini" onclick="exportExcel('DIGITAL')">
-                📥 DESCARGAR DIGITAL
-            </button>
-        </div>
-
-        <div class="kpi-box border-fiscal">
-            <div>
-                <div class="kpi-header">EFECTIVO FACT. B (BLANCO)</div>
-                <div class="kpi-number" id="valFiscal" style="color:var(--accent-green);">$ 0</div>
-            </div>
-            <button class="btn-export-mini" onclick="exportExcel('FISCAL')">
-                📥 DESCARGAR FISCAL (B)
-            </button>
-        </div>
-
-        <div class="kpi-box border-internal">
-            <div>
-                <div class="kpi-header">EFECTIVO INTERNO (X)</div>
-                <div class="kpi-number" id="valInternal" style="color:var(--accent-gold);">$ 0</div>
-            </div>
-            <button class="btn-export-mini" onclick="exportExcel('INTERNAL')">
-                📥 DESCARGAR INTERNO (X)
-            </button>
-        </div>
-
-    </div>
-
+    <!-- TABLA PRINCIPAL -->
     <div class="table-container">
-        <table class="sku-table">
-            <thead>
-                <tr>
-                    <th style="padding-left:20px;">TIPO</th>
-                    <th>COMPROBANTE</th>
-                    <th>CAE / AUTORIZACIÓN</th>
-                    <th class="text-right">NETO (BIMP)</th>
-                    <th class="text-right">IVA</th>
-                    <th class="text-right" style="padding-right:20px;">TOTAL</th>
-                </tr>
-            </thead>
-            <tbody id="accountingBody">
-                <tr>
-                    <td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">
-                        Sin datos cargados para esta fecha.
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+      <table class="sku-table">
+        <thead>
+          <tr>
+            <th style="padding-left:20px;">TIPO</th>
+            <th>COMPROBANTE</th>
+            <th>CAE / AUTORIZACIÓN</th>
+            <th class="text-right">NETO (BIMP)</th>
+            <th class="text-right">IVA</th>
+            <th class="text-right" style="padding-right:20px;">TOTAL</th>
+          </tr>
+        </thead>
+        <tbody id="accountingBody">
+          <tr>
+            <td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              Sin datos cargados para esta fecha.
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
   </main>
 
   <script>
     // ================= CONFIGURACIÓN =================
-    const GBOL_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiI3UUhyZHJTaWNmUDJjOWowT2RMc1VjNmJVcFFkVFRSMEpFZ3JTSDBGM2pieVlWaHpNeDRYTEJhcUlEVWR0VDR2OSt4a1kxTzliUHhDc3grMVBQNVo3RmVYN2I0RGR2dk5UaGh2dzJOWWVpcz0iLCJleHAiOjE3NjU1OTEwMjd9.qUXEqRBV2oArhWug01KMNaTQ-VYGQ3EVVNv816hWmao";
+    const GBOL_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiI3UUhyZHJTaWNmUDJjOWowT2RMc1VjNmJVcFFkVFRSMEpFZ3JTSDBGM2pieVlWaHpNeDRYTEJhcUlEVWR0TDR2OSt4a1kxTzliUHhDc3grMVBQNVo3RmVYN2I0RGR2dk5UaGh2dzJOWWVpcz0iLCJleHAiOjE3NjU1OTEwMjd9.qUXEqRBV2oArhWug01KMNaTQ-VYGQ3EVVNv816hWmao";
     const GBOL_ENDPOINT = "https://sd-2515114-h00190.ferozo.net/gbol/api/tickets/facturacionElectronicaConsulta";
     
     // Almacén temporal en memoria para exportación rápida
     let currentData = [];
 
     document.addEventListener('DOMContentLoaded', () => {
-        const d = new Date();
-        d.setDate(d.getDate() - 1); // Ayer por defecto
-        document.getElementById('queryDate').valueAsDate = d;
-        loadFromSupabase(); // Intentar cargar si ya existe en DB
+      const d = new Date();
+      d.setDate(d.getDate() - 1); // Ayer por defecto
+      document.getElementById('queryDate').valueAsDate = d;
+      loadFromSupabase(); // Intentar cargar si ya existe en DB
     });
 
     // --- 1. SINCRONIZACIÓN (FETCH + SAVE) ---
     async function syncGbolData() {
-        const dateStr = document.getElementById('queryDate').value;
-        const btn = document.getElementById('btnSync');
-        const status = document.getElementById('statusMsg');
+      const dateStr = document.getElementById('queryDate').value;
+      const btn = document.getElementById('btnSync');
+      const status = document.getElementById('statusMsg');
 
-        if(!dateStr) return alert("Selecciona una fecha.");
-        if(!confirm(`¿Sincronizar facturación del ${dateStr} con Gbol? Se actualizará la base de datos.`)) return;
+      if (!dateStr) return alert("Selecciona una fecha.");
+      if (!confirm(`¿Sincronizar facturación del ${dateStr} con Gbol? Se actualizará la base de datos.`)) return;
 
-        btn.disabled = true; btn.innerHTML = "CONECTANDO...";
-        status.innerText = "Descargando comprobantes...";
+      btn.disabled = true; btn.innerHTML = "CONECTANDO...";
+      status.innerText = "Descargando comprobantes...";
 
-        try {
-            // A. Fetch Gbol
-            const rawBody = JSON.stringify({
-                "estado": -1, "metodoDePago": -1, "puntoDeVenta": "T-0",
-                "noche": dateStr, "tipoBusqueda": 1
-            });
+      try {
+        // A. Fetch Gbol
+        const rawBody = JSON.stringify({
+          "estado": -1, "metodoDePago": -1, "puntoDeVenta": "T-0",
+          "noche": dateStr, "tipoBusqueda": 1
+        });
 
-            const response = await fetch(GBOL_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json, text/plain, */*',
-                    'Content-Type': 'application/json;charset=UTF-8',
-                    'Authorization': 'Bearer ' + GBOL_TOKEN
-                },
-                body: rawBody
-            });
+        const response = await fetch(GBOL_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json;charset=UTF-8',
+            'Authorization': 'Bearer ' + GBOL_TOKEN
+          },
+          body: rawBody
+        });
 
-            if (!response.ok) throw new Error("Error de conexión con Gbol");
-            const data = await response.json();
+        if (!response.ok) throw new Error("Error de conexión con Gbol");
+        const data = await response.json();
 
-            if (!data.facturacion || !Array.isArray(data.facturacion)) {
-                throw new Error("No hay datos de facturación disponibles.");
-            }
-
-            // B. Mapeo Robusto para SQL
-            const rowsToInsert = data.facturacion.map(t => {
-                // Lógica de importes
-                const importe = parseFloat(t.importe) || 0;
-                const efectivo = parseFloat(t.efectivo) || 0;
-                const digital = (parseFloat(t.tarjetas)||0) + (parseFloat(t.merpag)||0);
-                const neto = parseFloat(t.bimp) || 0;
-                const iva = parseFloat(t.iva) || 0;
-
-                // Lógica de Tipos (A, B, X)
-                let tipo = 'X';
-                // tcom 1=A, 6=B, 83=Ticket
-                if(t.tcom == 1) tipo = 'A';
-                if(t.tcom == 6 || t.tcom == 83) tipo = 'B'; 
-                if(t.tcom == 0 || t.tcom == 99) tipo = 'X';
-
-                return {
-                    fecha: dateStr,
-                    ticket_id: t.id || `GEN-${Math.random()}`, // ID único
-                    nro_comprobante: t.factura || t.ticket || '0',
-                    tipo_comp: tipo,
-                    cae: t.cae || null,
-                    pto_vta: parseInt(t.ptovta) || 0,
-                    cliente_doc: t.ndoc || null,
-                    cliente_razon: t.cliente || null,
-                    cajanom: t.cajanom || 'GENERAL',
-                    
-                    // Importes
-                    importe_total: importe,
-                    importe_neto: neto,
-                    importe_iva: iva,
-                    pago_efectivo: efectivo,
-                    pago_digital: digital,
-                    
-                    // Metadata raw para futuro debugging
-                    raw_data: JSON.stringify(t) 
-                };
-            });
-
-            // C. Transacción Supabase (Borrar previo -> Insertar nuevo)
-            status.innerText = "Guardando en base de datos...";
-            
-            // 1. Limpiar día
-            const { error: delErr } = await client.from('import_gbol_sales').delete().eq('fecha', dateStr);
-            if(delErr) throw delErr;
-
-            // 2. Insertar lote
-            // Nota: Si la tabla no tiene todas las columnas nuevas aun, insertará lo que coincida
-            // (Ver script SQL abajo para actualizar tu tabla)
-            const { error: insErr } = await client.from('import_gbol_sales').insert(rowsToInsert);
-            if(insErr) throw insErr;
-
-            status.innerText = `✅ Sincronizado: ${rowsToInsert.length} comprobantes.`;
-            status.style.color = "var(--accent-green)";
-            
-            // D. Renderizar desde memoria (más rápido que volver a pedir a DB)
-            processAndRender(rowsToInsert);
-
-        } catch (e) {
-            console.error(e);
-            status.innerText = "Error: " + e.message;
-            status.style.color = "var(--accent-red)";
-            alert("Fallo la sincronización: " + e.message);
-        } finally {
-            btn.disabled = false; btn.innerHTML = "🔄 SINCRONIZAR DESDE GBOL";
+        if (!data.facturacion || !Array.isArray(data.facturacion)) {
+          throw new Error("No hay datos de facturación disponibles.");
         }
+
+        // B. Mapeo Robusto para SQL
+        const rowsToInsert = data.facturacion.map(t => {
+          // Lógica de importes
+          const importe = parseFloat(t.importe) || 0;
+          const efectivo = parseFloat(t.efectivo) || 0;
+          const digital = (parseFloat(t.tarjetas) || 0) + (parseFloat(t.merpag) || 0);
+          const neto = parseFloat(t.bimp) || 0;
+          const iva = parseFloat(t.iva) || 0;
+
+          // Lógica de Tipos (A, B, X)
+          let tipo = 'X';
+          // tcom 1=A, 6=B, 83=Ticket
+          if (t.tcom == 1) tipo = 'A';
+          if (t.tcom == 6 || t.tcom == 83) tipo = 'B';
+          if (t.tcom == 0 || t.tcom == 99) tipo = 'X';
+
+          return {
+            fecha: dateStr,
+            ticket_id: t.id || `GEN-${Math.random()}`, // ID único
+            nro_comprobante: t.factura || t.ticket || '0',
+            tipo_comp: tipo,
+            cae: t.cae || null,
+            pto_vta: parseInt(t.ptovta) || 0,
+            cliente_doc: t.ndoc || null,
+            cliente_razon: t.cliente || null,
+            cajanom: t.cajanom || 'GENERAL',
+
+            // Importes
+            importe_total: importe,
+            importe_neto: neto,
+            importe_iva: iva,
+            pago_efectivo: efectivo,
+            pago_digital: digital,
+
+            // Metadata raw para futuro debugging
+            raw_data: JSON.stringify(t)
+          };
+        });
+
+        // C. Transacción Supabase (Borrar previo -> Insertar nuevo)
+        status.innerText = "Guardando en base de datos...";
+
+        // 1. Limpiar día
+        const { error: delErr } = await client
+          .from('import_gbol_sales')
+          .delete()
+          .eq('fecha', dateStr);
+        if (delErr) throw delErr;
+
+        // 2. Insertar lote
+        const { error: insErr } = await client
+          .from('import_gbol_sales')
+          .insert(rowsToInsert);
+        if (insErr) throw insErr;
+
+        status.innerText = `✅ Sincronizado: ${rowsToInsert.length} comprobantes.`;
+        status.style.color = "var(--accent-green)";
+
+        // D. Renderizar desde memoria (más rápido que volver a pedir a DB)
+        processAndRender(rowsToInsert);
+
+      } catch (e) {
+        console.error(e);
+        status.innerText = "Error: " + e.message;
+        status.style.color = "var(--accent-red)";
+        alert("Fallo la sincronización: " + e.message);
+      } finally {
+        btn.disabled = false; btn.innerHTML = "🔄 SINCRONIZAR DESDE GBOL";
+      }
     }
 
     // --- 2. CARGA DESDE DB (SOLO LECTURA) ---
     async function loadFromSupabase() {
-        const dateStr = document.getElementById('queryDate').value;
-        const status = document.getElementById('statusMsg');
-        
-        status.innerText = "Buscando en historial...";
-        
-        const { data, error } = await client
-            .from('import_gbol_sales')
-            .select('*')
-            .eq('fecha', dateStr);
+      const dateStr = document.getElementById('queryDate').value;
+      const status = document.getElementById('statusMsg');
 
-        if(!error && data && data.length > 0) {
-            status.innerText = `Datos recuperados del historial (${data.length} registros).`;
-            processAndRender(data);
-        } else {
-            status.innerText = "Sin datos locales. Pulsa Sincronizar.";
-            document.getElementById('accountingBody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">No hay datos sincronizados para esta fecha.</td></tr>';
-            // Reset KPIs
-            ['valTotal','valDigital','valFiscal','valInternal'].forEach(id => document.getElementById(id).innerText = '$ 0');
-            currentData = [];
-        }
+      status.innerText = "Buscando en historial...";
+
+      const { data, error } = await client
+        .from('import_gbol_sales')
+        .select('*')
+        .eq('fecha', dateStr);
+
+      if (!error && data && data.length > 0) {
+        status.innerText = `Datos recuperados del historial (${data.length} registros).`;
+        processAndRender(data);
+      } else {
+        status.innerText = "Sin datos locales. Pulsa Sincronizar.";
+        document.getElementById('accountingBody').innerHTML =
+          '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">No hay datos sincronizados para esta fecha.</td></tr>';
+        // Reset KPIs
+        ['valTotal', 'valDigital', 'valFiscal', 'valInternal']
+          .forEach(id => document.getElementById(id).innerText = '$ 0');
+        currentData = [];
+      }
     }
 
-    // --- 3. LÓGICA DE NEGOCIO Y RENDER ---
+    // --- 3. LÓGICA DE NEGOCIO AND RENDER ---
     function processAndRender(rows) {
-        currentData = rows; // Guardar en global para exportar
-        
-        let sumTotal = 0, sumDigital = 0, sumFiscal = 0, sumInternal = 0;
+      currentData = rows; // Guardar en global para exportar
 
-        const tbody = document.getElementById('accountingBody');
-        
-        // Generar HTML de tabla (Limitado a 100 para no trabar el navegador si hay miles)
-        const tableRows = rows.slice(0, 100).map(r => {
-            // Calcular KPIs mientras iteramos
-            sumTotal += (r.importe_total || r.importe || 0); // compatibilidad con nombres viejos
-            sumDigital += (r.pago_digital || r.tarjetas || 0);
-            
-            const efvo = (r.pago_efectivo || r.efectivo || 0);
-            const tipo = r.tipo_comp || 'X';
+      let sumTotal = 0, sumDigital = 0, sumFiscal = 0, sumInternal = 0;
+      const tbody = document.getElementById('accountingBody');
 
-            if(tipo === 'A' || tipo === 'B') {
-                if(efvo > 0) sumFiscal += efvo;
-            } else {
-                if(efvo > 0) sumInternal += efvo;
-            }
+      // Generar HTML de tabla (limitado a 100 para no trabar el navegador)
+      const tableRows = rows.slice(0, 100).map(r => {
+        // Calcular KPIs mientras iteramos
+        sumTotal += (r.importe_total || r.importe || 0); // compatibilidad con nombres viejos
+        sumDigital += (r.pago_digital || r.tarjetas || 0);
 
-            // Visual
-            let badgeClass = 'tag-gray';
-            if(tipo === 'A') badgeClass = 'tag-blue';
-            if(tipo === 'B') badgeClass = 'tag-green';
-            if(tipo === 'X') badgeClass = 'tag-gold';
+        const efvo = (r.pago_efectivo || r.efectivo || 0);
+        const tipo = r.tipo_comp || 'X';
 
-            return `
-            <tr>
-                <td><span class="tag ${badgeClass}">FACT ${tipo}</span></td>
-                <td>
-                    <div class="row-title">#${r.nro_comprobante || r.ticket_id}</div>
-                    <div class="row-sub-text">${r.cliente_razon || 'Consumidor Final'}</div>
-                </td>
-                <td style="font-family:monospace; color:var(--text-secondary); font-size:11px;">
-                    ${r.cae || '-'}
-                </td>
-                <td class="text-right text-muted">${format(r.importe_neto || 0)}</td>
-                <td class="text-right text-muted">${format(r.importe_iva || 0)}</td>
-                <td class="text-right col-costo" style="font-weight:700;">${format(r.importe_total || r.importe)}</td>
-            </tr>`;
-        }).join('');
-
-        // Completar KPIs si hay más de 100 (recorrer todo el array para sumas correctas)
-        if(rows.length > 100) {
-            // Recalcular exacto si no lo hicimos arriba
-            sumTotal = rows.reduce((a,b) => a + (b.importe_total||b.importe||0), 0);
-            sumDigital = rows.reduce((a,b) => a + (b.pago_digital||b.tarjetas||0), 0);
-            sumFiscal = rows.filter(r => (r.tipo_comp==='A'||r.tipo_comp==='B')).reduce((a,b) => a + (b.pago_efectivo||b.efectivo||0), 0);
-            sumInternal = rows.filter(r => (r.tipo_comp!=='A'&&r.tipo_comp!=='B')).reduce((a,b) => a + (b.pago_efectivo||b.efectivo||0), 0);
+        if (tipo === 'A' || tipo === 'B') {
+          if (efvo > 0) sumFiscal += efvo;
+        } else {
+          if (efvo > 0) sumInternal += efvo;
         }
 
-        tbody.innerHTML = tableRows + (rows.length > 100 ? `<tr><td colspan="6" class="text-center text-muted">... y ${rows.length - 100} más ...</td></tr>` : '');
+        // Visual
+        let badgeClass = 'tag-gray';
+        if (tipo === 'A') badgeClass = 'tag-blue';
+        if (tipo === 'B') badgeClass = 'tag-green';
+        if (tipo === 'X') badgeClass = 'tag-gold';
 
-        // Actualizar UI
-        document.getElementById('valTotal').innerText = format(sumTotal);
-        document.getElementById('valDigital').innerText = format(sumDigital);
-        document.getElementById('valFiscal').innerText = format(sumFiscal);
-        document.getElementById('valInternal').innerText = format(sumInternal);
+        return `
+          <tr>
+            <td style="padding-left:20px;">
+              <span class="tag ${badgeClass}">FACT ${tipo}</span>
+            </td>
+            <td>
+              <div class="row-title">#${r.nro_comprobante || r.ticket_id}</div>
+              <div class="row-sub-text">${r.cliente_razon || 'Consumidor Final'}</div>
+            </td>
+            <td style="font-family:monospace; color:var(--text-secondary); font-size:11px;">
+              ${r.cae || '-'}
+            </td>
+            <td class="text-right text-muted">${format(r.importe_neto || 0)}</td>
+            <td class="text-right text-muted">${format(r.importe_iva || 0)}</td>
+            <td class="text-right col-costo" style="font-weight:700; padding-right:20px;">
+              ${format(r.importe_total || r.importe)}
+            </td>
+          </tr>`;
+      }).join('');
+
+      // KPIs exactas si hay más de 100
+      if (rows.length > 100) {
+        sumTotal = rows.reduce((a, b) => a + (b.importe_total || b.importe || 0), 0);
+        sumDigital = rows.reduce((a, b) => a + (b.pago_digital || b.tarjetas || 0), 0);
+        sumFiscal = rows
+          .filter(r => (r.tipo_comp === 'A' || r.tipo_comp === 'B'))
+          .reduce((a, b) => a + (b.pago_efectivo || b.efectivo || 0), 0);
+        sumInternal = rows
+          .filter(r => (r.tipo_comp !== 'A' && r.tipo_comp !== 'B'))
+          .reduce((a, b) => a + (b.pago_efectivo || b.efectivo || 0), 0);
+      }
+
+      tbody.innerHTML = tableRows + (
+        rows.length > 100
+          ? `<tr><td colspan="6" class="text-center text-muted">... y ${rows.length - 100} más ...</td></tr>`
+          : ''
+      );
+
+      // Actualizar UI
+      document.getElementById('valTotal').innerText = format(sumTotal);
+      document.getElementById('valDigital').innerText = format(sumDigital);
+      document.getElementById('valFiscal').innerText = format(sumFiscal);
+      document.getElementById('valInternal').innerText = format(sumInternal);
     }
 
     // --- 4. EXPORTACIÓN EXCEL (SheetJS) ---
     function exportExcel(mode) {
-        if(!currentData.length) return alert("No hay datos para exportar.");
+      if (!currentData.length) return alert("No hay datos para exportar.");
 
-        let dataToExport = [];
-        let filename = `MIDNIGHT_${mode}_${document.getElementById('queryDate').value}.xlsx`;
+      let dataToExport = [];
+      let filename = `MIDNIGHT_${mode}_${document.getElementById('queryDate').value}.xlsx`;
 
-        // Filtrado inteligente
-        if(mode === 'TOTAL') {
-            dataToExport = currentData;
-        } 
-        else if(mode === 'DIGITAL') {
-            dataToExport = currentData.filter(r => (r.pago_digital || r.tarjetas) > 0);
-        }
-        else if(mode === 'FISCAL') {
-            // Solo efectivo fiscal (Facturas B/A pagadas en cash)
-            dataToExport = currentData.filter(r => (r.tipo_comp === 'A' || r.tipo_comp === 'B') && (r.pago_efectivo || r.efectivo) > 0);
-        }
-        else if(mode === 'INTERNAL') {
-            // Solo efectivo interno (X)
-            dataToExport = currentData.filter(r => (r.tipo_comp !== 'A' && r.tipo_comp !== 'B') && (r.pago_efectivo || r.efectivo) > 0);
-        }
+      // Filtrado inteligente
+      if (mode === 'TOTAL') {
+        dataToExport = currentData;
+      }
+      else if (mode === 'DIGITAL') {
+        dataToExport = currentData.filter(r => (r.pago_digital || r.tarjetas) > 0);
+      }
+      else if (mode === 'FISCAL') {
+        // Solo efectivo fiscal (Facturas B/A pagadas en cash)
+        dataToExport = currentData.filter(
+          r => (r.tipo_comp === 'A' || r.tipo_comp === 'B') &&
+               (r.pago_efectivo || r.efectivo) > 0
+        );
+      }
+      else if (mode === 'INTERNAL') {
+        // Solo efectivo interno (X)
+        dataToExport = currentData.filter(
+          r => (r.tipo_comp !== 'A' && r.tipo_comp !== 'B') &&
+               (r.pago_efectivo || r.efectivo) > 0
+        );
+      }
 
-        if(dataToExport.length === 0) return alert("No hay registros para este filtro.");
+      if (dataToExport.length === 0) return alert("No hay registros para este filtro.");
 
-        // Mapeo para Excel (Columnas bonitas para la contadora)
-        const excelRows = dataToExport.map(r => ({
-            "FECHA": r.fecha,
-            "TIPO": r.tipo_comp,
-            "PUNTO_VTA": r.pto_vta || r.ptovta,
-            "NUMERO": r.nro_comprobante,
-            "CAE": r.cae || "",
-            "CLIENTE": r.cliente_razon || "CONS FINAL",
-            "CUIT_CLIENTE": r.cliente_doc || "",
-            "NETO_GRAVADO": r.importe_neto || 0,
-            "IVA": r.importe_iva || 0,
-            "TOTAL": r.importe_total || r.importe,
-            "PAGO_EFVO": r.pago_efectivo || r.efectivo,
-            "PAGO_DIGITAL": r.pago_digital || r.tarjetas
-        }));
+      // Mapeo para Excel
+      const excelRows = dataToExport.map(r => ({
+        "FECHA": r.fecha,
+        "TIPO": r.tipo_comp,
+        "PUNTO_VTA": r.pto_vta || r.ptovta,
+        "NUMERO": r.nro_comprobante,
+        "CAE": r.cae || "",
+        "CLIENTE": r.cliente_razon || "CONS FINAL",
+        "CUIT_CLIENTE": r.cliente_doc || "",
+        "NETO_GRAVADO": r.importe_neto || 0,
+        "IVA": r.importe_iva || 0,
+        "TOTAL": r.importe_total || r.importe,
+        "PAGO_EFVO": r.pago_efectivo || r.efectivo,
+        "PAGO_DIGITAL": r.pago_digital || r.tarjetas
+      }));
 
-        // Generar archivo
-        const ws = XLSX.utils.json_to_sheet(excelRows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Facturación");
-        XLSX.writeFile(wb, filename);
+      const ws = XLSX.utils.json_to_sheet(excelRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Facturación");
+      XLSX.writeFile(wb, filename);
     }
 
     function format(n) {
-        if(typeof MC_UTILS !== 'undefined') return MC_UTILS.formatCurrency(n);
-        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+      if (typeof MC_UTILS !== 'undefined') return MC_UTILS.formatCurrency(n);
+      return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: 'ARS',
+        maximumFractionDigits: 0
+      }).format(n);
     }
   </script>
 </body>

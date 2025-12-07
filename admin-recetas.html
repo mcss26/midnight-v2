@@ -1,1528 +1,751 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Midnight - Recetas</title>
 
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap"
+    rel="stylesheet" />
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
-
-  <style>
-    .recipes-layout{
-      display:grid;
-      grid-template-columns: 360px minmax(0,1fr);
-      gap:14px;
-      align-items:start;
-    }
-    @media (max-width: 980px){
-      .recipes-layout{ grid-template-columns: 1fr; }
-    }
-
-    .recipes-list-panel{
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-card);
-      overflow:hidden;
-      min-height: 640px;
-    }
-    .recipes-list-header{
-      padding:14px;
-      border-bottom: 1px solid var(--border-subtle);
-      background: rgba(7, 9, 16, 0.9);
-      position: sticky;
-      top: 0;
-      z-index: 2;
-    }
-    .menu-list-scroll{
-      max-height: calc(100vh - 250px);
-      overflow:auto;
-    }
-    .menu-item-row{
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border-subtle);
-      cursor:pointer;
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-      justify-content:space-between;
-    }
-    .menu-item-row:hover{ background: rgba(255,255,255,0.03); }
-    .menu-item-row.active{
-      background: rgba(255, 10, 30, 0.10);
-      border-left: 2px solid var(--accent-red);
-    }
-    .menu-item-row .mi-title{
-      font-weight: 650;
-      color: var(--text-primary);
-      font-size: 13px;
-      line-height: 1.25;
-    }
-    .menu-item-row .mi-sub{
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin-top: 4px;
-      font-variant-numeric: tabular-nums;
-    }
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border-subtle);
-      background: rgba(255,255,255,0.03);
-      font-size: 11px;
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      color: var(--text-secondary);
-      white-space: nowrap;
-    }
-
-    .recipes-details-panel{
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-card);
-      padding:16px;
-      min-height: 640px;
-    }
-    .recipe-topbar{
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      align-items:flex-start;
-      margin-bottom: 10px;
-    }
-    .recipe-name{
-      font-family:'Outfit', system-ui, sans-serif;
-      font-size: 22px;
-      font-weight: 750;
-      letter-spacing: 0.02em;
-      line-height: 1.1;
-      color: var(--text-primary);
-    }
-    .recipe-actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-
-    .kpi-grid{
-      display:grid;
-      grid-template-columns: repeat(6, minmax(0,1fr));
-      gap:10px;
-      margin: 12px 0;
-    }
-    @media (max-width: 1120px){
-      .kpi-grid{ grid-template-columns: repeat(3, minmax(0,1fr)); }
-    }
-    @media (max-width: 720px){
-      .kpi-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
-    }
-    .kpi-card{
-      background: rgba(7,9,16,0.6);
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 12px;
-    }
-    .kpi-value{
-      margin-top: 6px;
-      font-size: 18px;
-      font-weight: 750;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .box-soft{
-      background: rgba(7,9,16,0.6);
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-    .row-flex{ display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
-    .grow{ flex: 1 1 240px; }
-    .w-140{ width: 140px; }
-    .w-110{ width: 110px; }
-    .w-90 { width: 90px; }
-
-    .progress-track{
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      overflow:hidden;
-      margin-top: 8px;
-    }
-    .progress-fill{
-      height:100%;
-      width:0%;
-      background: var(--accent-green);
-      transition: width 0.18s ease;
-    }
-    .muted{
-      color: var(--text-secondary);
-      font-size: 12px;
-      line-height: 1.35;
-    }
-    .small-hint{
-      color: var(--text-muted);
-      font-size: 11px;
-      line-height: 1.35;
-    }
-    .toolbar-right{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      justify-content:flex-end;
-      flex-wrap:wrap;
-    }
-
-    .btn-danger-outline{
-      border-color: rgba(255, 10, 30, 0.7) !important;
-      color: var(--accent-red) !important;
-      background: transparent !important;
-    }
-
-    .inline-status{
-      margin-left: 8px;
-      font-size: 11px;
-      color: var(--text-secondary);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .modal-textarea{
-      min-height: 160px;
-      resize: vertical;
-      font-family: 'Inter', system-ui, sans-serif;
-    }
-    .preview-box{
-      border: 1px dashed var(--border-light);
-      border-radius: 12px;
-      padding: 10px;
-      margin-top: 10px;
-      background: rgba(255,255,255,0.02);
-      max-height: 220px;
-      overflow:auto;
-    }
-    .preview-line{
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      padding: 6px 0;
-      border-bottom: 1px solid var(--border-subtle);
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-    .preview-line:last-child{ border-bottom: none; }
-    .ok{ color: var(--accent-green); font-weight: 700; }
-    .bad{ color: var(--accent-red); font-weight: 700; }
-  </style>
 </head>
 
 <body>
+
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div></div>
+        <div style="display:flex; align-items:center;">
+          <button onclick="window.location.href='panel-master.html'" class="btn-back" type="button">
+            VOLVER
+          </button>
+        </div>
         <div class="admin-logo" aria-hidden="true"></div>
         <div class="admin-header-right">
-          <button onclick="window.location.href='panel-master.html'" class="btn-back">VOLVER</button>
+          <span class="session-chip">Master Data</span>
         </div>
       </div>
     </div>
   </header>
 
-  <div class="admin-container">
-    <div class="section-header">
-      <h2 class="section-title">Recetas</h2>
-      <div class="section-underline"></div>
-    </div>
+  <main class="admin-container">
+    <section class="section-header">
+      <h1 class="section-title">INGENIERÍA DE MENÚ</h1>
+      <p class="section-desc">Gestión de fichas técnicas, costos y recetas.</p>
+    </section>
 
     <div class="recipes-layout">
-      <!-- LISTA -->
+
+      <!-- PANEL IZQUIERDO: LISTA DE PRODUCTOS -->
       <aside class="recipes-list-panel">
         <div class="recipes-list-header">
-          <div class="row-flex" style="justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="display:flex; gap:10px; margin-bottom:12px;">
             <button id="btnNewItem" class="btn-primary" style="flex:1;">+ NUEVO</button>
-            <button id="btnImportXlsx" class="btn-secondary" style="flex:1;">IMPORTAR XLSX</button>
           </div>
 
-          <input type="text" id="searchMenu" class="search-input-admin" placeholder="Buscar producto..." style="width:100%; margin-bottom:10px;">
+          <input type="text" id="searchMenu" class="search-input-admin" placeholder="🔍 Buscar producto..."
+            style="margin-bottom:12px;">
 
-          <div class="row-flex" style="justify-content:space-between; align-items:center;">
-            <span class="pill" id="countMenu">0 items</span>
-            <span class="pill">VASO: 400ml</span>
+          <div
+            style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-secondary);">
+            <span id="countMenu" class="tag tag-gray">0 items</span>
+            <span>VASO ESTÁNDAR: 400ml</span>
           </div>
-
-          <input id="fileXlsx" type="file" accept=".xlsx,.xls" style="display:none;">
         </div>
 
         <div id="menuList" class="menu-list-scroll"></div>
       </aside>
 
-      <!-- DETALLE -->
+      <!-- PANEL DERECHO: DETALLE DE RECETA -->
       <section class="recipes-details-panel">
-        <div id="emptyState" style="text-align:center; padding:60px 18px; color:var(--text-secondary);">
-          Seleccioná un producto para ver su ficha.
+
+        <div id="emptyState" style="text-align:center; padding:80px 20px; color:var(--text-secondary);">
+          <div style="font-size:40px; margin-bottom:10px; opacity:0.3;">📋</div>
+          Seleccioná un producto de la lista para ver su ficha técnica.
         </div>
 
-        <div id="recipePanel" style="display:none;">
+        <div id="recipePanel" style="display:none; height:100%; display:flex; flex-direction:column;">
           <input type="hidden" id="currentItemId">
 
           <div class="recipe-topbar">
             <div>
-              <div class="recipe-name" id="viewName">—</div>
-              <div class="muted" id="viewMeta">—</div>
+              <h2 id="viewName" class="recipe-name">—</h2>
+              <div id="viewMeta" style="font-size:12px; color:var(--text-tertiary); margin-top:4px;">—</div>
             </div>
-
-            <div class="recipe-actions">
-              <span class="pill" id="pillRecipeState">SIN RECETA</span>
-              <button id="btnPasteRecipe" class="btn-secondary">PEGAR</button>
-              <button id="btnClearRecipe" class="btn-secondary btn-danger-outline">VACIAR</button>
-              <button id="btnDeleteItem" class="btn-secondary btn-danger-outline">ELIMINAR</button>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span id="pillRecipeState" class="tag tag-gray">SIN RECETA</span>
+              <button id="btnDeleteItem" class="btn-secondary"
+                style="color:var(--accent-red); border-color:rgba(255,10,30,0.3);" title="Eliminar producto"
+                type="button">
+                ✕
+              </button>
             </div>
           </div>
 
-          <!-- PRECIO + STATUS -->
-          <div class="box-soft">
-            <div class="row-flex" style="justify-content:space-between;">
-              <div class="w-140">
+          <div class="box-soft" style="margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+              <div style="width:160px;">
                 <label class="input-label">PRECIO VENTA ($)</label>
                 <input type="number" id="viewPrice" class="modal-input" min="0" step="1" placeholder="0">
               </div>
-
-              <div class="toolbar-right">
-                <span class="inline-status" id="saveStatus">—</span>
-              </div>
+              <div id="saveStatus" class="inline-status">—</div>
             </div>
 
             <div class="kpi-grid">
               <div class="kpi-card">
-                <div class="input-label">COSTO RECETA</div>
+                <div class="input-label">COSTO</div>
                 <div id="kpiCost" class="kpi-value">$0</div>
               </div>
-
               <div class="kpi-card">
-                <div class="input-label">COSTO / VTA (%)</div>
+                <div class="input-label">COSTO %</div>
                 <div id="kpiCostPct" class="kpi-value">0%</div>
               </div>
-
               <div class="kpi-card">
-                <div class="input-label">MARGEN ($)</div>
+                <div class="input-label">MARGEN $</div>
                 <div id="kpiMargin" class="kpi-value">$0</div>
               </div>
-
               <div class="kpi-card">
-                <div class="input-label">MARGEN (%)</div>
+                <div class="input-label">MARGEN %</div>
                 <div id="kpiMarginPct" class="kpi-value">0%</div>
               </div>
-
-              <div class="kpi-card">
-                <div class="input-label">COSTO (x4 vasos)</div>
-                <div id="kpiCost4" class="kpi-value">$0</div>
-              </div>
-
-              <div class="kpi-card">
-                <div class="input-label">MARGEN (x4 vasos)</div>
-                <div id="kpiMargin4" class="kpi-value">$0</div>
-              </div>
             </div>
           </div>
 
-          <!-- VOLUMEN 400ML -->
-          <div class="box-soft">
-            <div class="row-flex" style="justify-content:space-between; align-items:center;">
-              <div>
-                <div class="input-label">VOLUMEN ESTIMADO (VASO 400ml)</div>
-                <div class="muted" id="volText">0 ml · 0%</div>
-              </div>
-              <span class="pill" id="volPill">OK</span>
+          <div class="box-soft" style="margin:16px 0;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:6px;">
+              <span style="color:var(--text-secondary);">VOLUMEN ESTIMADO (Target: 400ml)</span>
+              <span id="volText" style="color:var(--text-primary); font-weight:700;">0 ml</span>
             </div>
             <div class="progress-track">
-              <div class="progress-fill" id="volFill"></div>
-            </div>
-            <div class="small-hint" style="margin-top:8px;">
-              Se suma “ml” + (si el insumo tiene <b>volume_ml</b>, también suma unidades × volume_ml).
+              <div id="volFill" class="progress-fill" style="width:0%;"></div>
             </div>
           </div>
 
-          <!-- INGREDIENTES TABLA -->
-          <div class="row-flex" style="justify-content:space-between; align-items:end; margin-bottom:8px;">
-            <div>
-              <div class="input-label">INGREDIENTES</div>
-              <div class="small-hint">Editás cantidad/unidad directo en la tabla (auto-guardado).</div>
+          <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
+            <div style="display:flex; justify-content:space-between; align-items:end; margin-bottom:8px;">
+              <label class="input-label">INGREDIENTES</label>
+              <span id="ingCount" class="tag tag-gray" style="font-size:9px;">0 insumos</span>
             </div>
-            <span class="pill" id="ingCount">0 insumos</span>
+
+            <div class="table-container" style="flex:1; margin-bottom:0;">
+              <table class="sku-table">
+                <thead>
+                  <tr>
+                    <th style="padding-left:16px;">INSUMO</th>
+                    <th>TIPO</th>
+                    <th class="text-right">BASE</th>
+                    <th class="text-center" style="width:100px;">CANT</th>
+                    <th class="text-center" style="width:80px;">UNID</th>
+                    <th class="text-right">COSTO</th>
+                    <th style="width:50px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="ingTableBody"></tbody>
+              </table>
+            </div>
           </div>
 
-          <div class="table-container">
-            <table class="sku-table">
-              <thead>
-                <tr>
-                  <th>INSUMO</th>
-                  <th class="text-center">TIPO</th>
-                  <th class="col-costo">BASE</th>
-                  <th class="text-center">CANT</th>
-                  <th class="text-center">UN</th>
-                  <th class="col-costo">COSTO</th>
-                  <th class="text-right"></th>
-                </tr>
-              </thead>
-              <tbody id="ingTableBody">
-                <tr><td colspan="7" class="text-center" style="padding:18px; color:var(--text-secondary);">—</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- AGREGAR INSUMO -->
-          <div class="box-soft" style="margin-top:12px;">
-            <div class="row-flex">
-              <div class="grow">
+          <div
+            style="background:var(--bg-card); border-top:1px solid var(--border-subtle); padding-top:16px; margin-top:16px;">
+            <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+              <div style="flex:1;">
                 <label class="input-label">BUSCAR INSUMO</label>
-                <input id="skuFilter" class="modal-input" placeholder="Escribí para filtrar..." />
+                <input id="skuFilter" class="modal-input" placeholder="Filtrar lista..." />
               </div>
-              <div class="grow">
-                <label class="input-label">INSUMO</label>
+              <div style="flex:1.5; min-width:200px;">
+                <label class="input-label">SELECCIONAR</label>
                 <select id="selSku" class="modal-select"></select>
               </div>
-              <div class="w-110">
+              <div style="width:90px;">
                 <label class="input-label">CANTIDAD</label>
-                <input type="number" id="newQty" class="modal-input" min="0" step="0.01" placeholder="0">
+                <input type="number" id="newQty" class="modal-input" placeholder="0">
               </div>
-              <div class="w-90">
+              <div style="width:80px;">
                 <label class="input-label">UNIDAD</label>
                 <select id="newUnit" class="modal-select">
                   <option value="ml">ml</option>
                   <option value="un">un</option>
                 </select>
               </div>
-              <button id="btnAddIng" class="btn-primary" style="height:42px;">+ AGREGAR</button>
-            </div>
-
-            <div class="small-hint" style="margin-top:8px;">
-              Si el insumo es por botella/pack y querés prorrateo por ml, cargá <b>ml</b> (requiere <b>volume_ml</b>).
+              <button id="btnAddIng" class="btn-primary" style="height:40px;">AGREGAR</button>
             </div>
           </div>
+
         </div>
       </section>
     </div>
-  </div>
-
-  <!-- MODAL: PEGAR RECETA -->
-  <div id="bulkModal" class="modal-overlay" style="display:none;">
-    <div class="modal-box" style="max-width: 760px;">
-      <div class="row-flex" style="justify-content:space-between; align-items:center;">
-        <div>
-          <div class="section-title" style="font-size:14px;">Pegar receta</div>
-          <div class="small-hint">Formato por línea: <b>INSUMO | CANTIDAD | UNIDAD</b> (ml/un). Separadores: | ; , TAB</div>
-        </div>
-        <button id="btnCloseBulk" class="btn-icon" type="button">×</button>
-      </div>
-
-      <div style="margin-top:10px;">
-        <textarea id="bulkText" class="modal-input modal-textarea" placeholder="Ej:
-RON BLANCO | 60 | ml
-JUGO LIMON | 20 | ml
-ALMIBAR | 15 | ml"></textarea>
-      </div>
-
-      <div class="preview-box" id="bulkPreview"></div>
-
-      <div class="modal-btns">
-        <button id="btnCancelBulk" class="btn-secondary" type="button">Cancelar</button>
-        <button id="btnApplyBulk" class="btn-primary" type="button">Cargar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: IMPORT XLSX -->
-  <div id="importModal" class="modal-overlay" style="display:none;">
-    <div class="modal-box" style="max-width: 860px;">
-      <div class="row-flex" style="justify-content:space-between; align-items:center;">
-        <div>
-          <div class="section-title" style="font-size:14px;">Importar recetas desde Excel</div>
-          <div class="small-hint">
-            Se detectan columnas por nombre. Recomendado: <b>Producto/Trago</b>, <b>Ingrediente</b> o <b>Código</b>, <b>Cantidad</b>, <b>Unidad</b>.
-            <br/>Fix incluido: si viene <b>0.060</b> en ml (litros), se convierte a <b>60</b> ml.
-          </div>
-        </div>
-        <button id="btnCloseImport" class="btn-icon" type="button">×</button>
-      </div>
-
-      <div class="preview-box" id="importPreview" style="margin-top:12px;"></div>
-
-      <div class="modal-btns">
-        <button id="btnCancelImport" class="btn-secondary" type="button">Cancelar</button>
-        <button id="btnRunImport" class="btn-primary" type="button">Importar (reemplaza recetas)</button>
-      </div>
-    </div>
-  </div>
+  </main>
 
   <script>
-    // ==========================================================
-    // Config
-    // ==========================================================
-    const GLASS_ML = 400;
+    // =========================================
+    // CONFIG & ESTADO
+    // =========================================
+    const GLASS_ML = 400; // referencia de volumen objetivo
 
-    // ==========================================================
-    // Helpers
-    // ==========================================================
-    function money(n){
-      const v = Number(n) || 0;
-      if (window.MC_UTILS && typeof MC_UTILS.formatCurrency === 'function') return MC_UTILS.formatCurrency(v);
-      return new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }).format(v);
-    }
-    function pct(n){
-      const v = Number(n) || 0;
-      return Math.round(v) + '%';
-    }
-    function norm(s){
-      return (s || '').toString().trim().toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/\s+/g, ' ');
-    }
-    function escapeHtml(str){
-      return String(str ?? '')
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-        .replace(/'/g,'&#039;');
-    }
-    function toast(msg){
-      if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') return MC_UTILS.showToast(msg);
-      console.log('[toast]', msg);
-    }
-    function setStatus(txt){
-      document.getElementById('saveStatus').textContent = txt || '—';
-    }
-    function isIntegerish(x){
-      return Math.abs(x - Math.round(x)) < 1e-9;
-    }
-
-    // ---- IMPORT FIX: litros -> ml (0.060 => 60) ----
-    function normalizeUnit(uRaw){
-      const u = (uRaw || '').toString().trim().toLowerCase();
-      if (u === 'u') return 'un';
-      if (['un', 'unidad', 'unidades'].includes(u)) return 'un';
-      if (['ml', 'cc'].includes(u)) return 'ml';
-      if (['l', 'lt', 'lts', 'litro', 'litros'].includes(u)) return 'l';
-      return 'ml';
-    }
-
-    function normalizeQty(qRaw, unit){
-      let q = (typeof qRaw === 'string')
-        ? Number(String(qRaw).replace(',', '.'))
-        : Number(qRaw);
-
-      if (!Number.isFinite(q) || q <= 0) return q;
-
-      // litros explícitos
-      if (unit === 'l') return q * 1000;
-
-      // Heurística: si dice ml pero viene < 1, suele estar en litros (0.060 => 60ml)
-      if (unit === 'ml' && q > 0 && q < 1) {
-        const asMl = q * 1000;
-
-        // Convertimos solo si queda "ml plausible" para vaso 400ml
-        if (asMl >= 5 && asMl <= 400 && isIntegerish(asMl)) {
-          return Math.round(asMl);
-        }
-      }
-
-      return q;
-    }
-
-    function chunk(arr, size){
-      const out = [];
-      for (let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size));
-      return out;
-    }
-
-    // ==========================================================
-    // State
-    // ==========================================================
     let menuItems = [];
     let skus = [];
     let currentItemId = null;
+    let menuSearchTerm = '';
 
-    // Maps (for matching)
-    const skuById = new Map();             // id -> sku
-    const skuIdsByNormName = new Map();    // name -> [id]
-    const skuIdByExternalId = new Map();   // external_id -> id
-    const menuItemByNormName = new Map();  // name -> item
-
-    // Import staging
-    let importPlan = null; // { affectedMenuIds, created, missingSkus, rowsByMenuId }
-
-    // ==========================================================
-    // DOM
-    // ==========================================================
-    const elMenuList   = document.getElementById('menuList');
-    const elSearchMenu = document.getElementById('searchMenu');
-    const elCountMenu  = document.getElementById('countMenu');
-
-    const elEmptyState = document.getElementById('emptyState');
-    const elRecipePanel= document.getElementById('recipePanel');
-    const elCurrentId  = document.getElementById('currentItemId');
-    const elViewName   = document.getElementById('viewName');
-    const elViewMeta   = document.getElementById('viewMeta');
-    const elViewPrice  = document.getElementById('viewPrice');
-
-    const elPillRecipe = document.getElementById('pillRecipeState');
-
-    const elKpiCost    = document.getElementById('kpiCost');
-    const elKpiCostPct = document.getElementById('kpiCostPct');
-    const elKpiMargin  = document.getElementById('kpiMargin');
-    const elKpiMarginPct = document.getElementById('kpiMarginPct');
-    const elKpiCost4   = document.getElementById('kpiCost4');
-    const elKpiMargin4 = document.getElementById('kpiMargin4');
-
-    const elVolText = document.getElementById('volText');
-    const elVolFill = document.getElementById('volFill');
-    const elVolPill = document.getElementById('volPill');
-
-    const elIngCount = document.getElementById('ingCount');
-    const elIngBody  = document.getElementById('ingTableBody');
-
-    const elSkuFilter= document.getElementById('skuFilter');
-    const elSelSku   = document.getElementById('selSku');
-    const elNewQty   = document.getElementById('newQty');
-    const elNewUnit  = document.getElementById('newUnit');
-
-    // Bulk modal
-    const bulkModal   = document.getElementById('bulkModal');
-    const bulkText    = document.getElementById('bulkText');
-    const bulkPreview = document.getElementById('bulkPreview');
-
-    // Import modal
-    const importModal   = document.getElementById('importModal');
-    const importPreview = document.getElementById('importPreview');
-    const fileXlsx      = document.getElementById('fileXlsx');
-
-    // Buttons
-    document.getElementById('btnNewItem').addEventListener('click', createItem);
-    document.getElementById('btnDeleteItem').addEventListener('click', deleteItem);
-    document.getElementById('btnAddIng').addEventListener('click', addIng);
-    document.getElementById('btnClearRecipe').addEventListener('click', clearRecipe);
-    document.getElementById('btnPasteRecipe').addEventListener('click', openBulk);
-    document.getElementById('btnCloseBulk').addEventListener('click', closeBulk);
-    document.getElementById('btnCancelBulk').addEventListener('click', closeBulk);
-    document.getElementById('btnApplyBulk').addEventListener('click', applyBulk);
-
-    document.getElementById('btnImportXlsx').addEventListener('click', () => fileXlsx.click());
-    fileXlsx.addEventListener('change', onPickXlsx);
-
-    document.getElementById('btnCloseImport').addEventListener('click', closeImport);
-    document.getElementById('btnCancelImport').addEventListener('click', closeImport);
-    document.getElementById('btnRunImport').addEventListener('click', runImport);
-
-    // ==========================================================
-    // Init
-    // ==========================================================
     document.addEventListener('DOMContentLoaded', async () => {
-      setStatus('CARGANDO…');
-
-      const [mR, sR] = await Promise.all([
-        client.from('menu_items').select('*').order('name'),
-        // IMPORTANTE: traigo external_id para matchear por código
-        client.from('inventory_skus').select('id,external_id,name,cost_price,volume_ml,unit_type').eq('is_active', true).order('name')
-      ]);
-
-      menuItems = (mR.data || []).map(x => ({
-        ...x,
-        id: Number(x.id),
-        name: (x.name || '').toString()
-      }));
-
-      skus = (sR.data || []).map(x => ({
-        ...x,
-        id: Number(x.id),
-        external_id: x.external_id == null ? null : String(x.external_id),
-        name: (x.name || '').toString(),
-        cost_price: Number(x.cost_price) || 0,
-        volume_ml: x.volume_ml == null ? null : Number(x.volume_ml),
-        unit_type: (x.unit_type || '').toString()
-      }));
-
-      skuById.clear();
-      skuIdsByNormName.clear();
-      skuIdByExternalId.clear();
-      menuItemByNormName.clear();
-
-      for (const s of skus) {
-        const sid = String(s.id);
-        skuById.set(sid, s);
-
-        const k = norm(s.name);
-        if (!skuIdsByNormName.has(k)) skuIdsByNormName.set(k, []);
-        skuIdsByNormName.get(k).push(sid);
-
-        if (s.external_id) skuIdByExternalId.set(norm(s.external_id), sid);
-      }
-
-      for (const it of menuItems){
-        menuItemByNormName.set(norm(it.name), it);
-      }
-
-      renderSkuSelect('');
-      renderMenu(menuItems);
-      elCountMenu.textContent = `${menuItems.length} items`;
-
-      elSearchMenu.addEventListener('input', () => {
-        const term = norm(elSearchMenu.value);
-        const filtered = !term ? menuItems : menuItems.filter(i => norm(i.name).includes(term));
-        renderMenu(filtered);
-        elCountMenu.textContent = `${filtered.length} / ${menuItems.length}`;
-      });
-
-      elSkuFilter.addEventListener('input', () => renderSkuSelect(elSkuFilter.value));
-
-      // Price autosave (debounce)
-      let t = null;
-      elViewPrice.addEventListener('input', () => {
-        if (!currentItemId) return;
-        setStatus('EDITANDO…');
-        clearTimeout(t);
-        t = setTimeout(() => updatePrice(), 450);
-      });
-
-      // ESC para cerrar modales
-      document.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Escape') {
-          if (bulkModal.style.display === 'flex') closeBulk();
-          if (importModal.style.display === 'flex') closeImport();
-        }
-      });
-
-      setStatus('—');
+      setStatus('Cargando...');
+      await loadInitialData();
+      setupEventListeners();
+      setStatus('');
     });
 
-    // ==========================================================
-    // Menu render + select
-    // ==========================================================
-    function renderMenu(list){
-      if (!list.length){
-        elMenuList.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);">Sin productos</div>`;
+    // =========================================
+    // CARGA INICIAL
+    // =========================================
+    async function loadInitialData() {
+      try {
+        const [resMenu, resSkus] = await Promise.all([
+          client.from('menu_items')
+            .select('id, name, category, price, is_active')
+            .order('name'),
+          client.from('inventory_skus')
+            .select('id, name, external_id, cost_price, volume_ml, unit_type, pack_size, unit_label, is_active')
+            .eq('is_active', true)
+            .order('name')
+        ]);
+
+        if (resMenu.error) throw resMenu.error;
+        if (resSkus.error) throw resSkus.error;
+
+        menuItems = resMenu.data || [];
+        skus = resSkus.data || [];
+
+        renderMenuList();
+        renderSkuSelect();
+        updateMenuCount();
+      } catch (err) {
+        console.error(err);
+        const list = document.getElementById('menuList');
+        if (list) {
+          list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--accent-red);">Error al cargar datos.</div>';
+        }
+      }
+    }
+
+    // =========================================
+    // FILTRO Y LISTA DE PRODUCTOS
+    // =========================================
+    function getFilteredMenuItems() {
+      const term = (menuSearchTerm || '').toLowerCase();
+      if (!term) return menuItems;
+      return menuItems.filter(i => i.name.toLowerCase().includes(term));
+    }
+
+    function renderMenuList() {
+      const container = document.getElementById('menuList');
+      if (!container) return;
+
+      const items = getFilteredMenuItems();
+
+      if (!items.length) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary);">Sin resultados.</div>';
+        updateMenuCount();
         return;
       }
 
-      elMenuList.innerHTML = list.map(i => {
-        const price = Number(i.price) || 0;
+      container.innerHTML = items.map(item => {
+        const isActive = item.is_active !== false;
+        const hasCurrency = window.MC_UTILS && typeof window.MC_UTILS.formatCurrency === 'function';
+        const priceRaw = Number(item.price || 0);
+        const priceText = hasCurrency
+          ? window.MC_UTILS.formatCurrency(priceRaw)
+          : `$${priceRaw.toFixed(0)}`;
+
+        const offTag = isActive ? '' : '<span class="tag tag-red" style="margin-left:6px;">OFF</span>';
+
         return `
-          <div class="menu-item-row ${currentItemId === i.id ? 'active' : ''}" data-id="${i.id}">
-            <div style="min-width:0;">
-              <div class="mi-title">${escapeHtml(i.name)}</div>
-              <div class="mi-sub">${money(price)}</div>
+          <div class="menu-item-row ${currentItemId === item.id ? 'active' : ''}" onclick="selectItem(${item.id})">
+            <div>
+              <div style="font-weight:600; font-size:13px; color:#fff;">
+                ${escapeHtml(item.name)} ${offTag}
+              </div>
+              <div style="font-size:11px; color:var(--text-secondary);">${priceText}</div>
             </div>
-            <span class="pill">ID ${i.id}</span>
+            <span class="tag tag-gray" style="font-size:9px;">#${item.id}</span>
           </div>
         `;
       }).join('');
 
-      elMenuList.querySelectorAll('.menu-item-row').forEach(row => {
-        row.addEventListener('click', () => selectItem(Number(row.dataset.id)));
-      });
+      updateMenuCount();
     }
 
-    async function selectItem(id){
-      currentItemId = id;
-      elCurrentId.value = id;
+    function updateMenuCount() {
+      const el = document.getElementById('countMenu');
+      if (!el) return;
+      const visible = getFilteredMenuItems().length;
+      el.innerText = `${visible} items`;
+    }
 
-      const item = menuItems.find(x => Number(x.id) === Number(id));
+    // =========================================
+    // SELECT DE SKUS PARA INGREDIENTES
+    // =========================================
+    function renderSkuSelect() {
+      const sel = document.getElementById('selSku');
+      if (!sel) return;
+
+      sel.innerHTML = '<option value="">-- Seleccionar Insumo --</option>' +
+        skus.map(s => {
+          let meta = '';
+          if (s.unit_label === 'PACK' && s.pack_size) meta += ` [PACK x${s.pack_size}]`;
+          if (s.volume_ml) meta += ` (${s.volume_ml}ml)`;
+          return `<option value="${s.id}">${escapeHtml(s.name)}${meta}</option>`;
+        }).join('');
+    }
+
+    function focusSkuByText(text) {
+      const sel = document.getElementById('selSku');
+      if (!sel) return;
+
+      const term = (text || '').toLowerCase();
+
+      // Si borrás el filtro, des-selecciona
+      if (!term) {
+        sel.value = '';
+        return;
+      }
+
+      const options = Array.from(sel.options);
+      const match = options.find(opt =>
+        opt.value && opt.text.toLowerCase().includes(term)
+      );
+
+      if (match) {
+        sel.value = match.value; // mueve el select al primer match
+      }
+    }
+
+
+    // =========================================
+    // SELECCIÓN DE ITEM Y CARGA DE RECETA
+    // =========================================
+    async function selectItem(id) {
+      currentItemId = id;
+
+      const emptyState = document.getElementById('emptyState');
+      const recipePanel = document.getElementById('recipePanel');
+      if (emptyState) emptyState.style.display = 'none';
+      if (recipePanel) recipePanel.style.display = 'flex';
+
+      const item = menuItems.find(i => i.id === id);
       if (!item) return;
 
-      const term = norm(elSearchMenu.value);
-      const filtered = !term ? menuItems : menuItems.filter(i => norm(i.name).includes(term));
-      renderMenu(filtered);
+      document.getElementById('currentItemId').value = item.id;
+      document.getElementById('viewName').innerText = item.name;
 
-      elEmptyState.style.display = 'none';
-      elRecipePanel.style.display = 'block';
+      const metaParts = [`ITEM #${item.id}`];
+      if (item.category) metaParts.push(item.category);
+      document.getElementById('viewMeta').innerText = metaParts.join(' · ');
 
-      elViewName.textContent = item.name || '—';
-      elViewMeta.textContent = `Producto #${item.id}`;
-      elViewPrice.value = Number(item.price) || 0;
+      document.getElementById('viewPrice').value = item.price || 0;
 
-      await loadIngredients(id);
+      renderMenuList();
+      await loadRecipe(id);
     }
 
-    // ==========================================================
-    // Ingredients
-    // ==========================================================
-    function calcCostAndLiquid(ing){
-      const s = ing.inventory_skus || {};
-      const qty = Number(ing.quantity_needed) || 0;
-      const unit = (ing.unit_needed || '').toString();
+    async function loadRecipe(menuId) {
+      setStatus('Cargando receta...');
 
-      const base = Number(s.cost_price) || 0;
-      const vol = s.volume_ml == null ? null : Number(s.volume_ml);
+      try {
+        const { data, error } = await client
+          .from('recipe_ingredients')
+          .select('id, quantity_needed, unit_needed, inventory_skus ( id, name, cost_price, volume_ml, unit_type )')
+          .eq('menu_item_id', menuId);
 
-      let cost = 0;
-      if (unit === 'un' || (s.unit_type || '').toUpperCase() === 'UNIDAD') {
-        cost = base * qty;
-      } else if (unit === 'ml' && vol && vol > 0) {
-        cost = (base / vol) * qty;
-      } else if (unit === 'ml' && (!vol || vol <= 0)) {
-        cost = 0; // no se puede prorratear sin volume_ml
+        if (error) throw error;
+        renderIngredients(data || []);
+      } catch (err) {
+        console.error(err);
+        const tbody = document.getElementById('ingTableBody');
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:20px;">Error al cargar receta.</td></tr>';
+        }
+      } finally {
+        setStatus('');
       }
-
-      let ml = 0;
-      if (unit === 'ml') ml += qty;
-      if (unit === 'un' && vol && vol > 0) ml += qty * vol;
-
-      return { cost, ml };
     }
 
-    async function loadIngredients(menuId){
-      setStatus('CARGANDO RECETA…');
-
-      const { data, error } = await client
-        .from('recipe_ingredients')
-        .select('id,sku_id,quantity_needed,unit_needed,inventory_skus(id,name,cost_price,volume_ml,unit_type)')
-        .eq('menu_item_id', menuId)
-        .order('id', { ascending:true });
-
-      if (error){
-        console.error(error);
-        elIngBody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding:18px; color:var(--text-secondary);">Error al cargar receta</td></tr>`;
-        setStatus('ERROR');
-        return;
-      }
-
-      const list = data || [];
-      elIngCount.textContent = `${list.length} insumos`;
-      elPillRecipe.textContent = list.length ? 'CON RECETA' : 'SIN RECETA';
-      elPillRecipe.style.borderColor = list.length ? 'rgba(204,255,0,0.35)' : 'rgba(255,255,255,0.12)';
-      elPillRecipe.style.color = list.length ? 'var(--accent-green)' : 'var(--text-secondary)';
+    // =========================================
+    // RENDER INGREDIENTES + KPIs
+    // =========================================
+    function renderIngredients(ingredients) {
+      const tbody = document.getElementById('ingTableBody');
+      const pill = document.getElementById('pillRecipeState');
+      const ingCount = document.getElementById('ingCount');
+      if (!tbody || !pill || !ingCount) return;
 
       let totalCost = 0;
-      let totalML = 0;
+      let totalVol = 0;
 
-      if (!list.length){
-        elIngBody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding:18px; color:var(--text-secondary);">Sin ingredientes todavía</td></tr>`;
-      } else {
-        elIngBody.innerHTML = list.map(ing => {
-          const s = ing.inventory_skus || {};
-          const qty = Number(ing.quantity_needed) || 0;
-          const unit = (ing.unit_needed || 'ml').toString();
-
-          const { cost, ml } = calcCostAndLiquid(ing);
-          totalCost += cost;
-          totalML += ml;
-
-          const base = Number(s.cost_price) || 0;
-          const unitType = (s.unit_type || '-').toString();
-          const vol = s.volume_ml == null ? null : Number(s.volume_ml);
-          const sub = [
-            `Base: ${money(base)}`,
-            unitType && unitType !== '-' ? `Tipo: ${escapeHtml(unitType)}` : null,
-            vol && vol > 0 ? `${Math.round(vol)} ml` : null
-          ].filter(Boolean).join(' · ');
-
-          return `
-            <tr data-id="${ing.id}">
-              <td>
-                <div class="row-title">${escapeHtml(s.name || '—')}</div>
-                <div class="row-sub-text">${sub}</div>
-              </td>
-              <td class="text-center">${escapeHtml(unitType || '-')}</td>
-              <td class="col-costo">${money(base)}</td>
-              <td class="text-center" style="width:120px;">
-                <input class="table-input" type="number" min="0" step="0.01"
-                  value="${qty}"
-                  data-ing="${ing.id}" data-field="quantity_needed">
-              </td>
-              <td class="text-center" style="width:90px;">
-                <select class="modal-select" style="padding:6px 8px; font-size:12px;"
-                  data-ing="${ing.id}" data-field="unit_needed">
-                  <option value="ml" ${unit === 'ml' ? 'selected' : ''}>ml</option>
-                  <option value="un" ${unit === 'un' ? 'selected' : ''}>un</option>
-                </select>
-              </td>
-              <td class="col-costo" id="cost-${ing.id}">${money(cost)}</td>
-              <td class="text-right" style="width:56px;">
-                <button class="btn-icon" type="button" data-del="${ing.id}">×</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-
-        elIngBody.querySelectorAll('button[data-del]').forEach(btn => {
-          btn.addEventListener('click', () => delIng(Number(btn.dataset.del)));
-        });
-
-        elIngBody.querySelectorAll('input[data-field="quantity_needed"]').forEach(inp => {
-          inp.addEventListener('blur', async () => {
-            const id = Number(inp.dataset.ing);
-            await updateIngredient(id, { quantity_needed: inp.value });
-          });
-          inp.addEventListener('keydown', (ev) => {
-            if (ev.key === 'Enter') inp.blur();
-          });
-        });
-
-        elIngBody.querySelectorAll('select[data-field="unit_needed"]').forEach(sel => {
-          sel.addEventListener('change', async () => {
-            const id = Number(sel.dataset.ing);
-            await updateIngredient(id, { unit_needed: sel.value });
-          });
-        });
-      }
-
-      updateKPIs(totalCost);
-      updateVolume(totalML);
-
-      setStatus('—');
-    }
-
-    async function updateIngredient(id, patch){
-      if (!currentItemId) return;
-      setStatus('GUARDANDO…');
-
-      const payload = {};
-      if (patch.quantity_needed != null) payload.quantity_needed = Number(patch.quantity_needed) || 0;
-      if (patch.unit_needed != null) payload.unit_needed = patch.unit_needed;
-
-      const { error } = await client.from('recipe_ingredients').update(payload).eq('id', id);
-      if (error){
-        console.error(error);
-        setStatus('ERROR');
-        alert('No se pudo guardar el ingrediente.');
+      if (!ingredients.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:20px;">Sin ingredientes asignados.</td></tr>';
+        pill.className = 'tag tag-gray';
+        pill.innerText = 'SIN RECETA';
+        ingCount.innerText = '0 insumos';
+        updateKPIs(0);
+        updateVolumeBar(0);
         return;
       }
 
-      await loadIngredients(currentItemId);
-      toast('Ingrediente actualizado');
-    }
+      pill.className = 'tag tag-green';
+      pill.innerText = 'CON RECETA';
 
-    async function addIng(){
-      if (!currentItemId) return;
+      const hasCurrency = window.MC_UTILS && typeof window.MC_UTILS.formatCurrency === 'function';
 
-      const sid = elSelSku.value;
-      const qty = Number(elNewQty.value);
-      const u = elNewUnit.value;
+      tbody.innerHTML = ingredients.map(ing => {
+        const sku = ing.inventory_skus || {};
+        const qty = Number(ing.quantity_needed) || 0;
+        const unit = ing.unit_needed || 'ml';
 
-      if (!sid || !Number.isFinite(qty) || qty <= 0){
-        alert('Elegí un insumo y cargá una cantidad mayor a 0.');
-        return;
-      }
+        const skuCost = Number(sku.cost_price) || 0;
+        const skuVol = Number(sku.volume_ml) || 0;
 
-      setStatus('AGREGANDO…');
-
-      const { error } = await client.from('recipe_ingredients').insert({
-        menu_item_id: currentItemId,
-        sku_id: Number(sid),
-        quantity_needed: qty,
-        unit_needed: u
-      });
-
-      if (error){
-        console.error(error);
-        setStatus('ERROR');
-        alert('No se pudo agregar el ingrediente.');
-        return;
-      }
-
-      elNewQty.value = '';
-      await loadIngredients(currentItemId);
-      toast('Ingrediente agregado');
-    }
-
-    async function delIng(id){
-      if (!currentItemId) return;
-      if (!confirm('¿Eliminar este ingrediente de la receta?')) return;
-
-      setStatus('BORRANDO…');
-
-      const { error } = await client.from('recipe_ingredients').delete().eq('id', id);
-      if (error){
-        console.error(error);
-        setStatus('ERROR');
-        alert('No se pudo eliminar.');
-        return;
-      }
-
-      await loadIngredients(currentItemId);
-      toast('Ingrediente eliminado');
-    }
-
-    async function clearRecipe(){
-      if (!currentItemId) return;
-      const ok = confirm('¿Vaciar receta completa?\n\nEsto elimina TODOS los ingredientes del producto.');
-      if (!ok) return;
-
-      setStatus('VACIANDO…');
-
-      const { error } = await client.from('recipe_ingredients').delete().eq('menu_item_id', currentItemId);
-      if (error){
-        console.error(error);
-        setStatus('ERROR');
-        alert('No se pudo vaciar la receta.');
-        return;
-      }
-
-      await loadIngredients(currentItemId);
-      toast('Receta vaciada');
-    }
-
-    // ==========================================================
-    // KPI / Volume
-    // ==========================================================
-    function updateKPIs(cost){
-      const p = Number(elViewPrice.value) || 0;
-      const margin = p - cost;
-      const costPct = p > 0 ? (cost / p) * 100 : 0;
-      const marginPct = p > 0 ? (margin / p) * 100 : 0;
-
-      elKpiCost.textContent = money(cost);
-      elKpiCostPct.textContent = pct(costPct);
-      elKpiMargin.textContent = money(margin);
-      elKpiMarginPct.textContent = pct(marginPct);
-
-      elKpiCost4.textContent = money(cost * 4);
-      elKpiMargin4.textContent = money(margin * 4);
-
-      elKpiCostPct.style.color = costPct <= 30 ? 'var(--accent-green)' : 'var(--accent-red)';
-      elKpiMarginPct.style.color = marginPct >= 70 ? 'var(--accent-green)' : 'var(--accent-red)';
-      elKpiMargin.style.color = margin >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-      elKpiMargin4.style.color = (margin * 4) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-    }
-
-    function updateVolume(totalML){
-      const ml = Number(totalML) || 0;
-      const fill = GLASS_ML > 0 ? (ml / GLASS_ML) * 100 : 0;
-      const clamped = Math.max(0, Math.min(fill, 130));
-
-      elVolText.textContent = `${Math.round(ml)} ml · ${pct(fill)}`;
-      elVolFill.style.width = `${Math.min(clamped, 100)}%`;
-
-      const overflow = fill > 100;
-      elVolFill.style.background = overflow ? 'var(--accent-red)' : 'var(--accent-green)';
-      elVolPill.textContent = overflow ? 'SOBRE 400ml' : 'OK';
-      elVolPill.style.color = overflow ? 'var(--accent-red)' : 'var(--accent-green)';
-      elVolPill.style.borderColor = overflow ? 'rgba(255,10,30,0.35)' : 'rgba(204,255,0,0.35)';
-    }
-
-    // ==========================================================
-    // Price
-    // ==========================================================
-    async function updatePrice(){
-      if (!currentItemId) return;
-
-      const p = Number(elViewPrice.value) || 0;
-      setStatus('GUARDANDO PRECIO…');
-
-      const { error } = await client.from('menu_items').update({ price: p }).eq('id', currentItemId);
-      if (error){
-        console.error(error);
-        setStatus('ERROR');
-        alert('No se pudo guardar el precio.');
-        return;
-      }
-
-      const it = menuItems.find(x => Number(x.id) === Number(currentItemId));
-      if (it) it.price = p;
-
-      const term = norm(elSearchMenu.value);
-      const filtered = !term ? menuItems : menuItems.filter(i => norm(i.name).includes(term));
-      renderMenu(filtered);
-
-      setStatus('—');
-      toast('Precio actualizado');
-
-      await loadIngredients(currentItemId);
-    }
-
-    // ==========================================================
-    // Items
-    // ==========================================================
-    async function createItem(){
-      const n = prompt('Nombre del producto:');
-      if (!n) return;
-
-      setStatus('CREANDO…');
-
-      const payload = { name: String(n).toUpperCase().trim(), price: 0 };
-      const { data, error } = await client.from('menu_items').insert(payload).select('*').single();
-
-      if (error){
-        console.error(error);
-        setStatus('ERROR');
-        alert('No se pudo crear el producto.');
-        return;
-      }
-
-      toast('Producto creado');
-      menuItems.push({ ...data, id: Number(data.id), name: String(data.name) });
-      menuItemByNormName.set(norm(String(data.name)), menuItems[menuItems.length-1]);
-      menuItems.sort((a,b)=> String(a.name).localeCompare(String(b.name), 'es'));
-
-      renderMenu(menuItems);
-      elCountMenu.textContent = `${menuItems.length} items`;
-      setStatus('—');
-    }
-
-    async function deleteItem(){
-      if (!currentItemId) return;
-      const item = menuItems.find(x => Number(x.id) === Number(currentItemId));
-      const ok = confirm(`¿Eliminar el producto "${item?.name || currentItemId}"?\n\nSe borrará también su receta (cascade).`);
-      if (!ok) return;
-
-      setStatus('ELIMINANDO…');
-
-      const { error } = await client.from('menu_items').delete().eq('id', currentItemId);
-      if (error){
-        console.error(error);
-        setStatus('ERROR');
-        alert('No se pudo eliminar.');
-        return;
-      }
-
-      toast('Producto eliminado');
-      menuItems = menuItems.filter(x => Number(x.id) !== Number(currentItemId));
-      currentItemId = null;
-
-      renderMenu(menuItems);
-      elCountMenu.textContent = `${menuItems.length} items`;
-      elRecipePanel.style.display = 'none';
-      elEmptyState.style.display = 'block';
-      setStatus('—');
-    }
-
-    // ==========================================================
-    // SKU select filter
-    // ==========================================================
-    function renderSkuSelect(term){
-      const t = norm(term);
-      const list = !t ? skus : skus.filter(s => norm(s.name).includes(t));
-
-      elSelSku.innerHTML = '<option value="">— Seleccionar —</option>' + list.map(s => {
-        const meta = [];
-        if (s.unit_type) meta.push(s.unit_type);
-        if (s.volume_ml != null && Number(s.volume_ml) > 0) meta.push(`${Math.round(Number(s.volume_ml))}ml`);
-        if (s.external_id) meta.push(`cod:${s.external_id}`);
-        return `<option value="${s.id}">${escapeHtml(s.name)}${meta.length ? ' · ' + meta.join(' · ') : ''}</option>`;
-      }).join('');
-    }
-
-    // ==========================================================
-    // Bulk paste
-    // ==========================================================
-    function openBulk(){
-      if (!currentItemId) return;
-      bulkText.value = '';
-      bulkPreview.innerHTML = `<div class="small-hint">Pegá el texto y vas a ver el preview acá.</div>`;
-      bulkModal.style.display = 'flex';
-
-      bulkText.addEventListener('input', previewBulk, { once:false });
-      setTimeout(() => bulkText.focus(), 50);
-    }
-    function closeBulk(){
-      bulkModal.style.display = 'none';
-    }
-
-    function parseBulk(text){
-      const lines = (text || '').split('\n').map(l => l.trim()).filter(Boolean);
-      const out = [];
-
-      for (const raw of lines){
-        const parts = raw.split(/[|;\t,]/).map(x => x.trim()).filter(Boolean);
-        if (parts.length < 2){
-          out.push({ raw, ok:false, reason:'Formato' });
-          continue;
-        }
-
-        const nameOrId = parts[0];
-
-        let unit = normalizeUnit(parts[2] || 'ml');
-        let qty = normalizeQty(parts[1], unit);
-        if (unit === 'l') unit = 'ml';
-
-        if (!Number.isFinite(qty) || qty <= 0){
-          out.push({ raw, ok:false, reason:'Cantidad' });
-          continue;
-        }
-
-        // Match SKU: id directo o nombre
-        let matchedId = null;
-        let matchedName = null;
-
-        if (/^\d+$/.test(nameOrId) && skuById.has(String(nameOrId))){
-          matchedId = String(nameOrId);
-          matchedName = skuById.get(matchedId).name;
+        let cost = 0;
+        if (unit === 'ml' && skuVol > 0) {
+          cost = (skuCost / skuVol) * qty;
+          totalVol += qty;
         } else {
-          const key = norm(nameOrId);
-
-          // exact
-          const exactIds = skuIdsByNormName.get(key);
-          if (exactIds && exactIds.length){
-            matchedId = exactIds[0];
-            matchedName = skuById.get(matchedId).name;
-          } else {
-            // contains fallback
-            const found = skus.find(s => norm(s.name).includes(key));
-            if (found){
-              matchedId = String(found.id);
-              matchedName = found.name;
-            }
+          cost = skuCost * qty;
+          if (skuVol > 0) {
+            totalVol += skuVol * qty;
           }
         }
 
-        if (!matchedId){
-          out.push({ raw, ok:false, reason:'Sin match' });
-          continue;
+        totalCost += cost;
+
+        const baseCostText = hasCurrency
+          ? window.MC_UTILS.formatCurrency(skuCost)
+          : `$${skuCost.toFixed(2)}`;
+
+        const costText = hasCurrency
+          ? window.MC_UTILS.formatCurrency(cost)
+          : `$${cost.toFixed(2)}`;
+
+        return `
+          <tr>
+            <td>
+              <div class="row-title">${escapeHtml(sku.name || '-')}</div>
+            </td>
+            <td class="text-center" style="font-size:11px; color:var(--text-secondary);">
+              ${sku.unit_type || '-'}
+            </td>
+            <td class="text-right text-muted">${baseCostText}</td>
+            <td class="text-center">
+              <input
+                type="number"
+                class="table-input"
+                value="${qty}"
+                min="0"
+                onchange="updateIng(${ing.id}, 'qty', this.value)"
+              >
+            </td>
+            <td class="text-center">
+              <select
+                class="table-input"
+                onchange="updateIng(${ing.id}, 'unit', this.value)"
+                style="width:100%;"
+              >
+                <option value="ml" ${unit === 'ml' ? 'selected' : ''}>ml</option>
+                <option value="un" ${unit === 'un' ? 'selected' : ''}>un</option>
+              </select>
+            </td>
+            <td class="text-right col-costo">${costText}</td>
+            <td class="text-center">
+              <button
+                class="btn-icon"
+                style="color:var(--accent-red); border:none;"
+                type="button"
+                onclick="deleteIng(${ing.id})"
+              >×</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      ingCount.innerText = `${ingredients.length} insumos`;
+      updateKPIs(totalCost);
+      updateVolumeBar(totalVol);
+    }
+
+    function updateKPIs(costValue) {
+      const priceInput = document.getElementById('viewPrice');
+      if (!priceInput) return;
+
+      const price = parseFloat(priceInput.value) || 0;
+      const cost = Number(costValue) || 0;
+      const margin = price - cost;
+      const costPct = price > 0 ? (cost / price) * 100 : 0;
+      const marginPct = price > 0 ? 100 - costPct : 0;
+
+      const costEl = document.getElementById('kpiCost');
+      const costPctEl = document.getElementById('kpiCostPct');
+      const marginEl = document.getElementById('kpiMargin');
+      const marginPctEl = document.getElementById('kpiMarginPct');
+
+      const hasCurrency = window.MC_UTILS && typeof window.MC_UTILS.formatCurrency === 'function';
+
+      const costText = hasCurrency
+        ? window.MC_UTILS.formatCurrency(cost)
+        : `$${cost.toFixed(0)}`;
+
+      const marginText = hasCurrency
+        ? window.MC_UTILS.formatCurrency(margin)
+        : `$${margin.toFixed(0)}`;
+
+      costEl.innerText = costText;
+      costPctEl.innerText = `${costPct.toFixed(1)}%`;
+      marginEl.innerText = marginText;
+      marginPctEl.innerText = `${marginPct.toFixed(1)}%`;
+
+      if (marginPct < 30) {
+        marginPctEl.style.color = 'var(--accent-red)';
+      } else if (marginPct > 70) {
+        marginPctEl.style.color = 'var(--accent-green)';
+      } else {
+        marginPctEl.style.color = 'var(--text-primary)';
+      }
+    }
+
+    function updateVolumeBar(ml) {
+      const volFill = document.getElementById('volFill');
+      const volText = document.getElementById('volText');
+      if (!volFill || !volText) return;
+
+      const vol = Number(ml) || 0;
+      const pct = Math.min((vol / GLASS_ML) * 100, 100);
+
+      volFill.style.width = `${pct}%`;
+      volText.innerText = `${Math.round(vol)} ml`;
+
+      if (vol > GLASS_ML) {
+        volFill.style.backgroundColor = 'var(--accent-red)';
+      } else {
+        volFill.style.backgroundColor = 'var(--accent-green)';
+      }
+    }
+
+    // =========================================
+    // CRUD INGREDIENTES
+    // =========================================
+    async function updateIng(id, field, val) {
+      if (!id) return;
+      const payload = {};
+
+      if (field === 'qty') {
+        const num = parseFloat(val);
+        if (!Number.isFinite(num) || num <= 0) {
+          alert('Cantidad inválida.');
+          return;
         }
-
-        out.push({ raw, ok:true, sku_id: Number(matchedId), matchedName, qty, unit });
-      }
-
-      return out;
-    }
-
-    function previewBulk(){
-      const parsed = parseBulk(bulkText.value);
-      const ok = parsed.filter(x => x.ok);
-      const bad = parsed.filter(x => !x.ok);
-
-      const head = `
-        <div class="preview-line">
-          <div><b>${ok.length}</b> OK · <b>${bad.length}</b> sin match</div>
-          <div class="${bad.length ? 'bad' : 'ok'}">${bad.length ? 'REVISAR' : 'LISTO'}</div>
-        </div>
-      `;
-
-      const lines = parsed.slice(0, 30).map(x => `
-        <div class="preview-line">
-          <div style="min-width:0;">
-            <span class="${x.ok ? 'ok' : 'bad'}">${x.ok ? 'OK' : 'NO'}</span>
-            &nbsp; ${escapeHtml(x.raw)}
-          </div>
-          <div style="white-space:nowrap;">
-            ${x.ok ? `${escapeHtml(x.matchedName)} · ${x.qty} ${x.unit}` : escapeHtml(x.reason || '')}
-          </div>
-        </div>
-      `).join('');
-
-      bulkPreview.innerHTML = head + lines + (parsed.length > 30 ? `<div class="small-hint" style="margin-top:8px;">Mostrando 30 de ${parsed.length} líneas…</div>` : '');
-    }
-
-    async function applyBulk(){
-      if (!currentItemId) return;
-
-      const parsed = parseBulk(bulkText.value);
-      const ok = parsed.filter(x => x.ok);
-
-      if (!ok.length){
-        alert('No hay líneas válidas para cargar.');
+        payload.quantity_needed = num;
+      } else if (field === 'unit') {
+        payload.unit_needed = val;
+      } else {
         return;
       }
 
-      const bad = parsed.filter(x => !x.ok);
-      if (bad.length){
-        const cont = confirm(`Hay ${bad.length} líneas sin match. ¿Cargar igual las ${ok.length} válidas?`);
-        if (!cont) return;
-      }
-
-      setStatus('CARGANDO LOTE…');
-
-      // dedupe by (sku_id, unit)
-      const agg = new Map();
-      for (const x of ok){
-        const k = `${x.sku_id}__${x.unit}`;
-        agg.set(k, (agg.get(k) || 0) + Number(x.qty));
-      }
-
-      const rows = Array.from(agg.entries()).map(([k, qty]) => {
-        const [sku_id, unit_needed] = k.split('__');
-        return { menu_item_id: currentItemId, sku_id: Number(sku_id), quantity_needed: Number(qty), unit_needed };
-      });
-
-      const { error } = await client.from('recipe_ingredients').insert(rows);
-      if (error){
-        console.error(error);
-        setStatus('ERROR');
-        alert('No se pudo cargar el lote.');
-        return;
-      }
-
-      closeBulk();
-      await loadIngredients(currentItemId);
-      toast(`Cargadas ${rows.length} líneas`);
-      setStatus('—');
-    }
-
-    // ==========================================================
-    // Import XLSX
-    // ==========================================================
-    async function onPickXlsx(ev){
-      const f = ev.target.files?.[0];
-      if (!f) return;
-
-      try{
-        setStatus('LEYENDO XLSX…');
-        const buf = await f.arrayBuffer();
-        const wb = XLSX.read(buf, { type:'array' });
-        const wsName = wb.SheetNames[0];
-        const ws = wb.Sheets[wsName];
-        const rows = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
-
-        importPlan = await buildImportPlan(rows);
-        renderImportPreview(importPlan);
-        openImport();
-      }catch(err){
+      try {
+        const { error } = await client.from('recipe_ingredients').update(payload).eq('id', id);
+        if (error) throw error;
+        if (currentItemId) await loadRecipe(currentItemId);
+      } catch (err) {
         console.error(err);
-        alert('No se pudo leer el archivo.');
-        setStatus('ERROR');
-      }finally{
-        // reset input
-        fileXlsx.value = '';
+        alert('Error al guardar ingrediente.');
       }
     }
 
-    function openImport(){
-      if (!importPlan) return;
-      importModal.style.display = 'flex';
-      setStatus('—');
-    }
-    function closeImport(){
-      importModal.style.display = 'none';
-      importPlan = null;
-    }
-
-    function detectKey(row, keys){
-      const rKeys = Object.keys(row || {});
-      const map = new Map(rKeys.map(k => [norm(k), k]));
-      for (const cand of keys){
-        const hit = map.get(norm(cand));
-        if (hit) return hit;
-      }
-      // fallback: contains
-      for (const [nk, orig] of map.entries()){
-        for (const cand of keys){
-          if (nk.includes(norm(cand))) return orig;
-        }
-      }
-      return null;
-    }
-
-    async function buildImportPlan(sheetRows){
-      // Detect columns from first non-empty row
-      const sample = sheetRows.find(r => r && Object.values(r).some(v => v != null && String(v).trim() !== '')) || {};
-      const kProduct = detectKey(sample, ['producto','trago','menu_item','menu item','item','coctel','cocktail','drink','nombre']);
-      const kSkuCode = detectKey(sample, ['codigo','código','sku','sku_codigo','ingrediente_codigo','articulo_id','external_id','external id']);
-      const kSkuName = detectKey(sample, ['ingrediente','insumo','sku_name','sku nombre','detalle','nombre_insumo','nombre insumo','sku']);
-      const kQty     = detectKey(sample, ['cantidad','qty','cantidad_ml','ml','cant','cantidad (ml)','cantidad_ml']);
-      const kUnit    = detectKey(sample, ['unidad','u_med','u med','unit','medida']);
-
-      if (!kProduct || !kQty || (!kSkuCode && !kSkuName)){
-        throw new Error('No se detectaron columnas mínimas.');
+    async function addIng() {
+      if (!currentItemId) {
+        alert('Seleccioná primero un producto.');
+        return;
       }
 
-      const missingSkus = [];
-      const created = [];
-      const rowsByMenuId = new Map(); // menuId -> [{sku_id, quantity_needed, unit_needed}]
-      const affectedMenuIds = new Set();
+      const skuVal = document.getElementById('selSku').value;
+      const qtyVal = document.getElementById('newQty').value;
+      const unit = document.getElementById('newUnit').value;
 
-      // This pass: resolve/create menu items and resolve skus
-      for (const r of sheetRows){
-        const prodRaw = r[kProduct];
-        const qtyRaw = r[kQty];
-        const codeRaw = kSkuCode ? r[kSkuCode] : null;
-        const nameRaw = kSkuName ? r[kSkuName] : null;
-        const unitRaw = kUnit ? r[kUnit] : 'ml';
+      const skuId = skuVal ? parseInt(skuVal, 10) : null;
+      const qty = parseFloat(qtyVal);
 
-        const prodName = String(prodRaw ?? '').trim();
-        if (!prodName) continue;
+      if (!skuId || !Number.isFinite(qty) || qty <= 0) {
+        alert('Seleccioná insumo y cantidad válida.');
+        return;
+      }
 
-        let unit = normalizeUnit(unitRaw || 'ml');
-        let qty = normalizeQty(qtyRaw, unit);
-        if (unit === 'l') unit = 'ml';
-
-        if (!Number.isFinite(qty) || qty <= 0) continue;
-
-        // Menu item: match or create
-        const keyProd = norm(prodName.toUpperCase());
-        let menu = menuItemByNormName.get(keyProd);
-        if (!menu){
-          // create
-          const payload = { name: prodName.toUpperCase().trim(), price: 0 };
-          const { data, error } = await client.from('menu_items').insert(payload).select('*').single();
-          if (error) throw error;
-
-          menu = { ...data, id: Number(data.id), name: String(data.name) };
-          menuItems.push(menu);
-          menuItemByNormName.set(norm(menu.name), menu);
-          created.push(menu.name);
-        }
-
-        // SKU: prefer code, else name
-        let skuId = null;
-
-        if (codeRaw != null && String(codeRaw).trim() !== ''){
-          const codeKey = norm(String(codeRaw).trim());
-          skuId = skuIdByExternalId.get(codeKey) || null;
-        }
-
-        if (!skuId && nameRaw != null && String(nameRaw).trim() !== ''){
-          const nameKey = norm(String(nameRaw).trim());
-          const exactIds = skuIdsByNormName.get(nameKey);
-          if (exactIds && exactIds.length) skuId = exactIds[0];
-          if (!skuId){
-            const found = skus.find(s => norm(s.name).includes(nameKey));
-            if (found) skuId = String(found.id);
-          }
-        }
-
-        if (!skuId){
-          missingSkus.push({
-            producto: prodName,
-            codigo: codeRaw,
-            ingrediente: nameRaw,
-            cantidad: qty,
-            unidad: unit
-          });
-          continue;
-        }
-
-        const menuId = Number(menu.id);
-        affectedMenuIds.add(menuId);
-
-        if (!rowsByMenuId.has(menuId)) rowsByMenuId.set(menuId, []);
-        rowsByMenuId.get(menuId).push({
-          menu_item_id: menuId,
-          sku_id: Number(skuId),
-          quantity_needed: Number(qty),
+      try {
+        const { error } = await client.from('recipe_ingredients').insert({
+          menu_item_id: currentItemId,
+          sku_id: skuId,
+          quantity_needed: qty,
           unit_needed: unit
         });
-      }
+        if (error) throw error;
 
-      // Dedupe/sum within each recipe
-      for (const [menuId, rows] of rowsByMenuId.entries()){
-        const agg = new Map();
-        for (const x of rows){
-          const k = `${x.sku_id}__${x.unit_needed}`;
-          agg.set(k, (agg.get(k) || 0) + Number(x.quantity_needed));
-        }
-        const deduped = Array.from(agg.entries()).map(([k, q]) => {
-          const [sku_id, unit_needed] = k.split('__');
-          return {
-            menu_item_id: Number(menuId),
-            sku_id: Number(sku_id),
-            quantity_needed: Math.round(Number(q) * 1000) / 1000,
-            unit_needed
-          };
+        document.getElementById('newQty').value = '';
+        document.getElementById('newUnit').value = 'ml';
+        document.getElementById('selSku').value = '';
+
+        await loadRecipe(currentItemId);
+      } catch (err) {
+        console.error(err);
+        alert('Error al agregar ingrediente.');
+      }
+    }
+
+    async function deleteIng(id) {
+      if (!id) return;
+      if (!confirm('¿Quitar ingrediente?')) return;
+
+      try {
+        const { error } = await client.from('recipe_ingredients').delete().eq('id', id);
+        if (error) throw error;
+        if (currentItemId) await loadRecipe(currentItemId);
+      } catch (err) {
+        console.error(err);
+        alert('Error al quitar ingrediente.');
+      }
+    }
+
+    // =========================================
+    // CRUD PRODUCTOS (MENU_ITEMS)
+    // =========================================
+    async function updatePrice() {
+      if (!currentItemId) return;
+
+      const priceVal = document.getElementById('viewPrice').value;
+      const price = parseFloat(priceVal) || 0;
+
+      try {
+        setStatus('Guardando precio...');
+        const { error } = await client.from('menu_items')
+          .update({ price: price })
+          .eq('id', currentItemId);
+        if (error) throw error;
+
+        const item = menuItems.find(i => i.id === currentItemId);
+        if (item) item.price = price;
+
+        renderMenuList();
+        await loadRecipe(currentItemId);
+        setStatus('Guardado');
+        setTimeout(() => setStatus(''), 1200);
+      } catch (err) {
+        console.error(err);
+        alert('Error al guardar precio.');
+        setStatus('');
+      }
+    }
+
+    async function createItem() {
+      const name = prompt('Nombre del nuevo producto:');
+      if (!name) return;
+
+      try {
+        const { data, error } = await client.from('menu_items')
+          .insert({
+            name: name.toUpperCase().trim(),
+            price: 0,
+            is_active: true
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        menuItems.push(data);
+        menuItems.sort((a, b) => a.name.localeCompare(b.name));
+
+        renderMenuList();
+        selectItem(data.id);
+      } catch (err) {
+        console.error(err);
+        alert('Error al crear producto.');
+      }
+    }
+
+    async function deleteItem() {
+      if (!currentItemId) return;
+      if (!confirm('¿Eliminar este producto y su receta?')) return;
+
+      try {
+        const { error } = await client.from('menu_items').delete().eq('id', currentItemId);
+        if (error) throw error;
+
+        menuItems = menuItems.filter(i => i.id !== currentItemId);
+        currentItemId = null;
+
+        renderMenuList();
+
+        const emptyState = document.getElementById('emptyState');
+        const recipePanel = document.getElementById('recipePanel');
+        if (emptyState) emptyState.style.display = 'block';
+        if (recipePanel) recipePanel.style.display = 'none';
+
+        setStatus('');
+      } catch (err) {
+        console.error(err);
+        alert('Error al eliminar producto.');
+      }
+    }
+
+    // =========================================
+    // UI HELPERS
+    // =========================================
+    function setStatus(msg) {
+      const el = document.getElementById('saveStatus');
+      if (el) el.innerText = msg || '—';
+    }
+
+    function setupEventListeners() {
+      const searchMenu = document.getElementById('searchMenu');
+      if (searchMenu) {
+        searchMenu.addEventListener('input', (e) => {
+          menuSearchTerm = e.target.value;
+          renderMenuList();
         });
-        rowsByMenuId.set(menuId, deduped);
       }
 
-      // keep menuItems sorted in UI if we created
-      if (created.length){
-        menuItems.sort((a,b)=> String(a.name).localeCompare(String(b.name), 'es'));
-        renderMenu(!norm(elSearchMenu.value) ? menuItems : menuItems.filter(i => norm(i.name).includes(norm(elSearchMenu.value))));
-        elCountMenu.textContent = `${menuItems.length} items`;
+      const skuFilter = document.getElementById('skuFilter');
+      if (skuFilter) {
+        skuFilter.addEventListener('input', (e) => {
+          focusSkuByText(e.target.value);
+        });
       }
 
-      return {
-        detected: { kProduct, kSkuCode, kSkuName, kQty, kUnit },
-        created,
-        missingSkus,
-        affectedMenuIds: Array.from(affectedMenuIds),
-        rowsByMenuId
-      };
+
+      const btnNewItem = document.getElementById('btnNewItem');
+      if (btnNewItem) btnNewItem.onclick = createItem;
+
+      const btnAddIng = document.getElementById('btnAddIng');
+      if (btnAddIng) btnAddIng.onclick = addIng;
+
+      const btnDeleteItem = document.getElementById('btnDeleteItem');
+      if (btnDeleteItem) btnDeleteItem.onclick = deleteItem;
+
+      const viewPrice = document.getElementById('viewPrice');
+      if (viewPrice) viewPrice.onchange = updatePrice;
     }
 
-    function renderImportPreview(plan){
-      const miss = plan.missingSkus || [];
-      const created = plan.created || [];
-      const affected = plan.affectedMenuIds || [];
-      let totalRows = 0;
-      for (const rows of plan.rowsByMenuId.values()) totalRows += rows.length;
-
-      const head = `
-        <div class="preview-line">
-          <div><b>${affected.length}</b> productos afectados · <b>${totalRows}</b> ingredientes</div>
-          <div class="${miss.length ? 'bad' : 'ok'}">${miss.length ? `${miss.length} sin match` : 'TODO OK'}</div>
-        </div>
-      `;
-
-      const blocks = [];
-
-      blocks.push(`<div class="preview-line"><div><b>Modo:</b> reemplaza recetas de productos afectados</div><div>—</div></div>`);
-
-      if (created.length){
-        blocks.push(`<div class="preview-line"><div><b>Productos creados:</b> ${created.length}</div><div class="ok">OK</div></div>`);
-        blocks.push(`<div class="small-hint" style="margin-top:6px;">${created.slice(0,10).map(escapeHtml).join(' · ')}${created.length>10?' …':''}</div>`);
-      } else {
-        blocks.push(`<div class="preview-line"><div><b>Productos creados:</b> 0</div><div class="ok">OK</div></div>`);
-      }
-
-      if (miss.length){
-        const shown = miss.slice(0, 20);
-        blocks.push(`<div class="preview-line"><div><b>Sin match SKU:</b> ${miss.length}</div><div class="bad">REVISAR</div></div>`);
-        blocks.push(shown.map(x => {
-          const code = x.codigo == null ? '' : ` · cod:${escapeHtml(String(x.codigo))}`;
-          const ing  = x.ingrediente == null ? '' : ` · ${escapeHtml(String(x.ingrediente))}`;
-          return `<div class="small-hint">• ${escapeHtml(String(x.producto))}${code}${ing} · ${x.cantidad} ${x.unidad}</div>`;
-        }).join('') + (miss.length>20 ? `<div class="small-hint" style="margin-top:6px;">Mostrando 20 de ${miss.length}…</div>` : ''));
-      }
-
-      importPreview.innerHTML = head + blocks.join('');
-    }
-
-    async function runImport(){
-      if (!importPlan) return;
-
-      const miss = importPlan.missingSkus || [];
-      if (miss.length){
-        const ok = confirm(`Hay ${miss.length} ingredientes sin match (no se cargarán). ¿Continuar importación igual?`);
-        if (!ok) return;
-      }
-
-      const affected = importPlan.affectedMenuIds || [];
-      if (!affected.length){
-        alert('No hay productos/ingredientes válidos para importar.');
-        return;
-      }
-
-      setStatus('IMPORTANDO…');
-
-      // 1) delete existing recipes for affected menu items
-      {
-        const { error } = await client.from('recipe_ingredients').delete().in('menu_item_id', affected);
-        if (error){
-          console.error(error);
-          setStatus('ERROR');
-          alert('No se pudo borrar recetas anteriores.');
-          return;
-        }
-      }
-
-      // 2) insert new rows (chunked)
-      const allRows = [];
-      for (const rows of importPlan.rowsByMenuId.values()){
-        for (const r of rows) allRows.push(r);
-      }
-
-      for (const part of chunk(allRows, 500)){
-        const { error } = await client.from('recipe_ingredients').insert(part);
-        if (error){
-          console.error(error);
-          setStatus('ERROR');
-          alert('Error insertando recetas (lote).');
-          return;
-        }
-      }
-
-      closeImport();
-      setStatus('—');
-      toast(`Importación OK: ${affected.length} productos`);
-
-      // refresh current selection if it was affected
-      const cur = Number(currentItemId);
-      if (cur && affected.includes(cur)){
-        await loadIngredients(cur);
-      }
+    // =========================================
+    // UTILS
+    // =========================================
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
     }
   </script>
 </body>
+
 </html>

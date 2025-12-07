@@ -12,14 +12,20 @@
   <script src="config.js"></script>
 </head>
 <body>
+  <!-- HEADER ESTÁNDAR MIDNIGHT ERP -->
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo"></div>
-        <div class="admin-header-right">
-          <button class="btn-back" onclick="window.location.href='administracion-index.html'">
+        <div style="display:flex; align-items:center;">
+          <button class="btn-back" type="button" onclick="window.location.href='panel-master.html'">
             VOLVER
           </button>
+        </div>
+
+        <div class="admin-logo" aria-hidden="true"></div>
+
+        <div class="admin-header-right">
+          <span class="session-chip">Administración</span>
         </div>
       </div>
     </div>
@@ -73,6 +79,7 @@
     </div>
   </main>
 
+  <!-- MODAL PROVEEDOR -->
   <div class="modal-overlay" id="supplierModal">
     <div class="modal-box">
       <h2 class="section-title" style="font-size:18px; letter-spacing:0.14em; text-align:left;">
@@ -129,6 +136,7 @@
             <option value="LEGALES & LICENCIAS">LEGALES &amp; LICENCIAS</option>
             <option value="HONORARIOS">HONORARIOS</option>
             <option value="RRHH EXTERNO">RRHH EXTERNO</option>
+            <option value="VARIOS">VARIOS</option>
           </select>
         </div>
 
@@ -156,7 +164,7 @@
         </div>
 
         <div class="mt-2">
-          <label class="input-label" for="sPaymentTerms">Plazo de pago</label>
+          <label class="input-label" for="sPaymentTerms">Plazo de pago / frecuencia</label>
           <select id="sPaymentTerms" class="modal-select">
             <option value="">Sin definir</option>
             <option value="DIARIO">Diario</option>
@@ -167,6 +175,27 @@
             <option value="SEMESTRAL">Semestral</option>
             <option value="ANUAL">Anual</option>
           </select>
+        </div>
+
+        <div class="mt-2">
+          <label class="input-label" for="sCostType">Tipo de costo</label>
+          <select id="sCostType" class="modal-select">
+            <option value="VARIABLE">Variable</option>
+            <option value="FIJO">Fijo</option>
+            <option value="MIXTO">Mixto</option>
+          </select>
+        </div>
+
+        <div class="mt-2">
+          <label class="input-label" for="sFixedAmount">Monto fijo estándar (ARS)</label>
+          <input
+            id="sFixedAmount"
+            class="modal-input"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Ej: 120000"
+          />
         </div>
 
         <div class="mt-2">
@@ -228,6 +257,8 @@
     const sCostCenter = document.getElementById('sCostCenter');
     const sBillCond = document.getElementById('sBillCond');
     const sPaymentTerms = document.getElementById('sPaymentTerms');
+    const sCostType = document.getElementById('sCostType');
+    const sFixedAmount = document.getElementById('sFixedAmount');
     const sBankName = document.getElementById('sBankName');
     const sBankAlias = document.getElementById('sBankAlias');
     const sNotes = document.getElementById('sNotes');
@@ -253,14 +284,18 @@
       searchInput.addEventListener('input', applyFiltersAndRender);
       showInactiveCheckbox.addEventListener('change', applyFiltersAndRender);
 
-      // ✅ CUIT: permitir escribir siempre + dejar solo dígitos (hasta 11)
+      // CUIT: permitir escribir siempre + dejar solo dígitos (hasta 11)
       sCuit.addEventListener('input', () => {
         const cleaned = (sCuit.value || '').replace(/\D/g, '').slice(0, 11);
         if (sCuit.value !== cleaned) sCuit.value = cleaned;
       });
 
-      // ✅ Antes lo deshabilitabas. Ahora solo marca "obligatorio" según facturación.
+      // CUIT obligatorio según tipo de facturación
       sBillCond.addEventListener('change', toggleCuit);
+
+      if (sCostType) {
+        sCostType.addEventListener('change', toggleFixedAmount);
+      }
 
       document.addEventListener('keydown', (ev) => {
         if (ev.key === 'Escape' && modal.style.display === 'flex') closeModal();
@@ -386,12 +421,15 @@
       sCostCenter.value = '';
       sBillCond.value = '';
       sPaymentTerms.value = '';
+      if (sCostType) sCostType.value = 'VARIABLE';
+      if (sFixedAmount) sFixedAmount.value = '';
       sBankName.value = '';
       sBankAlias.value = '';
       sNotes.value = '';
       sIsActive.checked = true;
 
       toggleCuit();
+      toggleFixedAmount();
       openModal();
     }
 
@@ -414,12 +452,15 @@
       sCostCenter.value = sup.cost_center || '';
       sBillCond.value = sup.billing_condition || '';
       sPaymentTerms.value = sup.payment_terms || '';
+      if (sCostType) sCostType.value = sup.cost_type || 'VARIABLE';
+      if (sFixedAmount) sFixedAmount.value = sup.fixed_amount != null ? sup.fixed_amount : '';
       sBankName.value = sup.bank_name || '';
       sBankAlias.value = sup.bank_account_alias || '';
       sNotes.value = contactInfo.notes || '';
       sIsActive.checked = sup.is_active !== false;
 
       toggleCuit();
+      toggleFixedAmount();
       openModal();
     }
 
@@ -452,11 +493,25 @@
     }
 
     function toggleCuit() {
-      // ✅ NO deshabilita el input (antes lo hacías y por eso no se podía escribir)
       const req = requiresCuitForBilling(sBillCond.value);
       sCuit.required = req;
       sCuit.disabled = false;
       sCuit.placeholder = req ? '11 dígitos (sin puntos ni guiones)' : 'Opcional (11 dígitos)';
+    }
+
+    function toggleFixedAmount() {
+      if (!sCostType || !sFixedAmount) return;
+      const type = (sCostType.value || 'VARIABLE').toUpperCase();
+      const isFixed = type === 'FIJO' || type === 'MIXTO';
+      sFixedAmount.disabled = !isFixed;
+      if (!isFixed) {
+        sFixedAmount.value = '';
+        sFixedAmount.placeholder = 'Solo aplica a FIJO / MIXTO';
+      } else {
+        if (!sFixedAmount.value) {
+          sFixedAmount.placeholder = 'Ej: 120000';
+        }
+      }
     }
 
     async function handleSaveSupplier() {
@@ -474,6 +529,9 @@
         return;
       }
 
+      const fixedAmountRaw = (sFixedAmount && sFixedAmount.value) ? sFixedAmount.value.trim() : '';
+      const fixedAmount = fixedAmountRaw ? Number(fixedAmountRaw) : 0;
+
       const payload = {
         name: nameVal,
         legal_name: sLegalName.value.trim() || null,
@@ -482,9 +540,10 @@
         cost_center: sCostCenter.value || null,
         billing_condition: sBillCond.value || null,
         payment_terms: sPaymentTerms.value || null,
+        cost_type: sCostType ? (sCostType.value || 'VARIABLE') : 'VARIABLE',
+        fixed_amount: fixedAmount,
         bank_name: sBankName.value.trim() || null,
         bank_account_alias: sBankAlias.value.trim() || null,
-        // ⚠️ No mandamos bank_account_cbu para no pisarlo con null si ya existiera
         contact_info: JSON.stringify({
           responsible: sResponsible.value.trim() || null,
           contact: sContact.value.trim() || null,

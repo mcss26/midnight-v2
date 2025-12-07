@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Midnight - Administración</title>
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap"
+    rel="stylesheet">
 </head>
+
 <body>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -41,23 +45,29 @@
 
     <section class="access-group">
       <div class="dash-grid">
+        <a href="admin-ordenes.html" class="dash-card dash-card-admin">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">ORDENES Y SOLICITUDES</h3>
+          </div>
+        </a>
+        <a href="admin-stock.html" class="dash-card dash-card-admin">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">AUDITORIA DE STOCK</h3>
+          </div>
+        </a>
         <a href="admin-cierre.html" class="dash-card dash-card-admin">
           <div class="dash-card-inner">
-            <h3 class="dash-title">CIERRES DE CAJA</h3>
+            <h3 class="dash-title">CIERRE DE NOCHE</h3>
           </div>
         </a>
-        <a href="admin-pos.html" class="dash-card dash-card-admin">
+        <a href="admin-finanzas.html" class="dash-card dash-card-admin">
           <div class="dash-card-inner">
-            <h3 class="dash-title">POS & TERMINALES</h3>
-          </div>
-        </a>
-        <a href="admin-logs.html" class="dash-card dash-card-admin">
-          <div class="dash-card-inner">
-            <h3 class="dash-title">AUDITORÍA LOGS</h3>
+            <h3 class="dash-title">REPORTES CONTABLES</h3>
           </div>
         </a>
       </div>
     </section>
   </main>
 </body>
+
 </html>

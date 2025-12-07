@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Midnight - Tarifario Proveedores</title>
+
+  <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+  <!-- HEADER MASTER DATA -->
+  <header class="admin-header">
+    <div class="admin-header-inner">
+      <div class="admin-header-top">
+        <div style="display:flex; align-items:center;">
+          <button class="btn-back" type="button" onclick="window.location.href='panel-master.html'">
+            VOLVER
+          </button>
+        </div>
+
+        <div class="admin-logo" aria-hidden="true"></div>
+
+        <div class="admin-header-right">
+          <span class="session-chip">Master Data</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    <section class="section-header">
+      <h1 class="section-title">TARIFARIO PROVEEDORES</h1>
+      <p class="section-desc">
+        Resumen de tipos de costo, montos fijos y condiciones de pago por proveedor.
+      </p>
+    </section>
+
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <div style="display:flex; gap:8px; align-items:center; flex:1; min-width:260px;">
+        <input
+          id="searchTariffs"
+          class="search-input-admin"
+          type="text"
+          placeholder="Buscar proveedor, categoría, centro de costo..."
+        />
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-end;">
+        <select id="filterCostCenter" class="modal-select" style="width:140px;">
+          <option value="">Todos CC</option>
+          <option value="COD">COD</option>
+          <option value="OPEX">OPEX</option>
+          <option value="G&A">G&amp;A</option>
+        </select>
+
+        <select id="filterCostType" class="modal-select" style="width:140px;">
+          <option value="">Todos tipos</option>
+          <option value="VARIABLE">Variable</option>
+          <option value="FIJO">Fijo</option>
+          <option value="MIXTO">Mixto</option>
+        </select>
+
+        <label class="section-desc" style="margin:0; font-size:11px; display:flex; align-items:center; gap:4px; white-space:nowrap;">
+          <input type="checkbox" id="showInactiveTariffs" style="margin:0;" />
+          Ver inactivos
+        </label>
+      </div>
+    </div>
+
+    <div id="tariffsStatus" class="section-desc"></div>
+
+    <div class="table-container">
+      <table class="sku-table" id="tariffsTable" aria-label="Tarifario de proveedores">
+        <thead>
+          <tr>
+            <th>PROVEEDOR</th>
+            <th>TIPO COSTO</th>
+            <th class="text-right">MONTO FIJO STD.</th>
+            <th>FRECUENCIA</th>
+            <th>FACTURACIÓN</th>
+            <th>BANCO / ALIAS</th>
+            <th>ESTADO</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Se llena por JS -->
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    const tableBody = document.querySelector('#tariffsTable tbody');
+    const statusEl = document.getElementById('tariffsStatus');
+    const searchInput = document.getElementById('searchTariffs');
+    const filterCostCenter = document.getElementById('filterCostCenter');
+    const filterCostType = document.getElementById('filterCostType');
+    const showInactiveCheckbox = document.getElementById('showInactiveTariffs');
+
+    let allTariffs = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      attachListeners();
+      loadTariffs();
+    });
+
+    function attachListeners() {
+      searchInput.addEventListener('input', applyFiltersAndRender);
+      filterCostCenter.addEventListener('change', applyFiltersAndRender);
+      filterCostType.addEventListener('change', applyFiltersAndRender);
+      showInactiveCheckbox.addEventListener('change', applyFiltersAndRender);
+    }
+
+    async function loadTariffs() {
+      statusEl.textContent = 'Cargando tarifario...';
+      try {
+        // Vista / tabla: public.supplier_tariffs
+        const { data, error } = await client
+          .from('supplier_tariffs')
+          .select('*')
+          .order('cost_center', { ascending: true })
+          .order('payment_terms', { ascending: true })
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        allTariffs = data || [];
+        statusEl.textContent = '';
+        applyFiltersAndRender();
+      } catch (err) {
+        console.error('Error al cargar tarifario', err);
+        statusEl.textContent = 'Error al cargar el tarifario. Intentá nuevamente.';
+      }
+    }
+
+    function applyFiltersAndRender() {
+      const term = (searchInput.value || '').toLowerCase().trim();
+      const ccFilter = filterCostCenter.value;
+      const typeFilter = filterCostType.value;
+      const showInactive = showInactiveCheckbox.checked;
+
+      const filtered = allTariffs.filter(row => {
+        if (!showInactive && row.is_active === false) return false;
+
+        if (ccFilter && (row.cost_center || '') !== ccFilter) return false;
+
+        const rowType = (row.cost_type || 'VARIABLE').toUpperCase();
+        if (typeFilter && rowType !== typeFilter) return false;
+
+        if (!term) return true;
+
+        const hayCoincidencia =
+          (row.name || '').toLowerCase().includes(term) ||
+          (row.category || '').toLowerCase().includes(term) ||
+          (row.cost_center || '').toLowerCase().includes(term) ||
+          (row.billing_condition || '').toLowerCase().includes(term) ||
+          (row.payment_terms || '').toLowerCase().includes(term) ||
+          (row.bank_name || '').toLowerCase().includes(term) ||
+          (row.bank_account_alias || '').toLowerCase().includes(term);
+
+        return hayCoincidencia;
+      });
+
+      renderTable(filtered);
+      statusEl.textContent = filtered.length
+        ? ''
+        : 'No se encontraron proveedores con las condiciones actuales.';
+    }
+
+    function formatCurrencyLocal(value) {
+      const num = Number(value || 0);
+      if (!num) return '-';
+
+      if (window.MC_UTILS && typeof MC_UTILS.formatCurrency === 'function') {
+        return MC_UTILS.formatCurrency(num);
+      }
+
+      try {
+        return new Intl.NumberFormat('es-AR', {
+          style: 'currency',
+          currency: 'ARS',
+          maximumFractionDigits: 0
+        }).format(num);
+      } catch (e) {
+        return num.toString();
+      }
+    }
+
+    function formatPaymentTerm(term) {
+      if (!term) return '-';
+      const map = {
+        DIARIO: 'Diario',
+        SEMANAL: 'Semanal',
+        QUINCENAL: 'Quincenal',
+        MENSUAL: 'Mensual',
+        TRIMESTRAL: 'Trimestral',
+        SEMESTRAL: 'Semestral',
+        ANUAL: 'Anual'
+      };
+      const key = term.toUpperCase();
+      return map[key] || term;
+    }
+
+    function formatBillingCondition(bill) {
+      if (!bill) return '-';
+      const map = {
+        FACTURA_A: 'Factura A',
+        FACTURA_ALIC_RED: 'Factura A (Alic. Reducida)',
+        FACTURA_C: 'Factura C',
+        FACTURA_M: 'Factura M',
+        RECIBO_X: 'Recibo X / Oficial',
+        SIN_FACTURA: 'Sin Factura'
+      };
+      const key = bill.toUpperCase();
+      return map[key] || bill;
+    }
+
+    function renderTable(rows) {
+      tableBody.innerHTML = '';
+
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // PROVEEDOR
+        const tdProv = document.createElement('td');
+        const catLabel = row.category || 'Sin categoría';
+        const ccLabel = row.cost_center || '-';
+        tdProv.innerHTML = `
+          <div class="row-title">${row.name || '-'}</div>
+          <div class="row-sub-text">${catLabel} · CC: ${ccLabel}</div>
+        `;
+
+        // TIPO COSTO
+        const tdTipo = document.createElement('td');
+        const costType = (row.cost_type || 'VARIABLE').toUpperCase();
+        const costTag = document.createElement('span');
+        let typeClass = 'tag-gray';
+        if (costType === 'FIJO') typeClass = 'tag-gold';
+        else if (costType === 'MIXTO') typeClass = 'tag-blue';
+        costTag.className = 'tag ' + typeClass;
+        costTag.textContent = costType;
+        tdTipo.appendChild(costTag);
+
+        // MONTO FIJO
+        const tdMonto = document.createElement('td');
+        tdMonto.className = 'text-right';
+        tdMonto.textContent = formatCurrencyLocal(row.fixed_amount);
+
+        // FRECUENCIA
+        const tdFreq = document.createElement('td');
+        tdFreq.textContent = formatPaymentTerm(row.payment_terms);
+
+        // FACTURACIÓN
+        const tdFact = document.createElement('td');
+        tdFact.textContent = formatBillingCondition(row.billing_condition);
+
+        // BANCO / ALIAS
+        const tdBanco = document.createElement('td');
+        const bankName = row.bank_name || '-';
+        const bankAlias = row.bank_account_alias || row.bank_account_cbu || '';
+        tdBanco.innerHTML = `
+          <div class="row-title">${bankName}</div>
+          ${bankAlias ? `<div class="row-sub-text">${bankAlias}</div>` : ''}
+        `;
+
+        // ESTADO
+        const tdEstado = document.createElement('td');
+        const tag = document.createElement('span');
+        tag.className = 'tag ' + (row.is_active === false ? 'tag-red' : 'tag-green');
+        tag.textContent = row.is_active === false ? 'INACTIVO' : 'ACTIVO';
+        tdEstado.appendChild(tag);
+
+        tr.append(tdProv, tdTipo, tdMonto, tdFreq, tdFact, tdBanco, tdEstado);
+        tableBody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>

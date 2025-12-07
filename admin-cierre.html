@@ -13,22 +13,30 @@
   <script src="config.js"></script>
 </head>
 <body>
-  <!-- HEADER -->
+  <!-- HEADER ESTÁNDAR CMS -->
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo"></div>
-        <div class="admin-header-right">
-          <button class="btn-back" type="button" onclick="window.location.href='administracion-index.html'">
+        <div>
+          <button
+            class="btn-back"
+            type="button"
+            onclick="window.location.href='administracion-index.html'">
             VOLVER
           </button>
+        </div>
+
+        <div class="admin-logo" aria-hidden="true"></div>
+
+        <div class="admin-header-right">
+          <span class="session-chip">Administración</span>
         </div>
       </div>
     </div>
   </header>
 
   <main class="admin-container">
-    <!-- TITULO + FECHA -->
+    <!-- TÍTULO -->
     <section class="section-header">
       <h1 class="section-title">CIERRE DE NOCHE</h1>
       <p class="section-desc">
@@ -36,52 +44,75 @@
       </p>
     </section>
 
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:8px;">
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <!-- FECHA + RECARGAR + FINALIZAR -->
+    <div
+      class="box-soft"
+      style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:20px;">
+      <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
         <div>
-          <label class="input-label" for="eventDate" style="margin-bottom:2px;">FECHA EVENTO</label>
-          <input type="date" id="eventDate" class="modal-input" style="width:170px;" />
+          <label class="input-label" for="eventDate">FECHA EVENTO</label>
+          <input
+            type="date"
+            id="eventDate"
+            class="modal-input"
+            style="width:170px;" />
         </div>
-        <button type="button" class="btn-secondary" onclick="loadData()">RECARGAR</button>
+        <button
+          type="button"
+          class="btn-secondary"
+          onclick="loadData()">
+          RECARGAR
+        </button>
       </div>
 
-      <button type="button" class="btn-primary" onclick="finalizarCierre()">
+      <button
+        type="button"
+        class="btn-primary"
+        onclick="finalizarCierre()"
+        style="min-width:210px;">
         FINALIZAR CIERRE
       </button>
     </div>
 
     <!-- TABS -->
-    <nav class="tab-nav">
+    <nav class="tab-nav tabs-gold">
       <button class="tab-btn active" data-view="cajas" onclick="switchTab('cajas', this)">Cajas</button>
       <button class="tab-btn" data-view="acceso" onclick="switchTab('acceso', this)">Acceso &amp; servicios</button>
       <button class="tab-btn" data-view="tesoreria" onclick="switchTab('tesoreria', this)">Tesorería</button>
-      <button class="tab-btn" data-view="stock" onclick="switchTab('stock', this)">STOCK</button>
+      <button class="tab-btn" data-view="stock" onclick="switchTab('stock', this)">Stock</button>
     </nav>
 
-    <!-- ============ TAB CAJAS ============ -->
-    <section id="view-cajas" class="audit-box">
-      <div class="section-header" style="margin-bottom:12px;">
-        <h3 class="section-title" style="font-size:18px;">Cruce de efectivo y digital</h3>
+    <!-- TAB: CAJAS -->
+    <section id="view-cajas">
+      <div class="section-header" style="margin-bottom:12px; text-align:left;">
+        <h3 class="dash-title">CRUCE DE EFECTIVO Y DIGITAL</h3>
         <p class="section-desc">
           Conciliación por terminal entre lo teórico (Gbol / sistema) y lo declarado en cierre.
         </p>
       </div>
 
-      <!-- IMPORT Gbol FACTURA ELECTRÓNICA -->
-      <div class="section-header" style="margin-bottom:12px;">
-        <p class="section-desc">
-          Importa el archivo <strong>“Factura electrónica”</strong> exportado desde Gbol para esta fecha.
+      <!-- CONEXIÓN GBOL -->
+      <div class="box-soft" style="margin-bottom:18px;">
+        <p class="section-desc" style="margin-bottom:8px;">
+          Sincroniza los datos de ventas directamente desde el servidor de <strong>GBol</strong>.
         </p>
-        <div style="margin-top:6px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <input type="file" id="facturaFileInput" accept=".xlsx,.xls" hidden />
-          <button class="btn-secondary" type="button" id="facturaImportBtn">
-            Importar facturación (Gbol)
+          <button
+            class="btn-secondary"
+            type="button"
+            id="facturaImportBtn">
+            CONECTAR Y DESCARGAR DE GBOL (REAL)
           </button>
+          <span
+            id="cajasImportStatus"
+            class="inline-status"
+            style="text-transform:none; letter-spacing:0; margin-left:4px;">
+          </span>
         </div>
-        <div id="cajasImportStatus" class="section-desc" style="margin-top:6px;"></div>
       </div>
 
-      <!-- RESUMEN GENERAL DE CAJAS -->
+      <!-- RESUMEN CAJAS -->
       <div class="summary-row">
         <div class="summary-card">
           <div class="summary-label">Total teórico efectivo</div>
@@ -101,7 +132,8 @@
         </div>
       </div>
 
-      <div class="table-container" style="margin-top:8px;">
+      <!-- TABLA CAJAS -->
+      <div class="table-container" style="margin-top:12px;">
         <table class="sku-table" aria-label="Conciliación por terminal">
           <thead>
             <tr>
@@ -111,7 +143,7 @@
               <th class="text-right">DIFERENCIA EFVO</th>
               <th class="text-right">TEÓRICO DIGITAL (SISTEMA)</th>
               <th class="text-right">DECLARADO DIGITAL</th>
-              <th class="text-right">DIFERENCIA DIGITAL</th>
+              <th class="text-right" style="padding-right:20px;">DIFERENCIA DIGITAL</th>
             </tr>
           </thead>
           <tbody id="conciliacionBody">
@@ -125,30 +157,34 @@
       </div>
     </section>
 
-    <!-- ============ TAB ACCESO & SERVICIOS ============ -->
-    <section id="view-acceso" class="audit-box" style="display:none;">
-      <div class="section-header" style="margin-bottom:12px;">
-        <h3 class="section-title" style="font-size:18px;">Accesos y servicios</h3>
+    <!-- TAB: ACCESO & SERVICIOS -->
+    <section id="view-acceso" style="display:none;">
+      <div class="section-header" style="margin-bottom:12px; text-align:left;">
+        <h3 class="dash-title">ACCESOS Y SERVICIOS</h3>
         <p class="section-desc">
           Resumen de Passline, boletería física, guardarropas y control de tickets.
         </p>
       </div>
 
       <!-- IMPORT PASSLINE -->
-      <div class="section-header" style="margin-bottom:12px;">
-        <p class="section-desc">
+      <div class="box-soft" style="margin-bottom:18px;">
+        <p class="section-desc" style="margin-bottom:8px;">
           Importa el archivo <strong>“tickets_comprados… .csv”</strong> exportado desde Passline para esta fecha.
         </p>
-        <div style="margin-top:6px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <input type="file" id="passlineFileInput" accept=".csv" hidden />
           <button class="btn-secondary" type="button" id="passlineImportBtn">
-            Importar Passline CSV
+            IMPORTAR PASSLINE CSV
           </button>
+          <span
+            id="passlineImportStatus"
+            class="inline-status"
+            style="text-transform:none; letter-spacing:0;">
+          </span>
         </div>
-        <div id="passlineImportStatus" class="section-desc" style="margin-top:6px;"></div>
       </div>
 
-      <!-- PASSLINE + GUARDARROPAS -->
+      <!-- KPIs PASSLINE / GUARDARROPAS -->
       <div class="summary-row">
         <div class="summary-card">
           <div class="summary-label">Passline – validados</div>
@@ -163,68 +199,67 @@
           <div class="summary-value" id="passlineIngreso">$ 0</div>
         </div>
         <div class="summary-card">
-          <div class="summary-label">Guardarroperas – efectivo</div>
+          <div class="summary-label">Guardarropas – efectivo</div>
           <div class="summary-value" id="guardarropasIngreso">$ 0</div>
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-top:8px;">
-        <div>
-          <label class="input-label">PASSLINE – Validados</label>
-          <input
-            type="number"
-            id="inputPasslineValidated"
-            class="modal-input"
-            min="0"
-            value="0"
-            oninput="updateAccesoFromInputs()"
-          />
-        </div>
-        <div>
-          <label class="input-label">PASSLINE – Total vendidos</label>
-          <input
-            type="number"
-            id="inputPasslineTotal"
-            class="modal-input"
-            min="0"
-            value="0"
-            oninput="updateAccesoFromInputs()"
-          />
-        </div>
-        <div>
-          <label class="input-label">INGRESO PASSLINE ($)</label>
-          <input
-            type="number"
-            id="inputPasslineIngreso"
-            class="modal-input"
-            min="0"
-            value="0"
-            oninput="updateAccesoFromInputs()"
-          />
-        </div>
-        <div>
-          <label class="input-label">INGRESO GUARDARROPAS ($)</label>
-          <input
-            type="number"
-            id="inputGuardarropas"
-            class="modal-input"
-            min="0"
-            value="0"
-            oninput="updateAccesoFromInputs()"
-          />
+      <!-- INPUTS MANUALES ACCESO -->
+      <div class="box-soft" style="margin-top:16px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+          <div>
+            <label class="input-label">PASSLINE – Validados</label>
+            <input
+              type="number"
+              id="inputPasslineValidated"
+              class="modal-input"
+              min="0"
+              value="0"
+              oninput="updateAccesoFromInputs()" />
+          </div>
+          <div>
+            <label class="input-label">PASSLINE – Total vendidos</label>
+            <input
+              type="number"
+              id="inputPasslineTotal"
+              class="modal-input"
+              min="0"
+              value="0"
+              oninput="updateAccesoFromInputs()" />
+          </div>
+          <div>
+            <label class="input-label">INGRESO PASSLINE ($)</label>
+            <input
+              type="number"
+              id="inputPasslineIngreso"
+              class="modal-input"
+              min="0"
+              value="0"
+              oninput="updateAccesoFromInputs()" />
+          </div>
+          <div>
+            <label class="input-label">INGRESO GUARDARROPAS ($)</label>
+            <input
+              type="number"
+              id="inputGuardarropas"
+              class="modal-input"
+              min="0"
+              value="0"
+              oninput="updateAccesoFromInputs()" />
+          </div>
         </div>
       </div>
 
       <!-- CONTROL FÍSICO DE TICKETS -->
-      <div style="border:1px solid var(--border-light); padding:20px; border-radius:var(--radius-lg); margin-top:24px;">
-        <div class="section-header" style="margin-bottom:10px; padding-bottom:6px;">
-          <h4 style="font-size:16px; margin:0;">Control físico de tickets</h4>
+      <div class="box-soft" style="margin-top:24px;">
+        <div class="section-header" style="margin-bottom:10px; padding-bottom:6px; text-align:left;">
+          <h3 class="dash-title" style="font-size:14px;">CONTROL FÍSICO DE TICKETS</h3>
           <p class="section-desc" style="margin-top:4px;">
             Talonario físico vs boletos vendidos en boletería.
           </p>
         </div>
 
-        <div class="tickets-grid">
+        <div class="tickets-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;">
           <div>
             <label class="input-label">TALONARIO INICIAL</label>
             <input
@@ -233,8 +268,7 @@
               class="modal-input"
               value="0"
               min="0"
-              oninput="renderTicketsFisicos()"
-            />
+              oninput="renderTicketsFisicos()" />
           </div>
           <div>
             <label class="input-label">TICKETS RESTANTES (Control)</label>
@@ -244,8 +278,7 @@
               class="modal-input"
               value="0"
               min="0"
-              oninput="renderTicketsFisicos()"
-            />
+              oninput="renderTicketsFisicos()" />
           </div>
           <div>
             <label class="input-label">VENDIDOS BOLETERÍA</label>
@@ -255,8 +288,7 @@
               class="modal-input"
               value="0"
               min="0"
-              oninput="renderTicketsFisicos()"
-            />
+              oninput="renderTicketsFisicos()" />
           </div>
         </div>
 
@@ -273,10 +305,10 @@
       </div>
     </section>
 
-    <!-- ============ TAB TESORERÍA ============ -->
-    <section id="view-tesoreria" class="audit-box" style="display:none;">
-      <div class="section-header" style="margin-bottom:16px;">
-        <h3 class="section-title" style="font-size:18px;">Tesorería</h3>
+    <!-- TAB: TESORERÍA -->
+    <section id="view-tesoreria" style="display:none;">
+      <div class="section-header" style="margin-bottom:16px; text-align:left;">
+        <h3 class="dash-title">TESORERÍA</h3>
         <p class="section-desc">
           Visión rápida de resultado de la noche cruzando cajas, accesos y egresos.
         </p>
@@ -301,32 +333,36 @@
         </div>
       </div>
 
-      <p class="section-desc" style="margin-top:10px;">
+      <p class="section-desc" style="margin-top:12px;">
         Más adelante, este panel va a tomar también egresos reales desde <strong>cash_movements</strong> y otros módulos de Administración.
       </p>
     </section>
 
-    <!-- ============ TAB STOCK ============ -->
-    <div id="view-stock" class="audit-box" style="display:none;">
-      <div class="audit-header">
-        <h2>ARQUEO DE STOCK</h2>
-        <p class="audit-subtitle">
+    <!-- TAB: STOCK -->
+    <section id="view-stock" style="display:none;">
+      <div class="section-header" style="margin-bottom:12px; text-align:left;">
+        <h3 class="dash-title">ARQUEO DE STOCK</h3>
+        <p class="section-desc">
           Cruce entre stock teórico operativo y stock reportado por Gbol (STOCK_GENERAL) valorizado a costo.
         </p>
       </div>
 
-      <div class="stock-summary">
-        <div class="stock-summary-label">Stock teórico operativo (valorizado)</div>
-        <div class="stock-summary-value" id="stockTeoricoTotal">$0</div>
-
-        <div class="stock-summary-label mt-2">Stock según Gbol (valorizado)</div>
-        <div class="stock-summary-value" id="stockGbolTotal">$0</div>
-
-        <div class="stock-summary-label mt-2">Diferencia valorizada</div>
-        <div class="stock-summary-value" id="stockDiffTotal">$0</div>
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="summary-label">Stock teórico operativo (valorizado)</div>
+          <div class="summary-value" id="stockTeoricoTotal">$ 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Stock según Gbol (valorizado)</div>
+          <div class="summary-value" id="stockGbolTotal">$ 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Diferencia valorizada</div>
+          <div class="summary-value" id="stockDiffTotal">$ 0</div>
+        </div>
       </div>
 
-      <div class="table-container" style="margin-top: 12px;">
+      <div class="table-container" style="margin-top:12px;">
         <table class="sku-table" id="stockAuditTable">
           <thead>
             <tr>
@@ -343,7 +379,7 @@
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   </main>
 
   <script>
@@ -408,7 +444,7 @@
     });
 
     // --- FUNCIÓN MAESTRA: IMPORTAR DESDE SERVIDOR GBOL (DETALLADO) ---
-    // --- VERSIÓN CORREGIDA Y ROBUSTA ---
+    // --- VERSIÓN CORREGIDA Y ROBUSTA CORS ---
     async function handleImportGbolServer() {
       const dateStr = document.getElementById('eventDate').value; 
       if (!dateStr) {
@@ -422,13 +458,11 @@
       }
 
       try {
-        // TRUCO: Enviamos el JSON como cadena de texto exacta para evitar cambios de formato automáticos
-        // Usamos exactamente los mismos valores que vimos en tu "Network"
         const rawBody = JSON.stringify({
             "estado": -1,
             "metodoDePago": -1,
-            "puntoDeVenta": "T-0", // Si falla, probaremos con 0 o "0"
-            "noche": dateStr,      // Ej: "2025-11-29"
+            "puntoDeVenta": "T-0", 
+            "noche": dateStr,      
             "tipoBusqueda": 1
         });
 
@@ -441,12 +475,12 @@
             'Content-Type': 'application/json;charset=UTF-8',
             'Authorization': 'Bearer ' + GBOL_TOKEN
           },
-          body: rawBody
+          body: rawBody,
+          mode: 'cors',
+          credentials: 'omit'
         });
 
-        // LECTURA DE ERROR DETALLADO
         if (!response.ok) {
-            // Intentamos leer qué nos dice el servidor
             const errorText = await response.text();
             console.error("Respuesta de error del servidor:", errorText);
             throw new Error(`GBol respondió ${response.status}: ${errorText.substring(0, 100)}...`);
@@ -456,7 +490,6 @@
         
         // --- PROCESAMIENTO ---
         if (!data.facturacion || !Array.isArray(data.facturacion)) {
-            // A veces devuelve 200 pero sin datos
             throw new Error("La respuesta no contiene lista de facturación.");
         }
 
@@ -499,7 +532,6 @@
             };
         });
 
-        // Limpiar previo e insertar nuevo
         const { error: deleteError } = await client.from('import_gbol_sales').delete().eq('fecha', dateStr);
         if (deleteError) throw deleteError;
 
@@ -523,7 +555,6 @@
       }
     }
     // -------------------------------------------------------
-
 
     function switchTab(view, btn) {
       const views = ['cajas', 'acceso', 'tesoreria', 'stock'];
@@ -598,7 +629,6 @@
         }
 
         // 3) Teórico por terminal desde import_gbol_sales (Gbol)
-        // NOTA: Ahora estos datos vienen EXACTOS desde la API
         const { data: gbolRows, error: gbolError } = await client
           .from('import_gbol_sales')
           .select('cajanom, fecha, efectivo, tarjetas')

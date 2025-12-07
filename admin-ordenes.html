@@ -15,77 +15,288 @@
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo"></div>
+        <div></div>
+
+        <div class="admin-logo" aria-hidden="true"></div>
+
         <div class="admin-header-right">
-          <button class="btn-back" onclick="window.location.href='administracion-index.html'">VOLVER</button>
+          <div class="session-chip" data-session-chip>
+            Sesión no vinculada
+          </div>
+          <button type="button" class="btn-logout" data-logout-button>
+            Salir
+          </button>
         </div>
       </div>
     </div>
   </header>
 
   <main class="admin-container">
+    <div class="mb-2">
+      <button class="btn-back" type="button" onclick="window.location.href='administracion-index.html'">
+        Volver
+      </button>
+    </div>
+
     <section class="section-header">
-      <h1 class="section-title">ÓRDENES & CALENDARIO</h1>
+      <h1 class="section-title">ÓRDENES &amp; CALENDARIO</h1>
       <p class="section-desc">
-        Órdenes de compra generadas desde stock administrativo y sus vencimientos de pago.
+        Órdenes de compra de stock y compromisos de pago OPEX / G&amp;A por proveedor y fecha de vencimiento.
       </p>
     </section>
 
-    <!-- Filtros -->
-    <section class="section-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
-      <input
-        type="text"
-        id="searchInput"
-        class="search-input-admin"
-        placeholder="Buscar por proveedor o insumo..."
-        oninput="renderOrders()"
-      />
+    <!-- Filtros globales -->
+    <section class="section-header" style="flex-direction:column; align-items:stretch; gap:10px; text-align:left;">
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+        <div style="flex:1; min-width:220px; max-width:360px;">
+          <input
+            type="text"
+            id="searchInput"
+            class="search-input-admin"
+            placeholder="Buscar por proveedor, insumo o concepto..."
+            oninput="renderAllOrders()"
+          />
+        </div>
 
-      <div style="display:flex; gap:8px; align-items:center;">
-        <button type="button" class="btn-secondary" onclick="setStatusFilter('ALL')">TODAS</button>
-        <button type="button" class="btn-secondary" onclick="setStatusFilter('PENDING')">PENDIENTES</button>
-        <button type="button" class="btn-secondary" onclick="setStatusFilter('APPROVED')">APROBADAS</button>
-        <button type="button" class="btn-secondary" onclick="setStatusFilter('REALIZED')">EMITIDAS</button>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:flex-end; font-size:11px; color:var(--text-secondary);">
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <span>Stock:</span>
+            <button type="button" class="btn-secondary" onclick="setStatusFilter('ALL')">Todas</button>
+            <button type="button" class="btn-secondary" onclick="setStatusFilter('PENDING')">Pend.</button>
+            <button type="button" class="btn-secondary" onclick="setStatusFilter('APPROVED')">Aprob.</button>
+            <button type="button" class="btn-secondary" onclick="setStatusFilter('REALIZED')">Emit.</button>
+          </div>
+
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <span>OPEX:</span>
+            <button type="button" class="btn-secondary" onclick="setPoStatusFilter('ALL')">Todas</button>
+            <button type="button" class="btn-secondary" onclick="setPoStatusFilter('PENDING')">Pend.</button>
+            <button type="button" class="btn-secondary" onclick="setPoStatusFilter('PAID')">Pagadas</button>
+            <button type="button" class="btn-secondary" onclick="setPoStatusFilter('CANCELLED')">Canceladas</button>
+          </div>
+        </div>
       </div>
     </section>
 
     <div id="ordersStatus" class="section-desc"></div>
 
-    <div class="table-container" style="margin-top: 12px;">
-      <table class="sku-table" aria-label="Órdenes y calendario de pagos">
-        <thead>
-          <tr>
-            <th>ORDEN</th>
-            <th>VENCIMIENTO</th>
-            <th>PROVEEDOR</th>
-            <th>BANCO / ALIAS / CBU</th>
-            <th>INSUMO</th>
-            <th>CANT.</th>
-            <th>TOTAL</th>
-            <th>ESTADO</th>
-            <th>ACCIONES</th>
-          </tr>
-        </thead>
-        <tbody id="ordersTableBody">
-          <tr>
-            <td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">
-              Cargando órdenes...
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <!-- BLOQUE A: ÓRDENES DE STOCK (COD) -->
+    <section class="mt-3">
+      <h2 class="section-title" style="font-size:18px; text-align:left; margin-bottom:4px;">
+        ÓRDENES DE STOCK (COD)
+      </h2>
+      <p class="section-desc" style="text-align:left; max-width:none;">
+        Insumos con SKU generados desde el módulo de stock administrativo.
+      </p>
+
+      <div class="table-container" style="margin-top: 12px;">
+        <table class="sku-table" aria-label="Órdenes de stock y calendario de pagos">
+          <thead>
+            <tr>
+              <th>VENCIMIENTO</th>
+              <th>PROVEEDOR</th>
+              <th>CENTRO COSTO</th>
+              <th>CONCEPTO</th>
+              <th class="text-right">TOTAL</th>
+              <th>ESTADO</th>
+              <th class="text-right">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTableBody">
+            <tr>
+              <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+                Cargando órdenes de stock...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- BLOQUE B: ÓRDENES SIN STOCK (OPEX / G&A / COD sin SKU) -->
+    <section class="mt-3" style="margin-top:32px;">
+      <div style="display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px;">
+        <div>
+          <h2 class="section-title" style="font-size:18px; text-align:left; margin-bottom:4px;">
+            ÓRDENES SIN STOCK (OPEX / G&amp;A)
+          </h2>
+          <p class="section-desc" style="text-align:left; max-width:none;">
+            Compromisos de pago sin SKU: servicios, fijos mensuales y gastos administrativos.
+          </p>
+        </div>
+
+        <button type="button" class="btn-primary" id="newPoBtn" onclick="openPoCreateModal()">
+          Nueva orden OPEX / G&amp;A
+        </button>
+      </div>
+
+      <!-- Resumen por centro de costo (purchase_orders) -->
+      <div id="ordersSummary" class="stock-summary"></div>
+
+      <!-- Automatización de fijos -->
+      <div class="summary-card" style="margin-top: 8px;">
+        <div class="summary-row" style="flex-wrap: wrap; align-items: flex-end; gap: 8px;">
+          <div style="flex:1; min-width: 200px;">
+            <span class="text-muted">Generar órdenes fijas desde proveedores</span>
+            <div class="row-sub-text">
+              Usa proveedores activos con cost_type = FIJO y fixed_amount &gt; 0. No duplica AUTO_FIXED para misma fecha.
+            </div>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+            <input
+              type="date"
+              id="fixedTargetDate"
+              class="modal-input"
+              style="max-width: 160px;"
+            />
+            <select
+              id="fixedPaymentFilter"
+              class="modal-select"
+              style="max-width: 180px;"
+            >
+              <option value="ALL">Todas las frecuencias</option>
+              <option value="DIARIO">Diario</option>
+              <option value="SEMANAL">Semanal</option>
+              <option value="QUINCENAL">Quincenal</option>
+              <option value="MENSUAL">Mensual</option>
+              <option value="TRIMESTRAL">Trimestral</option>
+              <option value="SEMESTRAL">Semestral</option>
+              <option value="ANUAL">Anual</option>
+            </select>
+            <button
+              type="button"
+              class="btn-primary"
+              id="runFixedGenBtn"
+              onclick="generateFixedOrders()"
+            >
+              Generar fijos
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container" style="margin-top: 12px;">
+        <table class="sku-table" aria-label="Órdenes sin stock y calendario de pagos">
+          <thead>
+            <tr>
+              <th>VENCIMIENTO</th>
+              <th>PROVEEDOR</th>
+              <th>CENTRO COSTO</th>
+              <th>CONCEPTO</th>
+              <th class="text-right">TOTAL</th>
+              <th>ESTADO</th>
+              <th class="text-right">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="poTableBody">
+            <tr>
+              <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+                Cargando órdenes sin stock...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
+
+  <!-- Modal: Nueva orden OPEX / G&A -->
+  <div class="modal-overlay" id="poModal">
+    <div class="modal-box">
+      <h2 class="section-title" style="font-size:18px; letter-spacing:0.14em; text-align:left;">
+        ORDEN SIN STOCK
+      </h2>
+      <p class="section-desc" id="poModalSubtitle" style="text-align:left;">
+        Crear orden OPEX / G&amp;A sin SKU.
+      </p>
+
+      <form id="poForm">
+        <input type="hidden" id="poId" />
+
+        <div class="mt-2">
+          <label class="input-label" for="poSupplierSelect">Proveedor</label>
+          <select id="poSupplierSelect" class="modal-select" onchange="handlePoSupplierChange()">
+            <option value="">Seleccionar proveedor</option>
+          </select>
+        </div>
+
+        <div class="mt-2">
+          <label class="input-label" for="poCostCenter">Centro de costo</label>
+          <select id="poCostCenter" class="modal-select">
+            <option value="">Seleccionar</option>
+            <option value="COD">COD (Directo)</option>
+            <option value="OPEX">OPEX (Operativo)</option>
+            <option value="G&A">G&amp;A (Admin/Mkt)</option>
+          </select>
+        </div>
+
+        <div class="mt-2">
+          <label class="input-label" for="poConcept">Concepto</label>
+          <input
+            type="text"
+            id="poConcept"
+            class="modal-input"
+            placeholder="Ej: SADAIC – Semana 50, EDESA – Noviembre, Fotógrafo 07/12"
+          />
+        </div>
+
+        <div class="mt-2" style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:140px;">
+            <label class="input-label" for="poAmount">Monto total (ARS)</label>
+            <input
+              type="number"
+              id="poAmount"
+              class="modal-input"
+              min="0"
+              step="1"
+              placeholder="Ej: 250000"
+            />
+          </div>
+          <div style="flex:1; min-width:140px;">
+            <label class="input-label" for="poDueDate">Fecha de vencimiento</label>
+            <input
+              type="date"
+              id="poDueDate"
+              class="modal-input"
+            />
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <label class="input-label" for="poPaymentMethod">Método de pago</label>
+          <input
+            type="text"
+            id="poPaymentMethod"
+            class="modal-input"
+            placeholder="Ej: Transferencia, Efectivo, Débito, etc."
+          />
+        </div>
+      </form>
+
+      <div class="modal-btns">
+        <button type="button" class="btn-secondary" id="poCancelBtn" onclick="closePoModal()">
+          Cancelar
+        </button>
+        <button type="button" class="btn-primary" id="poSaveBtn" onclick="handleSavePo()">
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script>
     let currentUser = null;
-    let allOrders = [];
-    let statusFilter = 'ALL';
+
+    let allStockOrders = [];
+    let allPurchaseOrders = [];
+    let suppliersList = [];
+
+    let statusFilter = 'ALL';   // stock_orders
+    let poStatusFilter = 'ALL'; // purchase_orders
 
     document.addEventListener('DOMContentLoaded', async () => {
       const session = localStorage.getItem('mc_user');
       if (!session) {
-        // Si no hay sesión, modo dev o redirigir
         const dev = { id: 'dev', username: 'DEV', full_name: 'Modo Desarrollador', role: 'superadmin' };
         localStorage.setItem('mc_user', JSON.stringify(dev));
         currentUser = dev;
@@ -93,18 +304,71 @@
         currentUser = JSON.parse(session);
       }
 
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') {
+          const poModal = document.getElementById('poModal');
+          if (poModal && poModal.style.display === 'flex') {
+            closePoModal();
+          }
+        }
+      });
+
       await loadOrders();
     });
 
+    function formatCurrencyLocal(value) {
+      const num = Number(value || 0);
+      if (!num) return '-';
+      if (window.MC_UTILS && typeof MC_UTILS.formatCurrency === 'function') {
+        return MC_UTILS.formatCurrency(num);
+      }
+      try {
+        return new Intl.NumberFormat('es-AR', {
+          style: 'currency',
+          currency: 'ARS',
+          maximumFractionDigits: 0
+        }).format(num);
+      } catch (e) {
+        return num.toString();
+      }
+    }
+
     async function loadOrders() {
       const statusEl = document.getElementById('ordersStatus');
+      const stockTBody = document.getElementById('ordersTableBody');
+      const poTBody = document.getElementById('poTableBody');
+
+      if (stockTBody) {
+        stockTBody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              Cargando órdenes de stock...
+            </td>
+          </tr>
+        `;
+      }
+      if (poTBody) {
+        poTBody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              Cargando órdenes sin stock...
+            </td>
+          </tr>
+        `;
+      }
+
       statusEl.textContent = 'Cargando órdenes...';
 
       try {
-        const [ordersRes, skusRes, suppsRes] = await Promise.all([
+        const [stockRes, poRes, skusRes, suppsRes] = await Promise.all([
           client
             .from('stock_orders')
             .select('id, created_at, event_date, sku_id, quantity, unit_cost, total_cost, status, delivery_eta, payment_day, due_date, payment_method, supplier_id')
+            .order('due_date', { ascending: true })
+            .order('created_at', { ascending: false }),
+          client
+            .from('purchase_orders')
+            .select('id, created_at, supplier_id, requested_by, status, total_amount, due_date, payment_method, paid_at, cost_center, is_fixed, concept, source')
             .order('due_date', { ascending: true })
             .order('created_at', { ascending: false }),
           client
@@ -112,51 +376,87 @@
             .select('id, name'),
           client
             .from('suppliers')
-            .select('id, name, legal_name, cuit, bank_name, bank_account_alias, bank_account_cbu')
-            .eq('is_active', true)
+            .select('id, name, legal_name, cuit, bank_name, bank_account_alias, bank_account_cbu, cost_center, cost_type, fixed_amount, payment_terms, is_active')
         ]);
 
-        if (ordersRes.error) throw ordersRes.error;
+        if (stockRes.error) throw stockRes.error;
+        if (poRes.error) throw poRes.error;
         if (skusRes.error) throw skusRes.error;
         if (suppsRes.error) throw suppsRes.error;
 
-        const skuMap = new Map((skusRes.data || []).map(s => [s.id, s]));
-        const supplierMap = new Map((suppsRes.data || []).map(s => [s.id, s]));
+        suppliersList = suppsRes.data || [];
 
-        allOrders = (ordersRes.data || []).map(o => {
+        const skuMap = new Map((skusRes.data || []).map(s => [s.id, s]));
+        const supplierMap = new Map((suppliersList || []).map(s => [s.id, s]));
+
+        allStockOrders = (stockRes.data || []).map(o => ({
+          ...o,
+          sku: skuMap.get(o.sku_id) || null,
+          supplier: supplierMap.get(o.supplier_id) || null
+        }));
+
+        allPurchaseOrders = (poRes.data || []).map(po => {
+          const sup = supplierMap.get(po.supplier_id) || null;
+          let costCenter = po.cost_center;
+          if (!costCenter && sup && sup.cost_center) {
+            costCenter = sup.cost_center;
+          }
           return {
-            ...o,
-            sku: skuMap.get(o.sku_id) || null,
-            supplier: supplierMap.get(o.supplier_id) || null
+            ...po,
+            supplier: sup,
+            cost_center: costCenter
           };
         });
 
-        statusEl.textContent = `Órdenes cargadas: ${allOrders.length}`;
-        renderOrders();
+        statusEl.textContent = `Órdenes stock: ${allStockOrders.length} · Órdenes sin stock: ${allPurchaseOrders.length}`;
+        renderAllOrders();
       } catch (err) {
         console.error('Error cargando órdenes:', err);
         statusEl.textContent = 'Error al cargar órdenes. Intenta nuevamente.';
-        const tbody = document.getElementById('ordersTableBody');
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="9" style="text-align:center; padding:40px; color:var(--state-error);">
-              Error al cargar órdenes.
-            </td>
-          </tr>
-        `;
+
+        if (stockTBody) {
+          stockTBody.innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align:center; padding:40px; color:var(--state-error);">
+                Error al cargar órdenes de stock.
+              </td>
+            </tr>
+          `;
+        }
+        if (poTBody) {
+          poTBody.innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align:center; padding:40px; color:var(--state-error);">
+                Error al cargar órdenes sin stock.
+              </td>
+            </tr>
+          `;
+        }
       }
+    }
+
+    function renderAllOrders() {
+      renderStockOrders();
+      renderPurchaseOrders();
     }
 
     function setStatusFilter(value) {
       statusFilter = value;
-      renderOrders();
+      renderStockOrders();
     }
 
-    function renderOrders() {
-      const tbody = document.getElementById('ordersTableBody');
-      const searchText = document.getElementById('searchInput').value.toLowerCase();
+    function setPoStatusFilter(value) {
+      poStatusFilter = value;
+      renderPurchaseOrders();
+    }
 
-      let list = allOrders.slice();
+    function renderStockOrders() {
+      const tbody = document.getElementById('ordersTableBody');
+      if (!tbody) return;
+
+      const searchText = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+
+      let list = allStockOrders.slice();
 
       if (statusFilter !== 'ALL') {
         list = list.filter(o => o.status === statusFilter);
@@ -173,114 +473,303 @@
       if (!list.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">
-              No hay órdenes para los filtros actuales.
+            <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              No hay órdenes de stock para los filtros actuales.
             </td>
           </tr>
         `;
         return;
       }
 
-      tbody.innerHTML = list
-        .map(o => {
-          const createdDate = o.created_at ? o.created_at.split('T')[0] : '-';
-          const dueDateValue = o.due_date || '';
-          const dueDateLabel = dueDateValue || '—';
+      tbody.innerHTML = list.map(o => {
+        const createdDate = o.created_at ? o.created_at.split('T')[0] : '-';
+        const dueDateValue = o.due_date || '';
+        const dueDateLabel = dueDateValue || 'Sin definir';
 
-          const provName = o.supplier
-            ? (o.supplier.legal_name || o.supplier.name)
-            : 'SIN PROVEEDOR';
+        const supplier = o.supplier;
+        const provName = supplier
+          ? (supplier.legal_name || supplier.name)
+          : 'SIN PROVEEDOR';
+        const cuit = supplier?.cuit || '-';
 
-          const cuit = o.supplier?.cuit || '-';
+        const bankLine = supplier
+          ? [
+              supplier.bank_name || '',
+              supplier.bank_account_alias || '',
+              supplier.bank_account_cbu || ''
+            ].filter(Boolean).join(' / ')
+          : '';
 
-          const bankLine = o.supplier
-            ? [
-                o.supplier.bank_name || '',
-                o.supplier.bank_account_alias || '',
-                o.supplier.bank_account_cbu || ''
-              ].filter(Boolean).join(' / ')
-            : '-';
+        const costCenter = supplier?.cost_center || null;
+        let ccLabel = costCenter || '—';
+        let ccClass = 'tag-gray';
+        if (costCenter === 'COD') ccClass = 'tag-green';
+        else if (costCenter === 'OPEX') ccClass = 'tag-blue';
+        else if (costCenter === 'G&A') ccClass = 'tag-purple';
 
-          const skuName = o.sku?.name || 'SKU eliminado';
+        const supplierInactive = supplier && supplier.is_active === false;
 
-          const qty = Number(o.quantity) || 0;
-          const total = Number(o.total_cost) || 0;
-          const totalFmt = (typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency)
-            ? MC_UTILS.formatCurrency(total)
-            : `$${total.toFixed(2)}`;
+        const skuName = o.sku?.name || 'SKU eliminado';
+        const qty = Number(o.quantity) || 0;
+        const total = Number(o.total_cost) || 0;
+        const totalFmt = formatCurrencyLocal(total);
 
-          let statusLabel = 'PENDIENTE';
-          let statusClass = 'tag-gray';
-          if (o.status === 'APPROVED') {
-            statusLabel = 'APROBADO';
-            statusClass = 'tag-green';
-          } else if (o.status === 'REALIZED') {
-            statusLabel = 'EMITIDO';
-            statusClass = 'tag-red';
-          }
+        let statusLabel = 'PENDIENTE';
+        let statusClass = 'tag-gray';
+        if (o.status === 'APPROVED') {
+          statusLabel = 'APROBADO';
+          statusClass = 'tag-green';
+        } else if (o.status === 'REALIZED') {
+          statusLabel = 'EMITIDO';
+          statusClass = 'tag-red';
+        } else if (o.status === 'CANCELLED') {
+          statusLabel = 'CANCELADA';
+          statusClass = 'tag-red';
+        }
 
-          const canApprove = o.status === 'PENDING';
-          const canEmit = o.status === 'APPROVED';
+        const canApprove = o.status === 'PENDING';
+        const canEmit = o.status === 'APPROVED';
 
-          return `
-            <tr>
-              <td>
-                <div class="row-title">#${o.id}</div>
-                <div class="row-sub-text">Creada: ${createdDate}</div>
-              </td>
-              <td style="text-align:center;">
-                <input
-                  type="date"
-                  class="table-input"
-                  value="${dueDateValue}"
-                  onchange="updateDueDate(${o.id}, this.value)"
-                  style="max-width: 140px;"
-                />
-                <div class="row-sub-text">Vence: ${dueDateLabel}</div>
-              </td>
-              <td>
-                <div class="row-title">${provName}</div>
-                <div class="row-sub-text">CUIT: ${cuit}</div>
-              </td>
-              <td>
-                <div class="row-sub-text">${bankLine}</div>
-              </td>
-              <td>
-                <div class="row-title">${skuName}</div>
-              </td>
-              <td style="text-align:center;">
-                ${qty}
-              </td>
-              <td class="col-costo">
-                ${totalFmt}
-              </td>
-              <td>
-                <span class="tag ${statusClass}">${statusLabel}</span>
-              </td>
-              <td>
-                <div style="display:flex; flex-direction:column; gap:6px;">
-                  <button
-                    type="button"
-                    class="btn-secondary"
-                    onclick="updateOrderStatus(${o.id}, 'APPROVED')"
-                    ${canApprove ? '' : 'disabled'}
-                  >
-                    APROBADO
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-primary"
-                    onclick="updateOrderStatus(${o.id}, 'REALIZED')"
-                    ${canEmit ? '' : 'disabled'}
-                  >
-                    EMITIDO
-                  </button>
-                </div>
-              </td>
-            </tr>
-          `;
-        })
-        .join('');
+        return `
+          <tr>
+            <td style="width:190px;">
+              <input
+                type="date"
+                class="table-input"
+                value="${dueDateValue}"
+                onchange="updateDueDate(${o.id}, this.value)"
+                style="max-width: 160px;"
+              />
+              <div class="row-sub-text">Vence: ${dueDateLabel}</div>
+              <div class="row-sub-text">Creada: ${createdDate} · #${o.id}</div>
+            </td>
+            <td>
+              <div class="row-title">${provName}</div>
+              <div class="row-sub-text">CUIT: ${cuit}</div>
+              ${bankLine ? `<div class="row-sub-text">${bankLine}</div>` : ''}
+              ${supplierInactive ? '<div class="row-sub-text text-danger">Proveedor inactivo</div>' : ''}
+            </td>
+            <td class="text-center">
+              <span class="tag tag-small ${ccClass}">${ccLabel}</span>
+            </td>
+            <td>
+              <div class="row-title">${skuName}</div>
+              <div class="row-sub-text">Cantidad: ${qty}</div>
+            </td>
+            <td class="col-costo text-right">
+              ${totalFmt}
+            </td>
+            <td>
+              <span class="tag ${statusClass}">${statusLabel}</span>
+            </td>
+            <td class="text-right">
+              <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  onclick="updateOrderStatus(${o.id}, 'APPROVED')"
+                  ${canApprove ? '' : 'disabled'}
+                >
+                  Aprobado
+                </button>
+                <button
+                  type="button"
+                  class="btn-primary"
+                  onclick="updateOrderStatus(${o.id}, 'REALIZED')"
+                  ${canEmit ? '' : 'disabled'}
+                >
+                  Emitido
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updatePoSummary(list) {
+      const summaryEl = document.getElementById('ordersSummary');
+      if (!summaryEl) return;
+
+      if (!list || !list.length) {
+        summaryEl.innerHTML = '';
+        return;
+      }
+
+      const totals = { COD: 0, OPEX: 0, 'G&A': 0 };
+
+      list.forEach(o => {
+        const total = Number(o.total_amount) || 0;
+        const cc = o.cost_center;
+        if (cc && Object.prototype.hasOwnProperty.call(totals, cc)) {
+          totals[cc] += total;
+        }
+      });
+
+      summaryEl.innerHTML = `
+        <div class="summary-card">
+          <div class="summary-row">
+            <span class="text-muted">Total COD (sin stock)</span>
+            <span class="text-success">${formatCurrencyLocal(totals.COD)}</span>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-row">
+            <span class="text-muted">Total OPEX</span>
+            <span>${formatCurrencyLocal(totals.OPEX)}</span>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-row">
+            <span class="text-muted">Total G&amp;A</span>
+            <span>${formatCurrencyLocal(totals['G&A'])}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPurchaseOrders() {
+      const tbody = document.getElementById('poTableBody');
+      if (!tbody) return;
+
+      const searchText = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+
+      let list = allPurchaseOrders.slice();
+
+      if (poStatusFilter !== 'ALL') {
+        list = list.filter(o => {
+          const raw = (o.status || '').toUpperCase();
+          const norm = raw === 'DRAFT' ? 'PENDING' : raw;
+          return norm === poStatusFilter;
+        });
+      }
+
+      if (searchText) {
+        list = list.filter(o => {
+          const prov = (o.supplier?.name || o.supplier?.legal_name || '').toLowerCase();
+          const concept = (o.concept || '').toLowerCase();
+          return prov.includes(searchText) || concept.includes(searchText);
+        });
+      }
+
+      if (!list.length) {
+        updatePoSummary([]);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              No hay órdenes sin stock para los filtros actuales.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      updatePoSummary(list);
+
+      tbody.innerHTML = list.map(o => {
+        const createdDate = o.created_at ? o.created_at.split('T')[0] : '-';
+        const dueDateValue = o.due_date || '';
+        const dueDateLabel = dueDateValue || 'Sin definir';
+
+        const supplier = o.supplier;
+        const provName = supplier
+          ? (supplier.legal_name || supplier.name)
+          : 'SIN PROVEEDOR';
+        const cuit = supplier?.cuit || '-';
+        const supplierInactive = supplier && supplier.is_active === false;
+
+        const costCenter = o.cost_center || null;
+        let ccLabel = costCenter || '—';
+        let ccClass = 'tag-gray';
+        if (costCenter === 'COD') ccClass = 'tag-green';
+        else if (costCenter === 'OPEX') ccClass = 'tag-blue';
+        else if (costCenter === 'G&A') ccClass = 'tag-purple';
+
+        const concept = o.concept || 'Sin concepto';
+        const total = Number(o.total_amount) || 0;
+        const totalFmt = formatCurrencyLocal(total);
+
+        const rawStatus = (o.status || '').toUpperCase();
+        const normStatus = rawStatus === 'DRAFT' ? 'PENDING' : rawStatus;
+
+        let statusLabel = 'PENDIENTE';
+        let statusClass = 'tag-gray';
+        if (normStatus === 'PAID') {
+          statusLabel = 'PAGADA';
+          statusClass = 'tag-green';
+        } else if (normStatus === 'CANCELLED') {
+          statusLabel = 'CANCELADA';
+          statusClass = 'tag-red';
+        } else if (normStatus === 'PENDING') {
+          statusLabel = 'PENDIENTE';
+          statusClass = 'tag-gray';
+        } else {
+          statusLabel = rawStatus || 'PENDIENTE';
+          statusClass = 'tag-gray';
+        }
+
+        const tipoLabel = o.is_fixed ? 'FIJO' : 'VARIABLE';
+        const tipoTagClass = o.is_fixed ? 'tag-gold' : 'tag-blue';
+
+        const canMarkPaid = normStatus !== 'PAID' && normStatus !== 'CANCELLED';
+        const canCancel = normStatus !== 'CANCELLED';
+
+        return `
+          <tr>
+            <td style="width:190px;">
+              <input
+                type="date"
+                class="table-input"
+                value="${dueDateValue}"
+                onchange="updatePoDueDate(${o.id}, this.value)"
+                style="max-width: 160px;"
+              />
+              <div class="row-sub-text">Vence: ${dueDateLabel}</div>
+              <div class="row-sub-text">Creada: ${createdDate} · #${o.id}</div>
+            </td>
+            <td>
+              <div class="row-title">${provName}</div>
+              <div class="row-sub-text">CUIT: ${cuit}</div>
+              ${supplierInactive ? '<div class="row-sub-text text-danger">Proveedor inactivo</div>' : ''}
+            </td>
+            <td class="text-center">
+              <span class="tag tag-small ${ccClass}">${ccLabel}</span>
+            </td>
+            <td>
+              <div class="row-title">${concept}</div>
+              <div class="row-sub-text">
+                <span class="tag tag-small ${tipoTagClass}">${tipoLabel}</span>
+              </div>
+            </td>
+            <td class="col-costo text-right">
+              ${totalFmt}
+            </td>
+            <td>
+              <span class="tag ${statusClass}">${statusLabel}</span>
+            </td>
+            <td class="text-right">
+              <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+                <button
+                  type="button"
+                  class="btn-primary"
+                  onclick="updatePoStatus(${o.id}, 'PAID')"
+                  ${canMarkPaid ? '' : 'disabled'}
+                >
+                  Marcar pagada
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  onclick="updatePoStatus(${o.id}, 'CANCELLED')"
+                  ${canCancel ? '' : 'disabled'}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     async function updateDueDate(orderId, dateStr) {
@@ -293,10 +782,10 @@
 
         if (error) throw error;
 
-        const order = allOrders.find(o => o.id === orderId);
+        const order = allStockOrders.find(o => o.id === orderId);
         if (order) order.due_date = dateStr;
       } catch (err) {
-        console.error('Error actualizando vencimiento:', err);
+        console.error('Error actualizando vencimiento (stock_orders):', err);
         alert('No se pudo actualizar la fecha de vencimiento.');
       }
     }
@@ -314,22 +803,320 @@
 
         if (error) throw error;
 
-        // Opcional: log
         try {
           const userId = (currentUser && currentUser.id !== 'dev') ? currentUser.id : null;
           await client.from('admin_logs').insert({
             admin_id: userId,
-            action: 'CAMBIO_ESTADO_ORDEN',
-            details: `Orden ${orderId} → ${newStatus}`
+            action: 'CAMBIO_ESTADO_ORDEN_STOCK',
+            details: `Orden stock ${orderId} → ${newStatus}`
           });
         } catch (logErr) {
-          console.warn('No se pudo registrar log de cambio de estado', logErr);
+          console.warn('No se pudo registrar log de cambio de estado (stock)', logErr);
         }
 
         await loadOrders();
       } catch (err) {
-        console.error('Error actualizando estado de orden:', err);
+        console.error('Error actualizando estado de orden (stock_orders):', err);
         alert('No se pudo actualizar el estado de la orden.');
+      }
+    }
+
+    async function updatePoDueDate(orderId, dateStr) {
+      if (!dateStr) return;
+      try {
+        const { error } = await client
+          .from('purchase_orders')
+          .update({ due_date: dateStr })
+          .eq('id', orderId);
+
+        if (error) throw error;
+
+        const order = allPurchaseOrders.find(o => o.id === orderId);
+        if (order) order.due_date = dateStr;
+      } catch (err) {
+        console.error('Error actualizando vencimiento (purchase_orders):', err);
+        alert('No se pudo actualizar la fecha de vencimiento.');
+      }
+    }
+
+    async function updatePoStatus(orderId, newStatus) {
+      if (!confirm(`Confirmar cambiar estado de la orden sin stock #${orderId} a ${newStatus}?`)) {
+        return;
+      }
+
+      const updatePayload = { status: newStatus };
+      if (newStatus === 'PAID') {
+        updatePayload.paid_at = new Date().toISOString();
+      }
+
+      try {
+        const { error } = await client
+          .from('purchase_orders')
+          .update(updatePayload)
+          .eq('id', orderId);
+
+        if (error) throw error;
+
+        try {
+          const userId = (currentUser && currentUser.id !== 'dev') ? currentUser.id : null;
+          await client.from('admin_logs').insert({
+            admin_id: userId,
+            action: 'CAMBIO_ESTADO_ORDEN_PO',
+            details: `Orden sin stock ${orderId} → ${newStatus}`
+          });
+        } catch (logErr) {
+          console.warn('No se pudo registrar log de cambio de estado (purchase_orders)', logErr);
+        }
+
+        await loadOrders();
+      } catch (err) {
+        console.error('Error actualizando estado de orden (purchase_orders):', err);
+        alert('No se pudo actualizar el estado de la orden.');
+      }
+    }
+
+    function openPoCreateModal() {
+      const poModal = document.getElementById('poModal');
+      const poId = document.getElementById('poId');
+      const poSupplierSelect = document.getElementById('poSupplierSelect');
+      const poCostCenter = document.getElementById('poCostCenter');
+      const poConcept = document.getElementById('poConcept');
+      const poAmount = document.getElementById('poAmount');
+      const poDueDate = document.getElementById('poDueDate');
+      const poPaymentMethod = document.getElementById('poPaymentMethod');
+
+      if (!poModal) return;
+
+      poId.value = '';
+      poCostCenter.value = '';
+      poConcept.value = '';
+      poAmount.value = '';
+      poDueDate.value = '';
+      poPaymentMethod.value = '';
+
+      if (poSupplierSelect) {
+        poSupplierSelect.innerHTML = '<option value="">Seleccionar proveedor</option>';
+        (suppliersList || [])
+          .filter(s => s.is_active !== false)
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+          .forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name || s.legal_name || `Proveedor #${s.id}`;
+            poSupplierSelect.appendChild(opt);
+          });
+      }
+
+      poModal.style.display = 'flex';
+    }
+
+    function closePoModal() {
+      const poModal = document.getElementById('poModal');
+      if (poModal) {
+        poModal.style.display = 'none';
+      }
+    }
+
+    function handlePoSupplierChange() {
+      const poSupplierSelect = document.getElementById('poSupplierSelect');
+      const poCostCenter = document.getElementById('poCostCenter');
+      const poConcept = document.getElementById('poConcept');
+
+      if (!poSupplierSelect) return;
+      const supplierId = Number(poSupplierSelect.value || 0);
+      if (!supplierId) return;
+
+      const sup = (suppliersList || []).find(s => s.id === supplierId);
+      if (!sup) return;
+
+      if (sup.cost_center && poCostCenter && !poCostCenter.value) {
+        poCostCenter.value = sup.cost_center;
+      }
+      if (sup.name && poConcept && !poConcept.value) {
+        poConcept.value = sup.name;
+      }
+    }
+
+    async function handleSavePo() {
+      const poSupplierSelect = document.getElementById('poSupplierSelect');
+      const poCostCenter = document.getElementById('poCostCenter');
+      const poConcept = document.getElementById('poConcept');
+      const poAmount = document.getElementById('poAmount');
+      const poDueDate = document.getElementById('poDueDate');
+      const poPaymentMethod = document.getElementById('poPaymentMethod');
+      const poSaveBtn = document.getElementById('poSaveBtn');
+
+      const supplierIdVal = Number(poSupplierSelect.value || 0);
+      if (!supplierIdVal) {
+        alert('Debés seleccionar un proveedor.');
+        return;
+      }
+
+      const costCenterVal = poCostCenter.value;
+      if (!costCenterVal) {
+        alert('Debés seleccionar un centro de costo.');
+        return;
+      }
+
+      const amountNum = Number(poAmount.value || 0);
+      if (!amountNum || amountNum <= 0) {
+        alert('El monto total debe ser mayor a 0.');
+        return;
+      }
+
+      const dueDateVal = poDueDate.value;
+      if (!dueDateVal) {
+        alert('Debés ingresar una fecha de vencimiento.');
+        return;
+      }
+
+      const payload = {
+        supplier_id: supplierIdVal,
+        cost_center: costCenterVal,
+        concept: (poConcept.value || '').trim() || null,
+        total_amount: amountNum,
+        due_date: dueDateVal,
+        payment_method: (poPaymentMethod.value || '').trim() || null,
+        is_fixed: false,
+        source: 'MANUAL',
+        status: 'PENDING'
+      };
+
+      const userId = (currentUser && currentUser.id !== 'dev') ? currentUser.id : null;
+      if (userId) {
+        payload.requested_by = userId;
+      }
+
+      try {
+        if (poSaveBtn) {
+          poSaveBtn.disabled = true;
+          poSaveBtn.textContent = 'Guardando...';
+        }
+
+        const { error } = await client
+          .from('purchase_orders')
+          .insert(payload);
+
+        if (error) throw error;
+
+        closePoModal();
+        await loadOrders();
+
+        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
+          MC_UTILS.showToast('Orden sin stock creada correctamente.');
+        }
+      } catch (err) {
+        console.error('Error al crear orden sin stock:', err);
+        alert('No se pudo crear la orden. Revisá los datos e intentá nuevamente.');
+      } finally {
+        if (poSaveBtn) {
+          poSaveBtn.disabled = false;
+          poSaveBtn.textContent = 'Guardar';
+        }
+      }
+    }
+
+    async function generateFixedOrders() {
+      const dateInput = document.getElementById('fixedTargetDate');
+      const filterSelect = document.getElementById('fixedPaymentFilter');
+      const targetDate = dateInput ? dateInput.value : '';
+      const paymentFilter = filterSelect ? filterSelect.value : 'ALL';
+
+      if (!targetDate) {
+        alert('Debés elegir una fecha de vencimiento para generar los fijos.');
+        return;
+      }
+
+      if (!suppliersList || !suppliersList.length) {
+        alert('Todavía no se cargaron los proveedores. Actualizá la página e intentá de nuevo.');
+        return;
+      }
+
+      const candidates = suppliersList.filter(s => {
+        if (s.is_active === false) return false;
+        const costType = (s.cost_type || 'VARIABLE').toUpperCase();
+        if (costType !== 'FIJO') return false;
+        const amount = Number(s.fixed_amount || 0);
+        if (!amount || amount <= 0) return false;
+        if (paymentFilter && paymentFilter !== 'ALL') {
+          return (s.payment_terms || '') === paymentFilter;
+        }
+        return true;
+      });
+
+      if (!candidates.length) {
+        alert('No hay proveedores FIJOS que coincidan con los filtros seleccionados.');
+        return;
+      }
+
+      const existingBySupId = new Set(
+        (allPurchaseOrders || [])
+          .filter(po =>
+            po &&
+            po.is_fixed === true &&
+            po.source === 'AUTO_FIXED' &&
+            po.due_date === targetDate &&
+            po.supplier_id != null
+          )
+          .map(po => po.supplier_id)
+      );
+
+      const toInsert = candidates
+        .filter(s => !existingBySupId.has(s.id))
+        .map(s => {
+          const conceptLabel = `${s.name || s.legal_name || ('Proveedor ' + s.id)} – ${targetDate}`;
+          const payload = {
+            supplier_id: s.id,
+            cost_center: s.cost_center || null,
+            concept: conceptLabel,
+            total_amount: Number(s.fixed_amount),
+            due_date: targetDate,
+            payment_method: (s.payment_terms || null),
+            is_fixed: true,
+            source: 'AUTO_FIXED',
+            status: 'PENDING'
+          };
+          const userId = (currentUser && currentUser.id !== 'dev') ? currentUser.id : null;
+          if (userId) payload.requested_by = userId;
+          return payload;
+        });
+
+      if (!toInsert.length) {
+        alert('Ya existen órdenes AUTO_FIXED para todos los proveedores FIJOS en esa fecha.');
+        return;
+      }
+
+      const confirmMsg = `Se generarán ${toInsert.length} órdenes fijas para la fecha ${targetDate}.\n\n¿Confirmar?`;
+      if (!confirm(confirmMsg)) return;
+
+      const btn = document.getElementById('runFixedGenBtn');
+      try {
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Generando...';
+        }
+
+        const { error } = await client
+          .from('purchase_orders')
+          .insert(toInsert);
+
+        if (error) throw error;
+
+        await loadOrders();
+
+        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
+          MC_UTILS.showToast(`Órdenes fijas generadas: ${toInsert.length}.`);
+        } else {
+          alert(`Órdenes fijas generadas: ${toInsert.length}.`);
+        }
+      } catch (err) {
+        console.error('Error generando órdenes fijas:', err);
+        alert('No se pudieron generar las órdenes fijas. Revisá el console para más detalle.');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Generar fijos';
+        }
       }
     }
   </script>

@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Midnight - Master Data</title>
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@700&display=swap"
+    rel="stylesheet">
   <script src="session.js" defer></script>
 </head>
+
 <body>
   <script>document.addEventListener('DOMContentLoaded', () => { MC_SESSION.ensure({ pageTitle: 'Master Data', redirectHome: 'index.html' }); });</script>
 
@@ -28,7 +31,7 @@
   </header>
 
   <main class="admin-container">
-    
+
     <div class="section-header">
       <h1 class="section-title">CONFIGURACIÓN</h1>
     </div>
@@ -58,6 +61,12 @@
           </div>
         </a>
 
+        <a href="admin-tarifario.html" class="dash-card dash-card-master">
+          <div class="dash-card-inner">
+            <h3 class="dash-title">TARIFARIO</h3>
+          </div>
+        </a>
+
         <a href="admin-cargos.html" class="dash-card dash-card-master">
           <div class="dash-card-inner">
             <h3 class="dash-title">CARGOS STAFF</h3>
@@ -67,4 +76,5 @@
     </section>
   </main>
 </body>
+
 </html>

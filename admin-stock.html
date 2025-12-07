@@ -1,24 +1,32 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Midnight - Stock Administrativo</title>
 
   <link rel="stylesheet" href="admin-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap"
+    rel="stylesheet" />
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
 </head>
+
 <body>
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <div class="admin-logo"></div>
+        <div>
+          <button onclick="window.location.href='administracion-index.html'" class="btn-back">VOLVER</button>
+        </div>
+
+        <div class="admin-logo" aria-hidden="true"></div>
+
         <div class="admin-header-right">
-          <button class="btn-back" onclick="window.location.href='administracion-index.html'">VOLVER</button>
+          <span class="session-chip">Administración</span>
         </div>
       </div>
     </div>
@@ -30,75 +38,131 @@
       <p class="section-desc">Comparación Gbol vs stock ideal y solicitudes operativas.</p>
     </section>
 
-    <div class="section-header" id="importActions">
-      <div class="section-desc">Importa el archivo STOCK_GENERAL desde Gbol.</div>
-      <div class="admin-header-right">
-        <input type="file" id="stockFileInput" accept=".xlsx,.xls" hidden />
-        <button class="btn-secondary" type="button" id="importButton">Importar stock Gbol</button>
+    <div class="box-soft"
+      style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; flex-wrap:wrap;">
+      <p class="section-desc" style="margin:0; font-size:11px; max-width:460px;">
+        Sincronizá los datos directamente desde el servidor de <strong>GBol</strong> (Stock actual y Precios).
+      </p>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn-secondary" type="button" id="syncButton">
+          🔄 SINCRONIZAR CON GBOL
+        </button>
       </div>
     </div>
 
-    <div id="importStatus" class="section-desc"></div>
+    <div id="importStatus" class="section-desc" style="min-height:18px; margin-bottom:4px;"></div>
 
-    <!-- Resumen de valorización de stock -->
-    <div class="stock-summary">
-      <div class="stock-summary-label">VALOR TOTAL DE STOCK (GBOL)</div>
-      <div class="stock-summary-value" id="stockTotalValue">-</div>
+    <div
+      style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content:space-between; margin-bottom:16px;">
+      <div style="flex:1; min-width:220px;">
+        <label class="input-label" for="searchSku">BUSCAR INSUMO</label>
+        <input id="searchSku" class="search-input-admin" type="text" placeholder="Nombre o código..." />
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content:flex-end;">
+        <div style="min-width:150px;">
+          <label class="input-label" for="filterStatus">ESTADO STOCK</label>
+          <select id="filterStatus" class="modal-select">
+            <option value="">Todos</option>
+            <option value="BAJO">Stock bajo</option>
+            <option value="OK">Stock OK</option>
+            <option value="SOBRE">Sobre stock</option>
+            <option value="SIN_STOCK">Sin stock real</option>
+            <option value="SIN_IDEAL">Sin ideal</option>
+          </select>
+        </div>
+
+        <div style="min-width:160px;">
+          <label class="input-label" for="orderBy">ORDENAR POR</label>
+          <select id="orderBy" class="modal-select">
+            <option value="NAME_ASC">Nombre A-Z</option>
+            <option value="NAME_DESC">Nombre Z-A</option>
+            <option value="VALUE_DESC">Valor stock ↓</option>
+            <option value="DELTA_DESC">Brecha vs ideal ↓</option>
+          </select>
+        </div>
+
+        <div class="box-soft" style="min-width:220px; text-align:right; padding:10px 14px;">
+          <div class="input-label" style="font-size:10px;">
+            VALOR TOTAL STOCK (GBOL)
+          </div>
+          <div id="stockTotalValue" style="margin-top:4px; font-size:18px; font-weight:600;">
+            -
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="table-container" style="margin-top: 12px;">
+    <div class="table-container">
       <table class="sku-table" id="stockTable" aria-label="Tabla de stock administrativo">
         <thead>
           <tr>
             <th>INSUMO</th>
-            <th>STOCK ACTUAL</th>
-            <th>STOCK IDEAL</th>
-            <th>COSTO UNITARIO</th>
-            <th>VALOR STOCK</th>
-            <th>SOLICITUD</th>
-            <th>ORDENAR</th>
+            <th class="text-right">STOCK GBOL</th>
+            <th class="text-right">STOCK IDEAL</th>
+            <th class="text-right">COSTO UNITARIO</th>
+            <th class="text-right">VALOR STOCK</th>
+            <th class="text-right">SOLICITUD</th>
+            <th class="text-right" style="width:100px;">ORDENAR</th>
           </tr>
         </thead>
         <tbody>
-          <!-- filas dinámicas -->
-        </tbody>
+          </tbody>
       </table>
     </div>
   </main>
 
   <script>
-    const fileInput = document.getElementById('stockFileInput');
-    const importButton = document.getElementById('importButton');
+    const syncButton = document.getElementById('syncButton');
     const importStatus = document.getElementById('importStatus');
     const tableBody = document.querySelector('#stockTable tbody');
 
-    document.addEventListener('DOMContentLoaded', () => {
-      loadData();
+    const searchInput = document.getElementById('searchSku');
+    const filterStatus = document.getElementById('filterStatus');
+    const orderBySelect = document.getElementById('orderBy');
 
-      importButton.addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', async (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        await handleStockImport(file);
-        await loadData();
-        fileInput.value = '';
+    let allRows = [];
+    let totalValorStock = 0;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadData(); // Carga inicial con lo que haya en DB
+
+      syncButton.addEventListener('click', async () => {
+        await syncGbolData();
+        await loadData(); // Recarga la tabla tras sincronizar
       });
+
+      // Filtros
+      searchInput.addEventListener('input', applyFiltersAndRender);
+      filterStatus.addEventListener('change', applyFiltersAndRender);
+      orderBySelect.addEventListener('change', applyFiltersAndRender);
     });
 
+    // --- CARGA DE DATOS (LEER DE SUPABASE) ---
     async function loadData() {
-      importStatus.textContent = '';
+      // Limpiamos mensaje de estado solo si no estamos en proceso de carga
+      if (syncButton.disabled === false) importStatus.textContent = '';
+      
       try {
-        const [{ data: skus, error: skusError }, { data: stock, error: stockError }] = await Promise.all([
-          client.from('inventory_skus').select('id, external_id, name, cost_price'),
-          client.from('inventory_stock').select('sku_id, stock_ideal')
-        ]);
+        const [{ data: skus, error: skusError }, { data: stock, error: stockError }] =
+          await Promise.all([
+            client
+              .from('inventory_skus')
+              .select('id, external_id, name, cost_price')
+              .order('name', { ascending: true }),
+            client.from('inventory_stock').select('sku_id, stock_ideal')
+          ]);
+
         if (skusError) throw skusError;
         if (stockError) throw stockError;
 
+        // Obtenemos el ÚLTIMO registro de importación para cada SKU
+        // Ordenamos por fecha descendente para tomar el más nuevo
         const { data: gbolData, error: gbolError } = await client
           .from('import_gbol_stock')
           .select('sku_id, stock_real, import_date')
           .order('import_date', { ascending: false });
+
         if (gbolError) throw gbolError;
 
         const latestGbolBySku = new Map();
@@ -108,9 +172,11 @@
           }
         });
 
+        // Solicitudes pendientes
         const { data: requestsData, error: reqError } = await client
           .from('stock_requests')
           .select('sku_id, requested_qty, status');
+
         if (reqError) throw reqError;
 
         const pendingRequests = new Map();
@@ -121,17 +187,32 @@
             pendingRequests.set(r.sku_id, prev + (Number(r.requested_qty) || 0));
           });
 
+        // Stock Ideal Map
         const stockMap = new Map();
         (stock || []).forEach((row) => {
           stockMap.set(row.sku_id, Number(row.stock_ideal) || 0);
         });
 
-        const rows = (skus || []).map((sku) => {
+        // Unificar todo
+        allRows = (skus || []).map((sku) => {
           const stockActual = Number(latestGbolBySku.get(sku.id)?.stock_real) || 0;
           const stockIdeal = stockMap.get(sku.id) ?? 0;
           const solicitudOperativa = pendingRequests.get(sku.id) || 0;
           const costoUnitario = Number(sku.cost_price) || 0;
           const valorStock = stockActual * costoUnitario;
+
+          // Clasificación de estado
+          let status = 'SIN_IDEAL';
+          if (stockIdeal > 0) {
+            if (stockActual === 0) status = 'SIN_STOCK';
+            else if (stockActual < stockIdeal) status = 'BAJO';
+            else if (stockActual > stockIdeal * 1.3) status = 'SOBRE';
+            else status = 'OK';
+          } else if (stockActual === 0) {
+            status = 'SIN_IDEAL';
+          } else {
+            status = 'SOBRE';
+          }
 
           return {
             skuId: sku.id,
@@ -141,30 +222,187 @@
             stockIdeal,
             costoUnitario,
             solicitudOperativa,
-            valorStock
+            valorStock,
+            status,
+            deltaIdeal: stockActual - stockIdeal
           };
         });
 
-        // Calcular valor total de stock
-        const totalValorStock = rows.reduce((acc, r) => acc + (r.valorStock || 0), 0);
-        const totalEl = document.getElementById('stockTotalValue');
-        if (totalEl) {
-          if (typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency) {
-            totalEl.textContent = MC_UTILS.formatCurrency(totalValorStock);
-          } else {
-            totalEl.textContent = `$${totalValorStock.toFixed(2)}`;
-          }
-        }
-
-        renderTable(rows);
+        totalValorStock = allRows.reduce((acc, r) => acc + (r.valorStock || 0), 0);
+        updateTotalCard();
+        applyFiltersAndRender();
       } catch (error) {
         console.error('Error al cargar datos', error);
-        importStatus.textContent = 'Error al cargar datos. Intenta nuevamente.';
+        importStatus.textContent = 'Error al cargar datos de Supabase.';
       }
+    }
+
+   // --- PEGA ESTO REEMPLAZANDO LA FUNCIÓN ANTERIOR EN admin-stock.html ---
+    async function syncGbolData() {
+      try {
+        syncButton.disabled = true;
+        syncButton.textContent = 'CONECTANDO...';
+        importStatus.textContent = 'Consultando API de GBol...';
+
+        // 1. Fetch a la API
+        const response = await fetch("https://sd-2515114-h00190.ferozo.net/gbol/api/inventarios/stockIdealCompras", {
+          "headers": {
+            "accept": "application/json, text/plain, */*",
+            "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiI3UUhyZHJTaWNmUDJjOWowT2RMc1VjNmJVcFFkVFRSMEpFZ3JTSDBGM2pieVlWaHpNeDRYTEJhcUlEVWR0VDR2OSt4a1kxTzliUHhDc3grMVBQNVo3RmVYN2I0RGR2dk5UaGh2dzJOWWVpcz0iLCJleHAiOjE3NjU1OTEwMjd9.qUXEqRBV2oArhWug01KMNaTQ-VYGQ3EVVNv816hWmao"
+          },
+          "method": "GET",
+          "mode": "cors",
+          "credentials": "omit"  // <--- CAMBIAMOS A "omit" O BORRAMOS LA LÍNEA
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error API GBol: ${response.status}`);
+        }
+
+        const jsonData = await response.json();
+        
+        if (!Array.isArray(jsonData) || jsonData.length === 0) {
+          throw new Error('La API devolvió datos vacíos o formato incorrecto.');
+        }
+
+        importStatus.textContent = `Procesando ${jsonData.length} registros...`;
+
+        // 2. Obtener SKUs para mapear
+        const { data: skus, error: skusError } = await client
+          .from('inventory_skus')
+          .select('id, external_id');
+
+        if (skusError) throw skusError;
+
+        const skuMap = new Map((skus || []).map((s) => [String(s.external_id).trim(), s.id]));
+        const now = new Date().toISOString();
+
+        const stockPayload = [];
+        const priceUpdates = [];
+
+        // 3. Recorrer JSON
+        for (const item of jsonData) {
+            const codigo = String(item.codigo || '').trim();
+            const skuId = skuMap.get(codigo);
+
+            if (skuId) {
+                const stockReal = parseFloat(item.stock) || 0;
+                
+                stockPayload.push({
+                    sku_id: skuId,
+                    codigo: codigo,
+                    detalle: item.detalle || '',
+                    stock_real: stockReal,
+                    import_date: now
+                });
+
+                const nuevoPrecio = parseFloat(item.precio) || 0;
+                if (nuevoPrecio > 0) {
+                    priceUpdates.push({
+                        skuId: skuId,
+                        cost: nuevoPrecio
+                    });
+                }
+            }
+        }
+
+        if (stockPayload.length === 0) {
+            throw new Error('No se encontraron coincidencias de Códigos (External ID).');
+        }
+
+        // 4. Insertar Historial
+        const { error: insertError } = await client.from('import_gbol_stock').insert(stockPayload);
+        if (insertError) throw insertError;
+
+        // 5. Actualizar Precios
+        let updatedPricesCount = 0;
+        if (priceUpdates.length > 0) {
+            importStatus.textContent = 'Actualizando precios...';
+            for (const p of priceUpdates) {
+                await client
+                    .from('inventory_skus')
+                    .update({ cost_price: p.cost })
+                    .eq('id', p.skuId);
+                updatedPricesCount++;
+            }
+        }
+
+        importStatus.textContent = `Sincronización Exitosa: ${stockPayload.length} stocks, ${updatedPricesCount} precios.`;
+        importStatus.style.color = 'var(--accent-green)';
+
+      } catch (error) {
+        console.error('Error Sync GBol', error);
+        importStatus.textContent = 'Error: ' + error.message;
+        importStatus.style.color = 'var(--accent-red)';
+      } finally {
+        syncButton.disabled = false;
+        syncButton.textContent = '🔄 SINCRONIZAR CON GBOL';
+      }
+    }
+    // --- RENDERIZADO Y UTILIDADES ---
+
+    function updateTotalCard() {
+      const totalEl = document.getElementById('stockTotalValue');
+      if (!totalEl) return;
+
+      if (typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency) {
+        totalEl.textContent = MC_UTILS.formatCurrency(totalValorStock);
+      } else {
+        totalEl.textContent = `$ ${totalValorStock.toFixed(0)}`;
+      }
+    }
+
+    function applyFiltersAndRender() {
+      let rows = [...allRows];
+
+      const term = (searchInput.value || '').toLowerCase().trim();
+      const statusFilter = filterStatus.value;
+
+      if (term) {
+        rows = rows.filter((r) => {
+          return (
+            (r.insumo || '').toLowerCase().includes(term) ||
+            (r.codigo || '').toString().toLowerCase().includes(term)
+          );
+        });
+      }
+
+      if (statusFilter) {
+        rows = rows.filter((r) => r.status === statusFilter);
+      }
+
+      const orderBy = orderBySelect.value || 'NAME_ASC';
+      rows.sort((a, b) => {
+        switch (orderBy) {
+          case 'NAME_DESC':
+            return b.insumo.localeCompare(a.insumo);
+          case 'VALUE_DESC':
+            return (b.valorStock || 0) - (a.valorStock || 0);
+          case 'DELTA_DESC':
+            return (b.deltaIdeal || 0) - (a.deltaIdeal || 0);
+          case 'NAME_ASC':
+          default:
+            return a.insumo.localeCompare(b.insumo);
+        }
+      });
+
+      renderTable(rows);
     }
 
     function renderTable(rows) {
       tableBody.innerHTML = '';
+
+      if (!rows.length) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align:center; padding:30px;">
+              Sin resultados para las condiciones actuales.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
       rows.forEach((row) => {
         const tr = document.createElement('tr');
 
@@ -174,33 +412,86 @@
           <div class="row-sub-text">Código: ${row.codigo ?? '-'}</div>
         `;
 
+        // STOCK GBOL (color según estado)
         const tdActual = document.createElement('td');
+        tdActual.className = 'text-right';
         tdActual.textContent = row.stockActual;
 
+        let stockColor = 'var(--text-primary)';
+        if (row.status === 'SIN_STOCK') stockColor = 'var(--accent-red)';
+        else if (row.status === 'BAJO') stockColor = 'var(--accent-gold)';
+        else if (row.status === 'OK') stockColor = 'var(--accent-green)';
+        else if (row.status === 'SOBRE') stockColor = 'var(--text-secondary)';
+
+        tdActual.style.color = stockColor;
+        tdActual.style.fontWeight = '600';
+
+        // STOCK IDEAL + brecha
         const tdIdeal = document.createElement('td');
-        tdIdeal.textContent = row.stockIdeal;
+        tdIdeal.className = 'text-right';
 
+        const idealVal = row.stockIdeal || 0;
+        const faltante = Math.max(row.stockIdeal - row.stockActual, 0);
+        const sobra = Math.max(row.stockActual - row.stockIdeal, 0);
+
+        let idealSub = '';
+        if (row.stockIdeal > 0) {
+          if (faltante > 0) idealSub = `Faltan ${faltante}`;
+          else if (sobra > 0) idealSub = `+${sobra} sobre ideal`;
+          else idealSub = 'En rango';
+        } else {
+          idealSub = 'Sin ideal';
+        }
+
+        tdIdeal.innerHTML = `
+          <div>${idealVal}</div>
+          <div class="row-sub-text" style="text-align:right;">${idealSub}</div>
+        `;
+
+        // COSTO UNITARIO
         const tdCosto = document.createElement('td');
-        tdCosto.className = 'col-costo';
-        tdCosto.textContent = typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency
-          ? MC_UTILS.formatCurrency(row.costoUnitario)
-          : `$${row.costoUnitario.toFixed(2)}`;
+        tdCosto.className = 'text-right col-costo';
+        const unitCost = row.costoUnitario || 0;
+        tdCosto.textContent =
+          typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency
+            ? MC_UTILS.formatCurrency(unitCost)
+            : `$ ${unitCost.toFixed(0)}`;
 
+        // VALOR STOCK
         const tdValor = document.createElement('td');
-        tdValor.className = 'col-costo';
+        tdValor.className = 'text-right col-costo';
         const valor = row.valorStock || 0;
-        tdValor.textContent = typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency
-          ? MC_UTILS.formatCurrency(valor)
-          : `$${valor.toFixed(2)}`;
+        tdValor.textContent =
+          typeof MC_UTILS !== 'undefined' && MC_UTILS.formatCurrency
+            ? MC_UTILS.formatCurrency(valor)
+            : `$ ${valor.toFixed(0)}`;
 
+        // SOLICITUD OPERATIVA
         const tdSolicitud = document.createElement('td');
-        tdSolicitud.textContent = row.solicitudOperativa;
+        tdSolicitud.className = 'text-right';
+        if (row.solicitudOperativa > 0) {
+          tdSolicitud.innerHTML = `
+            <span class="tag tag-gray" style="border-color:var(--accent-gold); color:var(--accent-gold);">
+              PEND: ${row.solicitudOperativa}
+            </span>
+          `;
+        } else {
+          tdSolicitud.innerHTML = `<span class="row-sub-text">—</span>`;
+        }
 
+        // BOTÓN ORDENAR
         const tdOrden = document.createElement('td');
+        tdOrden.className = 'text-right';
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'btn-primary';
         btn.textContent = 'ORDENAR';
+
+        // Leve acento visual si está bajo/sin stock
+        if (row.status === 'SIN_STOCK' || row.status === 'BAJO') {
+          btn.style.borderColor = 'var(--accent-gold)';
+        }
+
         btn.addEventListener('click', () => handleOrderClick(row, btn));
         tdOrden.appendChild(btn);
 
@@ -209,125 +500,12 @@
       });
     }
 
-    async function handleStockImport(file) {
-      try {
-        importStatus.textContent = 'Importando...';
-
-        // 1) Leer archivo
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-        // 2) Buscar fila de encabezado (Codigo/Artículo + Stock)
-        const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-        let headerRowIndex = -1;
-
-        for (let i = 0; i < rawRows.length; i++) {
-          const row = rawRows[i].map((v) => String(v || '').toUpperCase());
-          const joined = row.join(' ');
-          if (
-            (joined.includes('CODIGO') || joined.includes('CÓDIGO') || joined.includes('ARTICULO') || joined.includes('ARTÍCULO')) &&
-            joined.includes('STOCK')
-          ) {
-            headerRowIndex = i;
-            break;
-          }
-        }
-
-        if (headerRowIndex === -1) {
-          importStatus.textContent = 'No se encontró la fila de encabezado (Código/Artículo + Stock). Revisá el archivo.';
-          return;
-        }
-
-        // 3) Convertir a objetos usando esa fila como header
-        const rows = XLSX.utils.sheet_to_json(sheet, { range: headerRowIndex, defval: '' });
-
-        // 4) Traer SKUs para mapear CODIGO → sku_id
-        const { data: skus, error: skusError } = await client
-          .from('inventory_skus')
-          .select('id, external_id');
-
-        if (skusError) throw skusError;
-
-        const skuMap = new Map(
-          (skus || []).map((s) => [String(s.external_id).trim(), s.id])
-        );
-
-        const now = new Date().toISOString();
-
-        // 5) Armar payload
-        const payload = rows
-          .map((r) => {
-            const codigoRaw =
-              r['CODIGO'] ??
-              r['Codigo'] ??
-              r['codigo'] ??
-              r['ARTICULO'] ??
-              r['Artículo'] ??
-              r['Articulo'] ??
-              r['articulo'] ??
-              '';
-
-            const codigo = String(codigoRaw).trim();
-            if (!codigo) return null;
-
-            const sku_id = skuMap.get(codigo);
-            if (!sku_id) {
-              // Si no existe ese código en inventory_skus, lo salteamos
-              return null;
-            }
-
-            const detalle =
-              (r['DETALLE'] ??
-               r['Detalle'] ??
-               r['detalle'] ??
-               '').toString().trim();
-
-            const stockField =
-              r['STOCK'] ??
-              r['Stock'] ??
-              r['stock'] ??
-              r['STOCK_REAL'] ??
-              r['Stock Real'] ??
-              r['Cantidad'] ??
-              r['CANTIDAD'];
-
-            const stock_real = Number(stockField) || 0;
-
-            return {
-              sku_id,
-              codigo,
-              detalle,
-              stock_real,
-              import_date: now
-            };
-          })
-          .filter(Boolean);
-
-        if (!payload.length) {
-          importStatus.textContent = 'No se encontraron filas válidas en el archivo (códigos que existan en inventory_skus).';
-          return;
-        }
-
-        // 6) Insertar (sin upsert)
-        const { error } = await client
-          .from('import_gbol_stock')
-          .insert(payload);
-
-        if (error) throw error;
-
-        importStatus.textContent = `Importación completada. Filas guardadas: ${payload.length}`;
-      } catch (error) {
-        console.error('Error al importar stock', error);
-        importStatus.textContent = 'Error al importar stock. Verificá el archivo.';
-      }
-    }
-
     async function handleOrderClick(row, buttonEl) {
       const faltanteIdeal = Math.max(row.stockIdeal - row.stockActual, 0);
       const cantidad = row.solicitudOperativa > 0 ? row.solicitudOperativa : faltanteIdeal;
+
       if (cantidad <= 0) {
-        alert('No hay cantidad pendiente para ordenar.');
+        alert('No hay cantidad pendiente para ordenar (Stock actual cubre el ideal).');
         return;
       }
 
@@ -347,9 +525,10 @@
         });
         if (error) throw error;
 
-        // Opcional: marcar solicitudes como ordenadas
+        // Actualizar solicitud operativa a ORDERED si existía
         try {
-          await client.from('stock_requests')
+          await client
+            .from('stock_requests')
             .update({ status: 'ORDERED' })
             .eq('sku_id', row.skuId)
             .eq('status', 'PENDING');
@@ -358,6 +537,8 @@
         }
 
         buttonEl.textContent = 'Orden generada';
+        // Opcional: recargar datos
+        // await loadData(); 
       } catch (error) {
         console.error('Error al generar orden', error);
         buttonEl.disabled = false;
