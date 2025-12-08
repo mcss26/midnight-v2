@@ -32,12 +32,14 @@
   </header>
 
   <main class="admin-container">
+    <!-- Volver -->
     <div class="mb-2">
       <button class="btn-back" type="button" onclick="window.location.href='administracion-index.html'">
         Volver
       </button>
     </div>
 
+    <!-- Título principal -->
     <section class="section-header">
       <h1 class="section-title">ÓRDENES &amp; CALENDARIO</h1>
       <p class="section-desc">
@@ -45,40 +47,50 @@
       </p>
     </section>
 
-    <!-- Filtros globales -->
-    <section class="section-header" style="flex-direction:column; align-items:stretch; gap:10px; text-align:left;">
-      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
-        <div style="flex:1; min-width:220px; max-width:360px;">
-          <input
-            type="text"
-            id="searchInput"
-            class="search-input-admin"
-            placeholder="Buscar por proveedor, insumo o concepto..."
-            oninput="renderAllOrders()"
-          />
-        </div>
+    <!-- Estado global -->
+    <div id="ordersStatus" class="section-desc" style="margin-top:8px; text-align:center;"></div>
 
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:flex-end; font-size:11px; color:var(--text-secondary);">
-          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-            <span>Stock:</span>
-            <button type="button" class="btn-secondary" onclick="setStatusFilter('ALL')">Todas</button>
-            <button type="button" class="btn-secondary" onclick="setStatusFilter('PENDING')">Pend.</button>
-            <button type="button" class="btn-secondary" onclick="setStatusFilter('APPROVED')">Aprob.</button>
-            <button type="button" class="btn-secondary" onclick="setStatusFilter('REALIZED')">Emit.</button>
+    <!-- Filtros globales -->
+    <section class="mt-3">
+      <div class="summary-card">
+        <div class="summary-row" style="flex-wrap:wrap; align-items:flex-end; gap:12px;">
+          <!-- Buscador -->
+          <div style="flex:1; min-width:240px;">
+            <label class="input-label" for="searchInput">BÚSQUEDA</label>
+            <input
+              type="text"
+              id="searchInput"
+              class="search-input-admin"
+              placeholder="Buscar por proveedor, insumo o concepto..."
+              oninput="renderAllOrders()"
+            />
           </div>
 
-          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-            <span>OPEX:</span>
-            <button type="button" class="btn-secondary" onclick="setPoStatusFilter('ALL')">Todas</button>
-            <button type="button" class="btn-secondary" onclick="setPoStatusFilter('PENDING')">Pend.</button>
-            <button type="button" class="btn-secondary" onclick="setPoStatusFilter('PAID')">Pagadas</button>
-            <button type="button" class="btn-secondary" onclick="setPoStatusFilter('CANCELLED')">Canceladas</button>
+          <!-- Filtros de estado -->
+          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width:260px;">
+            <div style="font-size:11px;" class="text-muted">
+              Estado — Órdenes de stock
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+              <button type="button" class="btn-secondary" onclick="setStatusFilter('ALL')">Todas</button>
+              <button type="button" class="btn-secondary" onclick="setStatusFilter('PENDING')">Pendientes</button>
+              <button type="button" class="btn-secondary" onclick="setStatusFilter('APPROVED')">Aprobadas</button>
+              <button type="button" class="btn-secondary" onclick="setStatusFilter('REALIZED')">Emitidas</button>
+            </div>
+
+            <div style="font-size:11px; margin-top:4px;" class="text-muted">
+              Estado — Órdenes sin stock (OPEX / G&amp;A)
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+              <button type="button" class="btn-secondary" onclick="setPoStatusFilter('ALL')">Todas</button>
+              <button type="button" class="btn-secondary" onclick="setPoStatusFilter('PENDING')">Pendientes</button>
+              <button type="button" class="btn-secondary" onclick="setPoStatusFilter('PAID')">Pagadas</button>
+              <button type="button" class="btn-secondary" onclick="setPoStatusFilter('CANCELLED')">Canceladas</button>
+            </div>
           </div>
         </div>
       </div>
     </section>
-
-    <div id="ordersStatus" class="section-desc"></div>
 
     <!-- BLOQUE A: ÓRDENES DE STOCK (COD) -->
     <section class="mt-3">
@@ -93,18 +105,19 @@
         <table class="sku-table" aria-label="Órdenes de stock y calendario de pagos">
           <thead>
             <tr>
+              <th>ORDEN</th>
               <th>VENCIMIENTO</th>
               <th>PROVEEDOR</th>
               <th>CENTRO COSTO</th>
-              <th>CONCEPTO</th>
-              <th class="text-right">TOTAL</th>
+              <th>INSUMO</th>
+              <th>TOTAL</th>
               <th>ESTADO</th>
-              <th class="text-right">ACCIONES</th>
+              <th>ACCIONES</th>
             </tr>
           </thead>
           <tbody id="ordersTableBody">
             <tr>
-              <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              <td colspan="8" style="text-align:center; padding:40px; color:var(--text-secondary);">
                 Cargando órdenes de stock...
               </td>
             </tr>
@@ -125,21 +138,23 @@
           </p>
         </div>
 
-        <button type="button" class="btn-primary" id="newPoBtn" onclick="openPoCreateModal()">
-          Nueva orden OPEX / G&amp;A
-        </button>
+        <div>
+          <button type="button" class="btn-primary" id="newPoBtn" onclick="openPoCreateModal()">
+            Nueva orden OPEX / G&amp;A
+          </button>
+        </div>
       </div>
 
-      <!-- Resumen por centro de costo (purchase_orders) -->
-      <div id="ordersSummary" class="stock-summary"></div>
+      <!-- Resumen por centro de costo (solo purchase_orders) -->
+      <div id="ordersSummary" class="stock-summary" style="margin-top:12px;"></div>
 
       <!-- Automatización de fijos -->
       <div class="summary-card" style="margin-top: 8px;">
         <div class="summary-row" style="flex-wrap: wrap; align-items: flex-end; gap: 8px;">
           <div style="flex:1; min-width: 200px;">
-            <span class="text-muted">Generar órdenes fijas desde proveedores</span>
+            <span class="text-muted">Generar órdenes FIJAS desde proveedores</span>
             <div class="row-sub-text">
-              Usa proveedores activos con cost_type = FIJO y fixed_amount &gt; 0. No duplica AUTO_FIXED para misma fecha.
+              Usa cost_type = FIJO y fixed_amount de cada proveedor activo. No duplica órdenes AUTO_FIXED para la misma fecha.
             </div>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
@@ -179,18 +194,20 @@
         <table class="sku-table" aria-label="Órdenes sin stock y calendario de pagos">
           <thead>
             <tr>
+              <th>ORDEN</th>
               <th>VENCIMIENTO</th>
               <th>PROVEEDOR</th>
               <th>CENTRO COSTO</th>
               <th>CONCEPTO</th>
-              <th class="text-right">TOTAL</th>
+              <th>TOTAL</th>
+              <th>TIPO</th>
               <th>ESTADO</th>
-              <th class="text-right">ACCIONES</th>
+              <th>ACCIONES</th>
             </tr>
           </thead>
           <tbody id="poTableBody">
             <tr>
-              <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+              <td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">
                 Cargando órdenes sin stock...
               </td>
             </tr>
@@ -341,7 +358,7 @@
       if (stockTBody) {
         stockTBody.innerHTML = `
           <tr>
-            <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+            <td colspan="8" style="text-align:center; padding:40px; color:var(--text-secondary);">
               Cargando órdenes de stock...
             </td>
           </tr>
@@ -350,7 +367,7 @@
       if (poTBody) {
         poTBody.innerHTML = `
           <tr>
-            <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+            <td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">
               Cargando órdenes sin stock...
             </td>
           </tr>
@@ -417,7 +434,7 @@
         if (stockTBody) {
           stockTBody.innerHTML = `
             <tr>
-              <td colspan="7" style="text-align:center; padding:40px; color:var(--state-error);">
+              <td colspan="8" style="text-align:center; padding:40px; color:var(--state-error);">
                 Error al cargar órdenes de stock.
               </td>
             </tr>
@@ -426,7 +443,7 @@
         if (poTBody) {
           poTBody.innerHTML = `
             <tr>
-              <td colspan="7" style="text-align:center; padding:40px; color:var(--state-error);">
+              <td colspan="9" style="text-align:center; padding:40px; color:var(--state-error);">
                 Error al cargar órdenes sin stock.
               </td>
             </tr>
@@ -473,7 +490,7 @@
       if (!list.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+            <td colspan="8" style="text-align:center; padding:40px; color:var(--text-secondary);">
               No hay órdenes de stock para los filtros actuales.
             </td>
           </tr>
@@ -484,21 +501,13 @@
       tbody.innerHTML = list.map(o => {
         const createdDate = o.created_at ? o.created_at.split('T')[0] : '-';
         const dueDateValue = o.due_date || '';
-        const dueDateLabel = dueDateValue || 'Sin definir';
+        const dueDateLabel = dueDateValue || '—';
 
         const supplier = o.supplier;
         const provName = supplier
           ? (supplier.legal_name || supplier.name)
           : 'SIN PROVEEDOR';
         const cuit = supplier?.cuit || '-';
-
-        const bankLine = supplier
-          ? [
-              supplier.bank_name || '',
-              supplier.bank_account_alias || '',
-              supplier.bank_account_cbu || ''
-            ].filter(Boolean).join(' / ')
-          : '';
 
         const costCenter = supplier?.cost_center || null;
         let ccLabel = costCenter || '—';
@@ -510,6 +519,7 @@
         const supplierInactive = supplier && supplier.is_active === false;
 
         const skuName = o.sku?.name || 'SKU eliminado';
+
         const qty = Number(o.quantity) || 0;
         const total = Number(o.total_cost) || 0;
         const totalFmt = formatCurrencyLocal(total);
@@ -532,38 +542,40 @@
 
         return `
           <tr>
-            <td style="width:190px;">
+            <td>
+              <div class="row-title">#${o.id}</div>
+              <div class="row-sub-text">Creada: ${createdDate}</div>
+            </td>
+            <td style="text-align:center;">
               <input
                 type="date"
                 class="table-input"
                 value="${dueDateValue}"
                 onchange="updateDueDate(${o.id}, this.value)"
-                style="max-width: 160px;"
+                style="max-width: 140px;"
               />
-              <div class="row-sub-text">Vence: ${dueDateLabel}</div>
-              <div class="row-sub-text">Creada: ${createdDate} · #${o.id}</div>
+              <div class="row-sub-text">${dueDateLabel === '—' ? 'Sin definir' : 'Vence: ' + dueDateLabel}</div>
             </td>
             <td>
               <div class="row-title">${provName}</div>
               <div class="row-sub-text">CUIT: ${cuit}</div>
-              ${bankLine ? `<div class="row-sub-text">${bankLine}</div>` : ''}
               ${supplierInactive ? '<div class="row-sub-text text-danger">Proveedor inactivo</div>' : ''}
             </td>
-            <td class="text-center">
+            <td style="text-align:center;">
               <span class="tag tag-small ${ccClass}">${ccLabel}</span>
             </td>
             <td>
               <div class="row-title">${skuName}</div>
-              <div class="row-sub-text">Cantidad: ${qty}</div>
+              <div class="row-sub-text">${qty ? qty + ' u.' : ''}</div>
             </td>
-            <td class="col-costo text-right">
+            <td class="col-costo">
               ${totalFmt}
             </td>
             <td>
               <span class="tag ${statusClass}">${statusLabel}</span>
             </td>
-            <td class="text-right">
-              <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+            <td>
+              <div style="display:flex; flex-direction:column; gap:6px;">
                 <button
                   type="button"
                   class="btn-secondary"
@@ -656,7 +668,7 @@
         updatePoSummary([]);
         tbody.innerHTML = `
           <tr>
-            <td colspan="7" style="text-align:center; padding:40px; color:var(--text-secondary);">
+            <td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">
               No hay órdenes sin stock para los filtros actuales.
             </td>
           </tr>
@@ -669,7 +681,7 @@
       tbody.innerHTML = list.map(o => {
         const createdDate = o.created_at ? o.created_at.split('T')[0] : '-';
         const dueDateValue = o.due_date || '';
-        const dueDateLabel = dueDateValue || 'Sin definir';
+        const dueDateLabel = dueDateValue || '—';
 
         const supplier = o.supplier;
         const provName = supplier
@@ -709,46 +721,48 @@
         }
 
         const tipoLabel = o.is_fixed ? 'FIJO' : 'VARIABLE';
-        const tipoTagClass = o.is_fixed ? 'tag-gold' : 'tag-blue';
 
         const canMarkPaid = normStatus !== 'PAID' && normStatus !== 'CANCELLED';
         const canCancel = normStatus !== 'CANCELLED';
 
         return `
           <tr>
-            <td style="width:190px;">
+            <td>
+              <div class="row-title">#${o.id}</div>
+              <div class="row-sub-text">Creada: ${createdDate}</div>
+            </td>
+            <td style="text-align:center;">
               <input
                 type="date"
                 class="table-input"
                 value="${dueDateValue}"
                 onchange="updatePoDueDate(${o.id}, this.value)"
-                style="max-width: 160px;"
+                style="max-width: 140px;"
               />
-              <div class="row-sub-text">Vence: ${dueDateLabel}</div>
-              <div class="row-sub-text">Creada: ${createdDate} · #${o.id}</div>
+              <div class="row-sub-text">${dueDateLabel === '—' ? 'Sin definir' : 'Vence: ' + dueDateLabel}</div>
             </td>
             <td>
               <div class="row-title">${provName}</div>
               <div class="row-sub-text">CUIT: ${cuit}</div>
               ${supplierInactive ? '<div class="row-sub-text text-danger">Proveedor inactivo</div>' : ''}
             </td>
-            <td class="text-center">
+            <td style="text-align:center;">
               <span class="tag tag-small ${ccClass}">${ccLabel}</span>
             </td>
             <td>
               <div class="row-title">${concept}</div>
-              <div class="row-sub-text">
-                <span class="tag tag-small ${tipoTagClass}">${tipoLabel}</span>
-              </div>
             </td>
-            <td class="col-costo text-right">
+            <td class="col-costo">
               ${totalFmt}
+            </td>
+            <td>
+              <span class="tag tag-small ${o.is_fixed ? 'tag-gold' : 'tag-blue'}">${tipoLabel}</span>
             </td>
             <td>
               <span class="tag ${statusClass}">${statusLabel}</span>
             </td>
-            <td class="text-right">
-              <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+            <td>
+              <div style="display:flex; flex-direction:column; gap:6px;">
                 <button
                   type="button"
                   class="btn-primary"
