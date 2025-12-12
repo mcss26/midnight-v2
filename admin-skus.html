@@ -11,21 +11,14 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
-
-  <style>
-    .hidden { display: none !important; }
-  </style>
 </head>
 <body>
 
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        
-        <div style="display:flex; align-items:center;">
-          <button class="btn-back" type="button" onclick="window.location.href='panel-master.html'">
-            VOLVER
-          </button>
+        <div>
+          <button class="btn-back" type="button" onclick="window.location.href='panel-master.html'">VOLVER</button>
         </div>
 
         <div class="admin-logo" aria-hidden="true"></div>
@@ -33,72 +26,61 @@
         <div class="admin-header-right">
           <span class="session-chip">Master Data</span>
         </div>
-
       </div>
     </div>
   </header>
 
   <main class="admin-container">
-    
+
     <section class="section-header">
       <h1 class="section-title">MAESTRO DE INSUMOS</h1>
-      <p class="section-desc">
-        Gestión de artículos, costos y asignación de proveedores.
-      </p>
+      <p class="section-desc">Gestión de artículos, costos y asignación de proveedores.</p>
     </section>
 
-    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; margin-bottom:20px;">
-      
-      <div style="display:flex; gap:12px; align-items:center; flex:1; min-width: 280px;">
-        <input
-          id="searchSkus"
-          class="search-input-admin"
-          type="text"
-          placeholder="🔍 Buscar por nombre o código..."
-        />
-        <label class="input-label" style="margin:0; display:flex; align-items:center; gap:6px; white-space:nowrap; cursor:pointer;">
-          <input type="checkbox" id="showInactive" /> Ver inactivos
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <input id="searchSkus" class="search-input-admin" type="text" placeholder="🔍 Buscar por nombre o código..." />
+        <label class="toolbar-check input-label" for="showInactive">
+          <input type="checkbox" id="showInactive" />
+          Ver inactivos
         </label>
       </div>
 
-      <div style="display:flex; gap:10px;">
+      <div class="toolbar-right">
         <input type="file" id="xlsxInput" accept=".xlsx,.xls" hidden />
-        <button class="btn-secondary" type="button" id="importSkusBtn">
-          IMPORTAR EXCEL
-        </button>
-        <button class="btn-primary" type="button" id="newSkuBtn">
-          + NUEVO SKU
-        </button>
+        <button class="btn-secondary" type="button" id="importSkusBtn">IMPORTAR EXCEL</button>
+        <button class="btn-primary" type="button" id="newSkuBtn">+ NUEVO SKU</button>
       </div>
     </div>
 
     <nav class="tab-nav" id="categoryTabs">
       <button type="button" class="tab-btn active" data-cat="ALL">TODOS</button>
       <button type="button" class="tab-btn" data-cat="BEBIDAS">BEBIDAS</button>
-      <button type="button" class="tab-btn" data-cat="INSUMOS_BARRA">INSUMOS BARRA</button>
+      <button type="button" class="tab-btn" data-cat="INSUMOS BARRA">INSUMOS BARRA</button>
       <button type="button" class="tab-btn" data-cat="LIMPIEZA">LIMPIEZA</button>
       <button type="button" class="tab-btn" data-cat="LIBRERIA">LIBRERÍA</button>
       <button type="button" class="tab-btn" data-cat="MANTENIMIENTO">MANTENIMIENTO</button>
       <button type="button" class="tab-btn" data-cat="OTROS">OTROS</button>
     </nav>
 
-    <div id="skusStatus" class="section-desc" style="margin-bottom:10px; height:20px;"></div>
+    <div id="skusStatus" class="inline-status status-line"></div>
 
     <div class="table-container">
       <table class="sku-table" id="skuTable">
         <thead>
           <tr>
-            <th style="padding-left:20px;">INSUMO</th>
+            <th class="cell-pl">INSUMO</th>
             <th>FORMATO</th>
-            <th class="text-center" style="width:100px;">STOCK IDEAL</th>
+            <th class="text-center col-ideal">STOCK IDEAL</th>
+            <th class="text-center col-bc">BC</th>
             <th>PROVEEDOR PREFERIDO</th>
             <th class="text-right">COSTO UN.</th>
             <th class="text-right">COSTO PACK</th>
-            <th class="text-right" style="padding-right:20px;">ACCIONES</th>
+            <th class="text-right cell-pr col-actions">ACCIONES</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td colspan="7" class="text-center text-muted" style="padding:40px;">Cargando inventario...</td></tr>
+          <tr><td colspan="8" class="text-center text-muted" style="padding:40px;">Cargando inventario...</td></tr>
         </tbody>
       </table>
     </div>
@@ -108,19 +90,19 @@
   <div class="modal-overlay" id="skuModal">
     <div class="modal-box">
       <div class="modal-header">
-        <h2 class="section-title" style="font-size:18px; margin:0;" id="modalTitle">NUEVO SKU</h2>
+        <h2 class="section-title" id="modalTitle">NUEVO SKU</h2>
       </div>
 
       <form id="skuForm" onsubmit="event.preventDefault();">
         <input type="hidden" id="skuId" />
         <input type="hidden" id="skuFamily" />
 
-        <div style="margin-bottom:16px;">
+        <div class="box-soft" style="margin-bottom:16px;">
           <label class="input-label">NOMBRE DEL INSUMO</label>
           <input id="skuName" class="modal-input" type="text" placeholder="Ej: VODKA ABSOLUT 750ML" required />
         </div>
 
-        <div style="display:flex; gap:12px; margin-bottom:12px;">
+        <div class="toolbar toolbar--start toolbar--tight" style="margin-bottom:12px;">
           <div style="flex:1;">
             <label class="input-label">CÓDIGO EXTERNO</label>
             <input id="skuCode" class="modal-input" type="text" placeholder="Ej: 7791234..." />
@@ -138,41 +120,41 @@
           </div>
         </div>
 
-        <div id="drinkFields" style="background:rgba(56, 189, 248, 0.05); padding:12px; border-radius:8px; border:1px dashed var(--accent-blue); margin-bottom:12px;">
-            <div class="input-label" style="color:var(--accent-blue); margin-bottom:10px;">CONFIGURACIÓN DE BEBIDA</div>
-            
-            <div style="display:flex; gap:12px; margin-bottom:10px;">
-                <div style="flex:1;">
-                    <label class="input-label">UNIDAD BASE</label>
-                    <select id="skuBaseUnit" class="modal-select">
-                        <option value="BOTELLA">BOTELLA</option>
-                        <option value="LATA">LATA</option>
-                        <option value="UNIDAD">UNIDAD (Suelto)</option>
-                    </select>
-                </div>
-                <div style="flex:1;">
-                    <label class="input-label">PRESENTACIÓN DE COMPRA</label>
-                    <select id="skuMode" class="modal-select" onchange="updateDrinkMode()">
-                        <option value="UNITARIO">UNITARIO (Suelto)</option>
-                        <option value="PACK">PACK / CAJA CERRADA</option>
-                    </select>
-                </div>
-            </div>
+        <div id="drinkFields" class="box-soft box-info-blue" style="margin-bottom:12px;">
+          <div class="input-label" style="color:var(--accent-blue); margin-bottom:10px;">CONFIGURACIÓN DE BEBIDA</div>
 
-            <div id="packConfig" style="display:flex; gap:12px;">
-                <div style="flex:1;">
-                    <label class="input-label">UNIDADES POR PACK</label>
-                    <input id="skuPackSize" class="modal-input" type="number" min="2" placeholder="Ej: 6, 12, 24" />
-                </div>
-                <div style="flex:1; display:flex; align-items:center;">
-                    <div style="font-size:11px; color:var(--text-secondary); line-height:1.3;">
-                        Se ingresan <b>PACKS</b> en la compra, pero el stock se suma en <b>UNIDADES</b>.
-                    </div>
-                </div>
+          <div class="toolbar toolbar--start toolbar--tight" style="margin-bottom:10px;">
+            <div style="flex:1;">
+              <label class="input-label">UNIDAD BASE</label>
+              <select id="skuBaseUnit" class="modal-select">
+                <option value="BOTELLA">BOTELLA</option>
+                <option value="LATA">LATA</option>
+                <option value="UNIDAD">UNIDAD (Suelto)</option>
+              </select>
             </div>
+            <div style="flex:1;">
+              <label class="input-label">PRESENTACIÓN DE COMPRA</label>
+              <select id="skuMode" class="modal-select" onchange="updateDrinkMode()">
+                <option value="UNITARIO">UNITARIO (Suelto)</option>
+                <option value="PACK">PACK / CAJA CERRADA</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="packConfig">
+            <div class="toolbar toolbar--start toolbar--tight">
+              <div style="flex:1;">
+                <label class="input-label">UNIDADES POR PACK</label>
+                <input id="skuPackSize" class="modal-input" type="number" min="2" placeholder="Ej: 6, 12, 24" />
+              </div>
+              <div style="flex:1;" class="small-note">
+                Se ingresan <b>PACKS</b> en la compra, pero el stock se suma en <b>UNIDADES</b>.
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div style="display:flex; gap:12px; margin-bottom:12px;">
+        <div class="toolbar toolbar--start toolbar--tight" style="margin-bottom:12px;">
           <div style="flex:1;">
             <label class="input-label">VOLUMEN POR UNIDAD (ML)</label>
             <input id="skuVolume" class="modal-input" type="number" placeholder="Ej: 750" />
@@ -183,16 +165,51 @@
           </div>
         </div>
 
-        <div style="margin-bottom:12px;">
-            <label class="input-label">PROVEEDOR PREFERIDO</label>
-            <select id="skuPreferredSupplier" class="modal-select">
-              <option value="">Sin asignar</option>
-            </select>
+        <div class="box-soft" style="margin-bottom:12px;">
+          <label class="input-label">PROVEEDOR PREFERIDO</label>
+          <select id="skuPreferredSupplier" class="modal-select">
+            <option value="">Sin asignar</option>
+          </select>
         </div>
 
-        <div style="margin-top:20px; display:flex; align-items:center; gap:8px;">
-          <input type="checkbox" id="skuIsActive" checked />
-          <label for="skuIsActive" class="input-label" style="margin:0; cursor:pointer;">SKU Activo</label>
+        <!-- BARCODES -->
+        <div class="box-soft" id="barcodeSection">
+          <div class="staff-lib-header">
+            <div>
+              <h3 class="dash-title">BARCODES</h3>
+              <p class="section-desc">Asociá códigos de escaneo a este SKU.</p>
+            </div>
+            <span class="tag tag-gray" id="barcodeCountTag">0</span>
+          </div>
+
+          <div id="barcodeStatus" class="inline-status" style="margin-bottom:10px;"></div>
+
+          <div id="barcodeList" class="preview-box"></div>
+
+          <div class="toolbar toolbar--start toolbar--tight" style="margin-top:12px;">
+            <div style="flex:1;">
+              <label class="input-label">CÓDIGO</label>
+              <input id="barcodeNew" class="modal-input" type="text" placeholder="Escaneá o pegá el código..." />
+            </div>
+            <div class="input-sm">
+              <label class="input-label">MULT.</label>
+              <input id="barcodeMult" class="modal-input" type="number" min="1" value="1" />
+            </div>
+            <div style="align-self:flex-end;">
+              <button type="button" class="btn-primary" id="btnAddBarcode" onclick="addBarcode()">AGREGAR</button>
+            </div>
+          </div>
+
+          <p class="text-muted" style="margin-top:10px;">
+            Tip: Para packs, usá MULT = 6/12/24 según corresponda.
+          </p>
+        </div>
+
+        <div class="toolbar toolbar--start toolbar--tight" style="margin-top:16px;">
+          <label class="toolbar-check input-label" for="skuIsActive">
+            <input type="checkbox" id="skuIsActive" checked />
+            SKU Activo
+          </label>
         </div>
 
         <div class="modal-btns">
@@ -208,18 +225,26 @@
     let allSkus = [];
     let allSuppliers = [];
     let stockBySku = new Map();
+    let barcodeCountBySku = new Map();
+    let barcodesBySku = new Map();
+
     let currentCategory = 'ALL';
-    
+
     // UI Refs
     const tbody = document.querySelector('#skuTable tbody');
     const statusEl = document.getElementById('skusStatus');
     const searchInput = document.getElementById('searchSkus');
     const checkInactive = document.getElementById('showInactive');
-    
+
     // Modal Refs
     const modal = document.getElementById('skuModal');
     const modalTitle = document.getElementById('modalTitle');
     const xlsxInput = document.getElementById('xlsxInput');
+
+    const barcodeSection = document.getElementById('barcodeSection');
+    const barcodeListEl = document.getElementById('barcodeList');
+    const barcodeStatusEl = document.getElementById('barcodeStatus');
+    const barcodeCountTag = document.getElementById('barcodeCountTag');
 
     // --- INICIALIZACIÓN ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -231,11 +256,11 @@
       searchInput.addEventListener('input', renderTable);
       checkInactive.addEventListener('change', renderTable);
 
-      document.querySelectorAll('.tab-btn').forEach(btn => {
+      document.querySelectorAll('#categoryTabs .tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          e.target.classList.add('active');
-          currentCategory = e.target.dataset.cat;
+          document.querySelectorAll('#categoryTabs .tab-btn').forEach(b => b.classList.remove('active'));
+          e.currentTarget.classList.add('active');
+          currentCategory = e.currentTarget.dataset.cat;
           renderTable();
         });
       });
@@ -249,22 +274,32 @@
     async function loadData() {
       statusEl.textContent = 'Actualizando datos...';
       try {
-        const [resSkus, resStock, resSupp] = await Promise.all([
+        const [resSkus, resStock, resSupp, resBarcodes] = await Promise.all([
           client.from('inventory_skus')
             .select('id, name, external_id, category, family, unit_type, volume_ml, cost_price, preferred_supplier_id, is_active, pack_size, unit_label, pack_cost')
             .order('name'),
           client.from('inventory_stock').select('sku_id, stock_ideal'),
-          client.from('suppliers').select('id, name').eq('is_active', true).order('name')
+          client.from('suppliers').select('id, name').eq('is_active', true).order('name'),
+          client.from('inventory_barcodes').select('sku_id, is_active')
         ]);
 
         if (resSkus.error) throw resSkus.error;
-        
+        if (resStock.error) throw resStock.error;
+        if (resSupp.error) throw resSupp.error;
+        // resBarcodes puede fallar si la tabla/cols no están exactas aún -> no frenar todo
+        if (resBarcodes && resBarcodes.error) console.warn('Barcodes load warn:', resBarcodes.error);
+
         allSkus = resSkus.data || [];
         allSuppliers = resSupp.data || [];
-        
+
         stockBySku.clear();
-        (resStock.data || []).forEach(row => {
-          stockBySku.set(row.sku_id, row.stock_ideal);
+        (resStock.data || []).forEach(row => stockBySku.set(row.sku_id, Number(row.stock_ideal) || 0));
+
+        barcodeCountBySku.clear();
+        (resBarcodes.data || []).forEach(r => {
+          if (r.is_active === false) return;
+          const prev = barcodeCountBySku.get(r.sku_id) || 0;
+          barcodeCountBySku.set(r.sku_id, prev + 1);
         });
 
         populateSupplierSelect();
@@ -274,7 +309,7 @@
       } catch (err) {
         console.error(err);
         statusEl.textContent = 'Error de conexión.';
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Error al cargar datos.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted" style="padding:40px;">Error al cargar datos.</td></tr>`;
       }
     }
 
@@ -289,55 +324,47 @@
     // --- LÓGICA DE UI (MODAL DINÁMICO) ---
     function updateFormUI() {
       const cat = document.getElementById('skuCategory').value;
-      const drinkFields = document.getElementById('drinkFields');
-      
-      if (cat === 'BEBIDAS') {
-        drinkFields.classList.remove('hidden');
-        updateDrinkMode();
-      } else {
-        drinkFields.classList.add('hidden');
-      }
+      const drinkFieldsEl = document.getElementById('drinkFields');
+      drinkFieldsEl.hidden = (cat !== 'BEBIDAS');
+      if (cat === 'BEBIDAS') updateDrinkMode();
     }
 
     function updateDrinkMode() {
       const mode = document.getElementById('skuMode').value;
       const packConfig = document.getElementById('packConfig');
-      
-      if (mode === 'PACK') {
-        packConfig.classList.remove('hidden');
-      } else {
-        packConfig.classList.add('hidden');
-        document.getElementById('skuPackSize').value = '';
-      }
+      packConfig.hidden = (mode !== 'PACK');
+      if (mode !== 'PACK') document.getElementById('skuPackSize').value = '';
     }
 
     // --- RENDERIZADO ---
     function renderTable() {
-      const term = searchInput.value.toLowerCase();
+      const term = (searchInput.value || '').toLowerCase().trim();
       const showOff = checkInactive.checked;
 
       const filtered = allSkus.filter(sku => {
         if (!showOff && !sku.is_active) return false;
+
         if (currentCategory !== 'ALL') {
-          if (currentCategory === 'INSUMOS_BARRA') {
-            if (!['INSUMOS BARRA', 'INSUMOS', 'DESCARTABLES'].includes(sku.category)) return false;
-          } else if (currentCategory === 'OTROS') {
+          if (currentCategory === 'OTROS') {
             if (['BEBIDAS','INSUMOS BARRA','LIMPIEZA','LIBRERIA','MANTENIMIENTO'].includes(sku.category)) return false;
           } else {
             if (sku.category !== currentCategory) return false;
           }
         }
-        return sku.name.toLowerCase().includes(term) || (sku.external_id || '').toLowerCase().includes(term);
+
+        const nameOk = sku.name.toLowerCase().includes(term);
+        const codeOk = (sku.external_id || '').toLowerCase().includes(term);
+        return !term ? true : (nameOk || codeOk);
       });
 
       if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding:30px;">No hay resultados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted" style="padding:30px;">No hay resultados.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = filtered.map(sku => {
         const stockIdeal = stockBySku.get(sku.id) || 0;
-        const statusTag = !sku.is_active ? '<span class="tag tag-red tag-small">OFF</span>' : '';
+        const statusTag = !sku.is_active ? '<span class="tag tag-red">OFF</span>' : '';
 
         let mainLine = '';
         let subLine = '';
@@ -361,10 +388,10 @@
           subLine = '';
         }
 
-        const volHtml = subLine ? `<div class="row-sub-text">${subLine}</div>` : '';
+        const volHtml = subLine ? `<div class="row-sub-text">${escapeHtml(subLine)}</div>` : '';
 
-        const supplierOptions = allSuppliers.map(s => 
-          `<option value="${s.id}" ${sku.preferred_supplier_id === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
+        const supplierOptions = allSuppliers.map(s =>
+          `<option value="${s.id}" ${String(sku.preferred_supplier_id) === String(s.id) ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
         ).join('');
 
         let packCostDisplay = '-';
@@ -373,40 +400,48 @@
           if (packCost == null && sku.cost_price != null) {
             const size = Number(sku.pack_size);
             const cost = Number(sku.cost_price);
-            if (!Number.isNaN(size) && !Number.isNaN(cost)) {
-              packCost = size * cost;
-            }
+            if (!Number.isNaN(size) && !Number.isNaN(cost)) packCost = size * cost;
           }
-          if (packCost != null) {
-            packCostDisplay = MC_UTILS.formatCurrency(packCost);
-          }
+          if (packCost != null) packCostDisplay = MC_UTILS.formatCurrency(packCost);
         }
+
+        const bcCount = barcodeCountBySku.get(sku.id) || 0;
+        const bcTag = bcCount > 0
+          ? `<span class="tag tag-blue">${bcCount}</span>`
+          : `<span class="tag tag-gray">0</span>`;
 
         return `
           <tr>
-            <td style="padding-left:20px;">
+            <td class="cell-pl">
               <div class="row-title">${escapeHtml(sku.name)} ${statusTag}</div>
-              <div class="row-sub-text">COD: ${sku.external_id || '-'}</div>
+              <div class="row-sub-text">COD: ${escapeHtml(sku.external_id || '-')}</div>
             </td>
+
             <td>
-              <div style="font-size:12px; font-weight:600;">${mainLine}</div>
+              <div class="row-title">${mainLine}</div>
               ${volHtml}
             </td>
-            <td class="text-center">
-              <input type="number" class="table-input" value="${stockIdeal}" 
-                onchange="updateInline(${sku.id}, 'stock_ideal', this.value)" 
-                style="max-width:80px; font-weight:700;">
+
+            <td class="text-center col-ideal">
+              <input type="number" class="table-input table-input--narrow" value="${stockIdeal}"
+                onchange="updateInline(${sku.id}, 'stock_ideal', this.value)">
             </td>
+
+            <td class="text-center col-bc">${bcTag}</td>
+
             <td>
-              <select class="table-input" style="text-align:left; width:100%; color:var(--text-secondary);"
+              <select class="table-input table-select"
                 onchange="updateInline(${sku.id}, 'supplier', this.value)">
                 <option value="">--</option>
                 ${supplierOptions}
               </select>
             </td>
+
             <td class="col-costo text-right">${MC_UTILS.formatCurrency(sku.cost_price)}</td>
             <td class="col-costo text-right">${packCostDisplay}</td>
-            <td class="text-right" style="padding-right:20px;">
+
+            <td class="text-right cell-pr col-actions">
+              <button class="btn-icon" onclick="openModal(${sku.id}, 'barcodes')" title="Barcodes">🏷️</button>
               <button class="btn-icon" onclick="openModal(${sku.id})" title="Editar">✏️</button>
             </td>
           </tr>
@@ -425,6 +460,7 @@
           );
           if (error) throw error;
           stockBySku.set(id, num);
+
         } else if (field === 'supplier') {
           const suppId = value ? parseInt(value, 10) : null;
           const { error } = await client.from('inventory_skus').update({ preferred_supplier_id: suppId }).eq('id', id);
@@ -438,151 +474,307 @@
       }
     }
 
-    function openModal(id = null) {
-        const form = document.getElementById('skuForm');
-        form.reset();
-        
-        if (id) {
-            const sku = allSkus.find(s => s.id === id);
-            document.getElementById('skuId').value = sku.id;
-            document.getElementById('modalTitle').innerText = 'EDITAR SKU';
-            
-            document.getElementById('skuName').value = sku.name;
-            document.getElementById('skuCode').value = sku.external_id || '';
-            document.getElementById('skuCategory').value = sku.category || 'BEBIDAS';
-            document.getElementById('skuFamily').value = sku.family || ''; 
-            document.getElementById('skuPreferredSupplier').value = sku.preferred_supplier_id || '';
-            document.getElementById('skuVolume').value = sku.volume_ml || '';
-            document.getElementById('skuCost').value = sku.cost_price || '';
-            document.getElementById('skuIsActive').checked = sku.is_active;
+    function openModal(id = null, focus = null) {
+      const form = document.getElementById('skuForm');
+      form.reset();
 
-            if (sku.category === 'BEBIDAS') {
-                document.getElementById('skuBaseUnit').value = sku.unit_type || 'BOTELLA';
-                
-                if (sku.unit_label === 'PACK' && sku.pack_size > 1) {
-                    document.getElementById('skuMode').value = 'PACK';
-                    document.getElementById('skuPackSize').value = sku.pack_size;
-                } else {
-                    document.getElementById('skuMode').value = 'UNITARIO';
-                }
-            }
+      // reset barcode ui
+      barcodeListEl.innerHTML = '';
+      barcodeStatusEl.textContent = '';
+      barcodeCountTag.textContent = '0';
+      document.getElementById('barcodeNew').value = '';
+      document.getElementById('barcodeMult').value = '1';
 
-        } else {
-            document.getElementById('skuId').value = '';
-            document.getElementById('modalTitle').innerText = 'NUEVO SKU';
-            document.getElementById('skuCategory').value = 'BEBIDAS';
-            document.getElementById('skuIsActive').checked = true;
-            document.getElementById('skuBaseUnit').value = 'BOTELLA';
+      if (id) {
+        const sku = allSkus.find(s => s.id === id);
+        document.getElementById('skuId').value = sku.id;
+        modalTitle.innerText = 'EDITAR SKU';
+
+        document.getElementById('skuName').value = sku.name || '';
+        document.getElementById('skuCode').value = sku.external_id || '';
+        document.getElementById('skuCategory').value = sku.category || 'BEBIDAS';
+        document.getElementById('skuFamily').value = sku.family || '';
+        document.getElementById('skuPreferredSupplier').value = sku.preferred_supplier_id || '';
+        document.getElementById('skuVolume').value = sku.volume_ml || '';
+        document.getElementById('skuCost').value = sku.cost_price || '';
+        document.getElementById('skuIsActive').checked = !!sku.is_active;
+
+        if (sku.category === 'BEBIDAS') {
+          document.getElementById('skuBaseUnit').value = sku.unit_type || 'BOTELLA';
+          if (sku.unit_label === 'PACK' && sku.pack_size > 1) {
+            document.getElementById('skuMode').value = 'PACK';
+            document.getElementById('skuPackSize').value = sku.pack_size;
+          } else {
             document.getElementById('skuMode').value = 'UNITARIO';
+          }
         }
-        
-        modal.style.display = 'flex';
-        updateFormUI();
+
+        barcodeSection.hidden = false;
+        loadBarcodesForSku(id).then(() => {
+          if (focus === 'barcodes') {
+            document.getElementById('barcodeNew').focus();
+          }
+        });
+
+      } else {
+        document.getElementById('skuId').value = '';
+        modalTitle.innerText = 'NUEVO SKU';
+        document.getElementById('skuCategory').value = 'BEBIDAS';
+        document.getElementById('skuIsActive').checked = true;
+        document.getElementById('skuBaseUnit').value = 'BOTELLA';
+        document.getElementById('skuMode').value = 'UNITARIO';
+
+        // no barcodes until sku exists
+        barcodeSection.hidden = true;
+      }
+
+      modal.style.display = 'flex';
+      updateFormUI();
     }
 
     function closeSkuModal() { modal.style.display = 'none'; }
 
     async function handleSaveSku() {
-        const id = document.getElementById('skuId').value;
-        const name = document.getElementById('skuName').value.trim().toUpperCase();
-        const cat = document.getElementById('skuCategory').value;
-        
-        if (!name) return alert("El nombre es obligatorio");
+      const id = document.getElementById('skuId').value;
+      const name = (document.getElementById('skuName').value || '').trim().toUpperCase();
+      const cat = document.getElementById('skuCategory').value;
 
-        const rawSupplier = document.getElementById('skuPreferredSupplier').value;
-        const preferredSupplierId = rawSupplier ? parseInt(rawSupplier, 10) : null;
+      if (!name) return alert("El nombre es obligatorio");
 
-        const volumeRaw = document.getElementById('skuVolume').value;
-        const costRaw = document.getElementById('skuCost').value;
+      const rawSupplier = document.getElementById('skuPreferredSupplier').value;
+      const preferredSupplierId = rawSupplier ? parseInt(rawSupplier, 10) : null;
 
-        const payload = {
-            name: name,
-            external_id: document.getElementById('skuCode').value.trim() || null,
-            category: cat,
-            family: document.getElementById('skuFamily').value || null,
-            preferred_supplier_id: preferredSupplierId,
-            volume_ml: volumeRaw ? parseFloat(volumeRaw) : null,
-            cost_price: costRaw ? parseFloat(costRaw) : 0,
-            is_active: document.getElementById('skuIsActive').checked,
-            updated_at: new Date()
-        };
+      const volumeRaw = document.getElementById('skuVolume').value;
+      const costRaw = document.getElementById('skuCost').value;
 
-        if (cat === 'BEBIDAS') {
-            payload.unit_type = document.getElementById('skuBaseUnit').value;
-            const mode = document.getElementById('skuMode').value;
-            
-            if (mode === 'PACK') {
-                const packSizeRaw = document.getElementById('skuPackSize').value;
-                const packSize = packSizeRaw ? parseInt(packSizeRaw, 10) : null;
-                if (!packSize || packSize <= 1) return alert("Si es PACK, ingresa una cantidad mayor a 1.");
-                
-                payload.pack_size = packSize;
-                payload.unit_label = 'PACK';
-            } else {
-                payload.pack_size = null;
-                payload.unit_label = 'UNITARIO';
-            }
+      const payload = {
+        name: name,
+        external_id: (document.getElementById('skuCode').value || '').trim() || null,
+        category: cat,
+        family: document.getElementById('skuFamily').value || null,
+        preferred_supplier_id: preferredSupplierId,
+        volume_ml: volumeRaw ? parseFloat(volumeRaw) : null,
+        cost_price: costRaw ? parseFloat(costRaw) : 0,
+        is_active: document.getElementById('skuIsActive').checked,
+        updated_at: new Date()
+      };
+
+      if (cat === 'BEBIDAS') {
+        payload.unit_type = document.getElementById('skuBaseUnit').value;
+        const mode = document.getElementById('skuMode').value;
+
+        if (mode === 'PACK') {
+          const packSizeRaw = document.getElementById('skuPackSize').value;
+          const packSize = packSizeRaw ? parseInt(packSizeRaw, 10) : null;
+          if (!packSize || packSize <= 1) return alert("Si es PACK, ingresa una cantidad mayor a 1.");
+
+          payload.pack_size = packSize;
+          payload.unit_label = 'PACK';
         } else {
-            payload.unit_type = 'UNIDAD';
-            payload.pack_size = null;
-            payload.unit_label = null;
+          payload.pack_size = null;
+          payload.unit_label = 'UNITARIO';
+        }
+      } else {
+        payload.unit_type = 'UNIDAD';
+        payload.pack_size = null;
+        payload.unit_label = null;
+      }
+
+      const btn = document.querySelector('#skuForm .btn-primary');
+      btn.disabled = true;
+      btn.innerText = "GUARDANDO...";
+
+      try {
+        if (id) {
+          const { error } = await client.from('inventory_skus').update(payload).eq('id', id);
+          if (error) throw error;
+        } else {
+          const { error } = await client.from('inventory_skus').insert(payload);
+          if (error) throw error;
         }
 
-        const btn = document.querySelector('#skuForm .btn-primary');
-        btn.disabled = true; btn.innerText = "GUARDANDO...";
+        closeSkuModal();
+        loadData();
 
-        try {
-            if (id) {
-                const { error } = await client.from('inventory_skus').update(payload).eq('id', id);
-                if (error) throw error;
-            } else {
-                const { error } = await client.from('inventory_skus').insert(payload);
-                if (error) throw error;
-            }
-            
-            closeSkuModal();
-            loadData();
-            
-        } catch (e) {
-            alert("Error al guardar: " + e.message);
-        } finally {
-            btn.disabled = false; btn.innerText = "GUARDAR";
-        }
+      } catch (e) {
+        console.error(e);
+        alert("Error al guardar: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "GUARDAR";
+      }
     }
 
-    function handleXlsxImport(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-            try {
-                const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                let count = 0;
-                for (const row of json) {
-                    const code = row['CODIGO'] || row['Articulo'];
-                    const name = row['NOMBRE'] || row['Detalle'];
-                    if (name) {
-                        const pl = {
-                            name: String(name).toUpperCase().trim(),
-                            external_id: code ? String(code).trim() : null,
-                            cost_price: row['COSTO'] || 0,
-                            is_active: true
-                        };
-                        if (code) await client.from('inventory_skus').upsert(pl, { onConflict: 'external_id' });
-                        else await client.from('inventory_skus').insert(pl);
-                        count++;
-                    }
-                }
-                alert(`Importación OK: ${count}`); loadData();
-            } catch (err) { alert("Error: " + err.message); } finally { xlsxInput.value = ''; }
+    // --- BARCODES (CRUD mínimo) ---
+    async function loadBarcodesForSku(skuId) {
+      barcodeStatusEl.textContent = 'Cargando barcodes...';
+      try {
+        const { data, error } = await client
+          .from('inventory_barcodes')
+          .select('id, barcode, sku_id, multiplier, is_active')
+          .eq('sku_id', skuId)
+          .order('barcode', { ascending: true });
+
+        if (error) throw error;
+
+        const list = (data || []);
+        barcodesBySku.set(skuId, list);
+
+        const activeCount = list.filter(x => x.is_active !== false).length;
+        barcodeCountTag.textContent = String(activeCount);
+
+        renderBarcodeList(list);
+        barcodeStatusEl.textContent = '';
+
+      } catch (e) {
+        console.error(e);
+        barcodeListEl.innerHTML = `<div class="text-muted">No se pudieron cargar barcodes.</div>`;
+        barcodeStatusEl.textContent = '';
+      }
+    }
+
+    function renderBarcodeList(list) {
+      const active = (list || []).filter(x => x.is_active !== false);
+      if (!active.length) {
+        barcodeListEl.innerHTML = `<div class="text-muted">Sin barcodes activos para este SKU.</div>`;
+        return;
+      }
+
+      barcodeListEl.innerHTML = active.map(b => {
+        const mult = Number(b.multiplier || 1);
+        return `
+          <div class="preview-line">
+            <div>${escapeHtml(b.barcode || '')} <span class="tag tag-gray">x${mult}</span></div>
+            <div>
+              <button type="button" class="btn-icon" title="Desactivar" onclick="deactivateBarcode(${Number(b.id)})">⛔</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function addBarcode() {
+      const skuId = document.getElementById('skuId').value;
+      if (!skuId) return alert('Guardá el SKU primero.');
+
+      const barcode = (document.getElementById('barcodeNew').value || '').trim();
+      const multiplier = parseInt(document.getElementById('barcodeMult').value, 10) || 1;
+
+      if (!barcode) return alert('Ingresá un código.');
+      if (multiplier < 1) return alert('MULT debe ser >= 1.');
+
+      const btn = document.getElementById('btnAddBarcode');
+      btn.disabled = true;
+      btn.textContent = '...';
+
+      try {
+        // si existe (activo o inactivo), lo reasignamos a este SKU (upsert por barcode)
+        const payload = {
+          barcode,
+          sku_id: parseInt(skuId, 10),
+          multiplier,
+          is_active: true
         };
-        reader.readAsArrayBuffer(file);
+
+        const { error } = await client
+          .from('inventory_barcodes')
+          .upsert(payload, { onConflict: 'barcode' });
+
+        if (error) throw error;
+
+        document.getElementById('barcodeNew').value = '';
+        document.getElementById('barcodeMult').value = '1';
+
+        await loadBarcodesForSku(parseInt(skuId, 10));
+
+        // actualizar contador en tabla sin recargar todo
+        const count = Number(barcodeCountTag.textContent || '0');
+        barcodeCountBySku.set(parseInt(skuId, 10), count);
+        renderTable();
+
+      } catch (e) {
+        console.error(e);
+        alert('Error al guardar barcode: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'AGREGAR';
+      }
+    }
+
+    async function deactivateBarcode(id) {
+      if (!confirm('¿Desactivar este barcode?')) return;
+
+      const skuId = parseInt(document.getElementById('skuId').value, 10);
+      try {
+        const { error } = await client
+          .from('inventory_barcodes')
+          .update({ is_active: false })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        await loadBarcodesForSku(skuId);
+
+        const count = Number(barcodeCountTag.textContent || '0');
+        barcodeCountBySku.set(skuId, count);
+        renderTable();
+
+      } catch (e) {
+        console.error(e);
+        alert('Error al desactivar: ' + e.message);
+      }
+    }
+
+    // --- IMPORT EXCEL ---
+    function handleXlsxImport(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+          const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+          let count = 0;
+
+          for (const row of json) {
+            const code = row['CODIGO'] || row['Articulo'];
+            const name = row['NOMBRE'] || row['Detalle'];
+            if (!name) continue;
+
+            const pl = {
+              name: String(name).toUpperCase().trim(),
+              external_id: code ? String(code).trim() : null,
+              cost_price: row['COSTO'] || 0,
+              is_active: true
+            };
+
+            if (pl.external_id) await client.from('inventory_skus').upsert(pl, { onConflict: 'external_id' });
+            else await client.from('inventory_skus').insert(pl);
+
+            count++;
+          }
+
+          alert(`Importación OK: ${count}`);
+          loadData();
+
+        } catch (err) {
+          alert("Error: " + err.message);
+        } finally {
+          xlsxInput.value = '';
+        }
+      };
+      reader.readAsArrayBuffer(file);
     }
 
     function escapeHtml(text) {
-      if (!text) return text;
-      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      if (text === null || text === undefined) return '';
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
   </script>
 </body>
