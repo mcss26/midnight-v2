@@ -636,3 +636,293 @@ input[type=number] {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+/* =========================================
+   8.7 OPERATIVO — SCANNER (Stock)
+   ========================================= */
+
+/* Toolbars (operativo-stock) */
+.op-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.op-toolbar-search {
+  flex: 1;
+  min-width: 260px;
+  max-width: 420px;
+}
+.op-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.op-statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+/* Table columns helpers (operativo-stock) */
+.col-name { padding-left: 20px !important; }
+.col-format { }
+.col-stock { width: 140px; text-align: center; }
+.col-ideal { width: 100px; text-align: center; }
+.col-quick { width: 160px; text-align: center; }
+.col-req { width: 220px; text-align: center; }
+
+/* Row helpers */
+.header-left { display: flex; align-items: center; }
+.row-inline { display: inline-flex; align-items: center; gap: 6px; }
+.req-input { width: 60px; border: 1px solid var(--border-subtle) !important; }
+.pending-text { font-size: 10px; color: var(--accent-gold); margin-top: 4px; }
+
+/* Modal text helpers */
+.modal-title-sm { font-size: 18px !important; margin: 0 !important; }
+.modal-desc-sm { margin: 0 !important; font-size: 12px !important; }
+.modal-note { margin: 0; color: var(--text-secondary); font-size: 11px; }
+
+/* Stock sub info under number */
+.stock-sub {
+  font-size: 10px;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  line-height: 1.25;
+}
+.stock-sub b { color: #fff; }
+
+/* Flash highlight row when scanned */
+.row-flash {
+  outline: 2px solid rgba(250, 204, 21, 0.25);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.12);
+}
+
+/* Buttons variants (keep your base buttons) */
+.btn-gold {
+  background: var(--accent-gold) !important;
+  color: #000 !important;
+  border-color: rgba(250, 204, 21, 0.65) !important;
+  box-shadow: 0 4px 12px rgba(250, 204, 21, 0.18) !important;
+}
+.btn-soft {
+  background: rgba(255,255,255,0.03) !important;
+  border-color: var(--border-subtle) !important;
+}
+.btn-danger {
+  border-color: rgba(255, 10, 30, 0.35) !important;
+  background: rgba(255, 10, 30, 0.12) !important;
+}
+.btn-ok {
+  border-color: rgba(204, 255, 0, 0.25) !important;
+  background: rgba(204, 255, 0, 0.12) !important;
+}
+
+/* Container padding to not be covered by scanbar */
+.admin-container.has-scanbar { padding-bottom: 220px; }
+
+/* ===== Scanbar (fixed bottom) ===== */
+.scanbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: var(--z-sticky);
+  background: rgba(11, 12, 13, 0.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px 12px 12px;
+}
+.scanbar-inner {
+  width: 100%;
+  max-width: var(--max-width-container);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scanbar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.scanbar-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.pill {
+  border: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.pill b { color: #fff; }
+
+/* ===== Segmented mode selector ===== */
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+}
+.seg-btn {
+  border: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  padding: 10px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  text-align: center;
+  user-select: none;
+  white-space: nowrap;
+}
+.seg-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.seg-btn.active {
+  background: rgba(250, 204, 21, 0.95);
+  color: #000;
+  border-color: rgba(250, 204, 21, 0.65);
+}
+
+/* ===== Scanner modal (camera) ===== */
+.modal-box--scan {
+  max-width: 980px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.scan-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  gap: 10px;
+}
+.scan-head-left { display: flex; flex-direction: column; }
+.scan-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.scan-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.scan-video-wrap {
+  position: relative;
+  width: 100%;
+  background: #000;
+  aspect-ratio: 16 / 9;
+}
+.scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.scan-frame {
+  width: 70%;
+  height: 45%;
+  border: 2px solid rgba(250,204,21,0.7);
+  border-radius: 16px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.22);
+}
+.scan-footer {
+  padding: 12px 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Toasts */
+.toast {
+  display: none;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.25;
+}
+.toast.ok {
+  display: block;
+  border-color: rgba(204, 255, 0, 0.25);
+  background: rgba(204, 255, 0, 0.12);
+  color: #eaffb8;
+}
+.toast.warn {
+  display: block;
+  border-color: rgba(255, 10, 30, 0.25);
+  background: rgba(255, 10, 30, 0.12);
+  color: #ffd0d6;
+}
+
+/* ===== Batch modal list ===== */
+.modal-box--wide { max-width: 760px !important; }
+
+.batch-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(255,255,255,0.02);
+}
+.batch-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 10px 6px;
+  font-size: 12px;
+}
+.batch-row:last-child { border-bottom: none; }
+
+.delta-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 900;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  min-width: 64px;
+}
+.delta-pill.pos {
+  border-color: rgba(204, 255, 0, 0.25);
+  background: rgba(204, 255, 0, 0.12);
+  color: #eaffb8;
+}
+.delta-pill.neg {
+  border-color: rgba(255, 10, 30, 0.22);
+  background: rgba(255, 10, 30, 0.12);
+  color: #ffd0d6;
+}

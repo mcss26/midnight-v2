@@ -4,20 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Stock Operativo</title>
-  
+
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-</head>
-<body>
 
+  <!-- ZXing UMD (Scanner) -->
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.2/umd/index.min.js"></script>
+</head>
+
+<body>
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        
-        <div style="display:flex; align-items:center;">
+
+        <div class="header-left">
           <button onclick="window.location.href='operativo-index.html'" class="btn-back">VOLVER</button>
         </div>
 
@@ -31,8 +34,7 @@
     </div>
   </header>
 
-  <main class="admin-container">
-    
+  <main class="admin-container has-scanbar">
     <section class="section-header">
       <h1 class="section-title">STOCK GLOBAL OPERATIVO</h1>
       <p class="section-desc">
@@ -40,8 +42,8 @@
       </p>
     </section>
 
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:16px; flex-wrap:wrap;">
-      <div style="flex:1; min-width:260px; max-width:420px;">
+    <div class="op-toolbar">
+      <div class="op-toolbar-search">
         <input
           type="text"
           id="searchInput"
@@ -50,63 +52,173 @@
           oninput="filterList()"
         >
       </div>
-      <div style="display:flex; align-items:center; gap:10px;">
+
+      <div class="op-toolbar-actions">
         <span id="countSkus" class="tag tag-gray">0 insumos</span>
-        <button onclick="loadData()" class="btn-secondary">REFRESCAR DATOS</button>
+        <span id="scanDbStatus" class="tag tag-gray">Scanner: —</span>
+        <button onclick="loadData(true)" class="btn-secondary">REFRESCAR DATOS</button>
       </div>
     </div>
 
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <div class="op-statusbar">
       <span id="stockStatus" class="inline-status">Cargando inventario...</span>
+      <span id="pendingStatus" class="inline-status">Sin cambios pendientes.</span>
     </div>
 
     <div class="table-container">
       <table class="sku-table">
         <thead>
           <tr>
-            <th style="padding-left: 20px;">INSUMO / CATEGORÍA</th>
-            <th>FORMATO</th>
-            <th class="text-center" style="width: 120px;">STOCK (UN)</th>
-            <th class="text-center" style="width: 100px;">IDEAL</th>
-            <th class="text-center" style="width: 160px;">AJUSTE RÁPIDO</th>
-            <th class="text-center" style="width: 220px;">SOLICITAR REPOSICIÓN</th>
+            <th class="col-name">INSUMO / CATEGORÍA</th>
+            <th class="col-format">FORMATO</th>
+            <th class="col-stock">STOCK (UN)</th>
+            <th class="col-ideal">IDEAL</th>
+            <th class="col-quick">AJUSTE RÁPIDO</th>
+            <th class="col-req">SOLICITAR REPOSICIÓN</th>
           </tr>
         </thead>
         <tbody id="skuList">
           <tr>
-            <td colspan="6" style="text-align:center; padding: 40px; color: var(--text-secondary);">
+            <td colspan="6" class="text-center text-muted">
               Cargando inventario...
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-
   </main>
 
+  <!-- Modal Ajuste Manual -->
   <div id="adjustModal" class="modal-overlay">
     <div class="modal-box">
       <div class="modal-header">
         <div>
-          <h3 class="section-title" style="font-size:18px; margin:0;">AJUSTE DE STOCK</h3>
-          <p class="section-desc" style="margin:0; font-size:12px;">Registra un movimiento manual.</p>
+          <h3 class="section-title modal-title-sm">AJUSTE DE STOCK</h3>
+          <p class="section-desc modal-desc-sm">Registra un movimiento manual (impacta al instante).</p>
         </div>
-        <div style="text-align:right;">
+        <div class="text-right">
           <span id="adjToday" class="tag tag-gray">Hoy</span>
         </div>
       </div>
 
       <input type="hidden" id="adjSkuId">
       <input type="hidden" id="adjCurrentStock">
-      
-      <div style="margin-bottom:16px; background:rgba(255,255,255,0.03); padding:12px; border-radius:8px;">
+
+      <div class="box-soft">
         <label class="input-label">INSUMO SELECCIONADO</label>
-        <div id="adjSkuName" style="font-weight:700; font-size:16px; color:#fff;">—</div>
+        <div id="adjSkuName" class="row-title">—</div>
         <div id="adjSkuMeta" class="row-sub-text">Stock actual: —</div>
       </div>
 
-      <div style="display:flex; gap:12px; margin-bottom:12px;">
-        <div style="flex:1;">
+      <div class="op-toolbar" aria-hidden="true"></div>
+
+      <div class="op-toolbar" role="presentation"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" id="__layoutFix" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <div class="op-toolbar" style="display:none;"></div>
+
+      <!-- Layout row: movement type + qty -->
+      <div class="op-toolbar" style="margin-bottom:12px;">
+        <div style="flex:1; min-width:240px;">
           <label class="input-label">TIPO DE MOVIMIENTO</label>
           <select id="adjType" class="modal-select">
             <option value="AJUSTE_POSITIVO">INGRESO / AJUSTE (+)</option>
@@ -115,15 +227,16 @@
             <option value="INVENTARIO_FISICO">CONTEO FÍSICO (CORRECCIÓN)</option>
           </select>
         </div>
+
         <div style="width:120px;">
           <label class="input-label">CANTIDAD</label>
-          <input type="number" id="adjAmount" class="modal-input" placeholder="0">
+          <input type="number" id="adjAmount" class="modal-input" placeholder="0" inputmode="numeric">
         </div>
       </div>
 
-      <div style="margin-bottom:20px;">
+      <div>
         <label class="input-label">NOTA / JUSTIFICACIÓN (OBLIGATORIO)</label>
-        <textarea id="adjNotes" class="modal-input" placeholder="Motivo del ajuste..." style="height:80px;"></textarea>
+        <textarea id="adjNotes" class="modal-input" placeholder="Motivo del ajuste..."></textarea>
       </div>
 
       <div class="modal-btns">
@@ -133,37 +246,140 @@
     </div>
   </div>
 
+  <!-- Modal Confirmación Batch (Scanner) -->
+  <div id="batchModal" class="modal-overlay">
+    <div class="modal-box modal-box--wide">
+      <div class="modal-header">
+        <div>
+          <h3 class="section-title modal-title-sm">CONFIRMAR CAMBIOS (SCANNER)</h3>
+          <p class="section-desc modal-desc-sm">Se guardan movimientos y se actualiza stock.</p>
+        </div>
+        <div class="text-right">
+          <span class="tag tag-gray" id="batchCount">0 items</span>
+        </div>
+      </div>
+
+      <div class="batch-list" id="batchList"></div>
+
+      <div>
+        <label class="input-label">NOTA / JUSTIFICACIÓN (OBLIGATORIO)</label>
+        <textarea id="batchNotes" class="modal-input" placeholder="Ej: Reposición barra / Recepción proveedor / Conteo físico..."></textarea>
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="closeBatchModal()">Cancelar</button>
+        <button class="btn-primary" id="btnCommitBatch" onclick="commitBatch()">CONFIRMAR</button>
+      </div>
+
+      <p class="modal-note">Tip: si algo salió mal, usá <b>DESHACER</b> antes de confirmar.</p>
+    </div>
+  </div>
+
+  <!-- Scanner Modal (camera) -->
+  <div id="scanModal" class="modal-overlay">
+    <div class="modal-box modal-box--scan">
+      <div class="scan-head">
+        <div class="scan-head-left">
+          <div class="scan-title" id="scanTitle">ESCÁNER</div>
+          <div class="scan-sub" id="scanSub">Apuntá al código. Cada lectura suma automáticamente.</div>
+        </div>
+        <div class="row-inline">
+          <button class="btn-secondary btn-soft" onclick="toggleTorch()" id="btnTorch">FLASH</button>
+          <button class="btn-secondary btn-danger" onclick="closeScanner()">CERRAR</button>
+        </div>
+      </div>
+
+      <div class="scan-video-wrap">
+        <video id="scanVideo" class="scan-video" muted playsinline></video>
+        <div class="scan-overlay"><div class="scan-frame"></div></div>
+      </div>
+
+      <div class="scan-footer">
+        <div class="toast" id="scanToast"></div>
+        <div class="scanbar-actions">
+          <button class="btn-secondary btn-soft" onclick="undoLastScan()">DESHACER ÚLTIMO</button>
+          <button class="btn-secondary" onclick="openManualEntry()">CARGAR CÓDIGO</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky Scanbar -->
+  <div class="scanbar">
+    <div class="scanbar-inner">
+      <div class="segmented">
+        <button class="seg-btn active" id="m-AJUSTE_POSITIVO" onclick="setScanMode('AJUSTE_POSITIVO')">INGRESO (+)</button>
+        <button class="seg-btn" id="m-AJUSTE_NEGATIVO" onclick="setScanMode('AJUSTE_NEGATIVO')">EGRESO (-)</button>
+        <button class="seg-btn" id="m-RECEPCION_COMPRA" onclick="setScanMode('RECEPCION_COMPRA')">RECEPCIÓN</button>
+        <button class="seg-btn" id="m-INVENTARIO_FISICO" onclick="setScanMode('INVENTARIO_FISICO')">CONTEO</button>
+      </div>
+
+      <div class="scanbar-actions">
+        <button class="btn-primary btn-gold" id="btnScan" onclick="openScanner()">📷 ESCANEAR</button>
+        <button class="btn-secondary" onclick="openManualEntry()">MANUAL</button>
+        <button class="btn-secondary btn-soft" onclick="undoLastScan()">DESHACER</button>
+        <button class="btn-secondary btn-danger" onclick="clearPending()">LIMPIAR</button>
+        <button class="btn-secondary btn-ok" id="btnConfirmBatch" onclick="openBatchModal()" disabled>CONFIRMAR CAMBIOS</button>
+        <button class="btn-secondary btn-soft" id="btnOnlyChanged" onclick="toggleOnlyChanged()">VER CAMBIADOS: NO</button>
+      </div>
+
+      <div class="scanbar-meta">
+        <span class="pill" id="scanModePill">Modo: <b>INGRESO (+)</b></span>
+        <span class="pill" id="scanPendingPill">Pendientes: <b>0</b></span>
+        <span class="pill" id="scanLastPill">Último: <b>—</b></span>
+      </div>
+    </div>
+  </div>
+
   <script>
     let allSkus = [];
     let currentUser = null;
 
+    // Barcode map: barcode -> { sku_id, multiplier }
+    let barcodeIndex = new Map();
+    let scannerReady = false;
+
+    // Scanner session state
+    let scanMode = 'AJUSTE_POSITIVO';
+    let onlyChanged = false;
+
+    // pendingAgg[skuId] = { byType: {TYPE: signedAmount}, countedQty: number|null }
+    const pendingAgg = new Map();
+    const lastScans = [];
+    let codeReader = null;
+    let scanning = false;
+    let lastScanTs = 0;
+    let lastScanCode = null;
+
+    let torchOn = false;
+
     const statusEl = document.getElementById('stockStatus');
     const countEl = document.getElementById('countSkus');
+    const pendingStatusEl = document.getElementById('pendingStatus');
+    const scanDbStatusEl = document.getElementById('scanDbStatus');
 
     document.addEventListener('DOMContentLoaded', async () => {
       const session = localStorage.getItem('mc_user');
-      if (!session) {
-        // Fallback modo dev si no hay sesión (para pruebas)
-        currentUser = { id: 'dev', username: 'DEV' };
-      } else {
-        currentUser = JSON.parse(session);
-      }
+      if (!session) { window.location.href = 'index.html'; return; }
+      currentUser = JSON.parse(session);
 
-      const today = new Date();
-      const formattedDate = today.toLocaleDateString('es-AR');
-      document.getElementById('adjToday').innerText = formattedDate;
+      document.getElementById('adjToday').innerText = new Date().toLocaleDateString('es-AR');
 
-      await loadData();
+      await loadData(true);
+      initScannerLibStatus();
     });
 
-    // =========================
-    // CARGA DE DATOS
-    // =========================
-    async function loadData() {
+    function initScannerLibStatus() {
+      scannerReady = !!(window.ZXing && window.ZXing.BrowserMultiFormatReader);
+      scanDbStatusEl.textContent = scannerReady ? 'Scanner: OK' : 'Scanner: NO';
+      scanDbStatusEl.className = scannerReady ? 'tag tag-gray' : 'tag tag-red';
+      document.getElementById('btnTorch').style.display = 'none';
+    }
+
+    async function loadData(resetPending = false) {
       try {
         statusEl.textContent = 'Actualizando datos...';
 
-        // 1. Traer TODOS los SKUs activos + su stock (left join)
         const { data: skusData, error: skusError } = await client
           .from('inventory_skus')
           .select(`
@@ -180,7 +396,6 @@
 
         if (skusError) throw skusError;
 
-        // 2. Traer solicitudes pendientes
         const { data: reqData } = await client
           .from('stock_requests')
           .select('sku_id, requested_qty, status')
@@ -192,34 +407,69 @@
           pendingRequests.set(r.sku_id, prev + (Number(r.requested_qty) || 0));
         });
 
-        // 3. Mapear datos (flatten)
         allSkus = (skusData || []).map(item => {
           const stockRecord = Array.isArray(item.inventory_stock)
             ? item.inventory_stock[0]
             : item.inventory_stock;
 
+          const cur = stockRecord ? Number(stockRecord.stock_current) : 0;
+
           return {
-            id: item.id,
+            id: Number(item.id),
             name: item.name,
             category: item.category,
             unit_type: item.unit_type,
             pack_size: item.pack_size,
             unit_label: item.unit_label,
-            stock_current: stockRecord ? Number(stockRecord.stock_current) : 0,
+            stock_current: cur,
+            stock_working: cur,
             stock_ideal: stockRecord ? Number(stockRecord.stock_ideal) : 0,
             pending_request: pendingRequests.get(item.id) || 0
           };
         });
 
-        renderList(allSkus);
+        await loadBarcodesSafe();
+
+        if (resetPending) clearPending(true);
+
+        renderList(getCurrentList());
         updateCount();
+
         statusEl.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
       } catch (e) {
         console.error('Error:', e);
         document.getElementById('skuList').innerHTML =
-          '<tr><td colspan="6" class="text-center" style="padding: 40px; color:var(--accent-red);">Error de conexión: ' + e.message + '</td></tr>';
+          '<tr><td colspan="6" class="text-center" style="color:var(--accent-red); padding:40px;">Error de conexión: ' + escapeHtml(e.message || e) + '</td></tr>';
         statusEl.textContent = 'Error de conexión. Intentá nuevamente.';
+      }
+    }
+
+    async function loadBarcodesSafe() {
+      barcodeIndex = new Map();
+      try {
+        const { data, error } = await client
+          .from('inventory_barcodes')
+          .select('barcode, sku_id, multiplier, is_active')
+          .eq('is_active', true);
+
+        if (error) throw error;
+
+        (data || []).forEach(row => {
+          const bc = String(row.barcode || '').trim();
+          if (!bc) return;
+          barcodeIndex.set(bc, {
+            sku_id: Number(row.sku_id),
+            multiplier: Number(row.multiplier || 1)
+          });
+        });
+
+        scanDbStatusEl.textContent = `Scanner: ${barcodeIndex.size} códigos`;
+        scanDbStatusEl.className = 'tag tag-gray';
+
+      } catch (e) {
+        scanDbStatusEl.textContent = 'Scanner: sin barcodes';
+        scanDbStatusEl.className = 'tag tag-red';
       }
     }
 
@@ -227,20 +477,34 @@
       countEl.textContent = `${allSkus.length} insumos`;
     }
 
-    // =========================
-    // RENDERIZADO
-    // =========================
+    function getCurrentList() {
+      const t = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+      let base = allSkus;
+
+      if (t) {
+        base = allSkus.filter(i =>
+          (i.name || '').toLowerCase().includes(t) ||
+          (i.category || '').toLowerCase().includes(t)
+        );
+      }
+
+      if (onlyChanged) base = base.filter(i => pendingAgg.has(i.id));
+      return base;
+    }
+
+    function filterList() { renderList(getCurrentList()); }
+
     function renderList(list) {
       const tbody = document.getElementById('skuList');
 
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">Sin insumos operativos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">Sin resultados.</td></tr>';
         return;
       }
 
       tbody.innerHTML = list.map(i => {
-        const stockVal = i.stock_current || 0;
-        const idealVal = i.stock_ideal || 0;
+        const stockVal = safeNum(i.stock_working);
+        const idealVal = safeNum(i.stock_ideal);
 
         let stockColor = 'var(--text-primary)';
         if (idealVal > 0) {
@@ -251,51 +515,45 @@
           stockColor = 'var(--text-secondary)';
         }
 
-        let presentation = i.unit_type || '-';
-        if (i.unit_label === 'PACK' && i.pack_size > 1) {
-          presentation = `<span class="tag tag-blue" style="font-size:9px;">${i.unit_type || 'UNIDAD'} (PACK x${i.pack_size})</span>`;
+        let presentation = escapeHtml(i.unit_type || '-');
+        if (i.unit_label === 'PACK' && safeNum(i.pack_size) > 1) {
+          presentation = `<span class="tag tag-blue">${escapeHtml(i.unit_type || 'UNIDAD')} (PACK x${safeNum(i.pack_size)})</span>`;
         }
 
         const pendingText = i.pending_request > 0
-          ? `<div style="font-size:10px; color:var(--accent-gold); margin-top:4px;">⏳ Pendiente: ${i.pending_request}</div>`
+          ? `<div class="pending-text">⏳ Pendiente: ${i.pending_request}</div>`
           : '';
 
+        const pend = pendingAgg.get(i.id);
+        const pendingInfo = buildPendingInfoForRow(i.id, pend);
+
         return `
-          <tr>
-            <td style="padding-left: 20px;">
-              <div class="row-title">${i.name}</div>
-              <div class="row-sub-text">${i.category || 'SIN CATEGORÍA'}</div>
+          <tr id="row-${i.id}">
+            <td class="col-name">
+              <div class="row-title">${escapeHtml(i.name)}</div>
+              <div class="row-sub-text">${escapeHtml(i.category || 'SIN CATEGORÍA')}</div>
             </td>
-            <td style="font-size:11px;">
-              ${presentation}
-            </td>
-            <td class="text-center" style="font-size:14px; font-weight:700; color:${stockColor};">
+
+            <td class="col-format">${presentation}</td>
+
+            <td class="col-stock" style="font-size:14px; font-weight:800; color:${stockColor};">
               ${stockVal}
+              ${pendingInfo}
             </td>
-            <td class="text-center text-muted">
+
+            <td class="col-ideal text-muted">
               ${idealVal || '-'}
             </td>
-            <td class="text-center">
-              <button onclick="openModal(${i.id}, 1)" class="btn-icon" title="Ingreso rápido">
-                +
-              </button>
-              <button onclick="openModal(${i.id}, -1)" class="btn-icon" title="Egreso rápido" style="margin-left:6px;">
-                −
-              </button>
+
+            <td class="col-quick">
+              <button onclick="openModal(${i.id}, 1)" class="btn-icon" title="Ingreso rápido">+</button>
+              <button onclick="openModal(${i.id}, -1)" class="btn-icon" title="Egreso rápido">−</button>
             </td>
-            <td class="text-center">
-              <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
-                <input
-                  type="number"
-                  min="1"
-                  id="req-${i.id}"
-                  class="table-input"
-                  style="width:60px; border:1px solid var(--border-subtle);"
-                  placeholder="0"
-                >
-                <button class="btn-primary" style="padding:6px 10px; font-size:10px;" onclick="handleRequest(${i.id})">
-                  PEDIR
-                </button>
+
+            <td class="col-req">
+              <div class="row-inline">
+                <input type="number" min="1" id="req-${i.id}" class="table-input req-input" placeholder="0" inputmode="numeric">
+                <button class="btn-primary" onclick="handleRequest(${i.id})">PEDIR</button>
               </div>
               ${pendingText}
             </td>
@@ -304,43 +562,35 @@
       }).join('');
     }
 
-    function filterList() {
-      const t = document.getElementById('searchInput').value.toLowerCase().trim();
-      if (!t) {
-        renderList(allSkus);
-        return;
-      }
+    function buildPendingInfoForRow(skuId, pend) {
+      if (!pend) return '';
+      const parts = [];
 
-      const filtered = allSkus.filter(i =>
-        i.name.toLowerCase().includes(t) ||
-        (i.category || '').toLowerCase().includes(t)
-      );
-      renderList(filtered);
+      const net = getNetDelta(pend);
+      if (net !== 0) parts.push(`<div class="stock-sub">Δ pendiente: <b>${net > 0 ? '+' + net : net}</b></div>`);
+      if (pend.countedQty !== null && pend.countedQty !== undefined) {
+        parts.push(`<div class="stock-sub">Conteo: <b>${safeNum(pend.countedQty)}</b></div>`);
+      }
+      return parts.length ? parts.join('') : '';
     }
 
-    // =========================
-    // MODAL AJUSTE
-    // =========================
     function openModal(skuId, typeSign) {
-      const sku = allSkus.find(x => x.id === skuId);
+      const sku = allSkus.find(x => x.id === Number(skuId));
       if (!sku) return;
 
       document.getElementById('adjSkuId').value = sku.id;
       document.getElementById('adjCurrentStock').value = sku.stock_current;
       document.getElementById('adjSkuName').innerText = sku.name;
-      document.getElementById('adjSkuMeta').innerText =
-        `Stock actual: ${sku.stock_current || 0} ${sku.unit_type || 'UNIDAD'}`;
+      document.getElementById('adjSkuMeta').innerText = `Stock actual: ${safeNum(sku.stock_current)} ${sku.unit_type || 'UNIDAD'}`;
 
       const saveBtn = document.getElementById('btnSaveAdj');
       const selectType = document.getElementById('adjType');
 
       if (typeSign === 1) {
         selectType.value = 'AJUSTE_POSITIVO';
-        saveBtn.style.background = 'var(--accent-green)';
         saveBtn.innerText = 'CONFIRMAR INGRESO';
       } else {
         selectType.value = 'AJUSTE_NEGATIVO';
-        saveBtn.style.background = 'var(--accent-red)';
         saveBtn.innerText = 'CONFIRMAR EGRESO';
       }
 
@@ -350,43 +600,34 @@
       document.getElementById('adjAmount').focus();
     }
 
-    function closeModal() {
-      document.getElementById('adjustModal').style.display = 'none';
-    }
+    function closeModal() { document.getElementById('adjustModal').style.display = 'none'; }
 
-    // =========================
-    // ACCIONES (AJUSTE & SOLICITUD)
-    // =========================
     async function saveAdjustment() {
-      const skuId = document.getElementById('adjSkuId').value;
-      const currentStock = parseFloat(document.getElementById('adjCurrentStock').value);
+      const skuId = Number(document.getElementById('adjSkuId').value);
+      const currentStock = safeNum(document.getElementById('adjCurrentStock').value);
       const type = document.getElementById('adjType').value;
-      const amount = parseFloat(document.getElementById('adjAmount').value);
-      const notes = document.getElementById('adjNotes').value.trim();
+      const amount = safeNum(document.getElementById('adjAmount').value);
+      const notes = (document.getElementById('adjNotes').value || '').trim();
 
       if (!amount || amount <= 0) return alert('Ingresa una cantidad válida.');
       if (!notes) return alert('La justificación es obligatoria.');
 
       let changeAmount = amount;
       if (type === 'AJUSTE_NEGATIVO') changeAmount = -amount;
-
-      // Si es inventario físico, el cambio es la diferencia entre lo contado y lo actual
-      if (type === 'INVENTARIO_FISICO') {
-        changeAmount = amount - currentStock;
-      }
+      if (type === 'INVENTARIO_FISICO') changeAmount = amount - currentStock;
 
       const newStock = currentStock + changeAmount;
       if (newStock < 0) return alert('Error: El stock resultante no puede ser negativo.');
 
       const btn = document.getElementById('btnSaveAdj');
+      const originalText = btn.innerText;
       btn.disabled = true;
       btn.innerText = 'PROCESANDO...';
 
       try {
-        // 1. Log movimiento
         const { error: moveError } = await client.from('inventory_movements').insert({
           sku_id: skuId,
-          user_id: currentUser.id === 'dev' ? null : currentUser.id,
+          user_id: currentUser.id || null,
           change_amount: changeAmount,
           movement_type: type,
           notes: notes,
@@ -394,39 +635,29 @@
         });
         if (moveError) throw moveError;
 
-        // 2. Update Stock (UPSERT por sku_id)
         const { error: stockError } = await client.from('inventory_stock').upsert({
           sku_id: skuId,
           stock_current: newStock
         }, { onConflict: 'sku_id' });
-
         if (stockError) throw stockError;
 
-        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
-          MC_UTILS.showToast('Stock actualizado.');
-        } else {
-          alert('✅ Stock actualizado.');
-        }
-
         closeModal();
-        await loadData();
+        await loadData(true);
 
       } catch (e) {
-        console.error(e);
-        alert('Error: ' + e.message);
+        alert('Error: ' + (e.message || e));
       } finally {
         btn.disabled = false;
-        btn.innerText = 'Confirmar Ajuste';
+        btn.innerText = originalText;
       }
     }
 
     async function handleRequest(skuId) {
       const input = document.getElementById(`req-${skuId}`);
-      const qty = parseFloat(input.value);
-      
+      const qty = safeNum(input.value);
       if (!qty || qty <= 0) return alert('Ingresa una cantidad válida.');
 
-      const sku = allSkus.find(x => x.id === skuId);
+      const sku = allSkus.find(x => x.id === Number(skuId));
       if (!sku) return;
 
       if (!confirm(`¿Solicitar ${qty} ${sku.unit_type || 'UN'} de ${sku.name}?`)) return;
@@ -435,26 +666,417 @@
         const { error } = await client.from('stock_requests').insert({
           sku_id: skuId,
           requested_qty: qty,
-          requested_by: currentUser.id === 'dev' ? null : currentUser.id,
+          requested_by: currentUser.id || null,
           status: 'PENDING'
         });
-
         if (error) throw error;
 
-        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
-          MC_UTILS.showToast('Solicitud enviada a Compras/Admin.');
-        } else {
-          alert('Solicitud enviada a Compras/Admin.');
+        input.value = '';
+        await loadData(false);
+
+      } catch (e) {
+        alert('Error al solicitar: ' + (e.message || e));
+      }
+    }
+
+    function setScanMode(mode) {
+      scanMode = mode;
+      ['AJUSTE_POSITIVO','AJUSTE_NEGATIVO','RECEPCION_COMPRA','INVENTARIO_FISICO'].forEach(m => {
+        const b = document.getElementById('m-' + m);
+        if (b) b.classList.toggle('active', m === mode);
+      });
+
+      const label =
+        mode === 'AJUSTE_POSITIVO' ? 'INGRESO (+)' :
+        mode === 'AJUSTE_NEGATIVO' ? 'EGRESO (-)' :
+        mode === 'RECEPCION_COMPRA' ? 'RECEPCIÓN' : 'CONTEO';
+
+      document.getElementById('scanModePill').innerHTML = `Modo: <b>${label}</b>`;
+    }
+
+    function toggleOnlyChanged() {
+      onlyChanged = !onlyChanged;
+      document.getElementById('btnOnlyChanged').textContent = `VER CAMBIADOS: ${onlyChanged ? 'SI' : 'NO'}`;
+      renderList(getCurrentList());
+    }
+
+    function openScanner() {
+      if (!scannerReady) return alert('Scanner no disponible.');
+      if (!barcodeIndex.size) return alert('No hay barcodes cargados en inventory_barcodes.');
+
+      document.getElementById('scanModal').style.display = 'flex';
+      document.getElementById('scanToast').className = 'toast';
+      document.getElementById('scanToast').textContent = '';
+
+      const title =
+        scanMode === 'AJUSTE_POSITIVO' ? 'ESCÁNER — INGRESO (+)' :
+        scanMode === 'AJUSTE_NEGATIVO' ? 'ESCÁNER — EGRESO (-)' :
+        scanMode === 'RECEPCION_COMPRA' ? 'ESCÁNER — RECEPCIÓN' : 'ESCÁNER — CONTEO FÍSICO';
+
+      document.getElementById('scanTitle').textContent = title;
+      document.getElementById('scanSub').textContent =
+        scanMode === 'INVENTARIO_FISICO'
+          ? 'Cada lectura cuenta 1 (o pack) para el CONTEO.'
+          : 'Cada lectura aplica un ajuste pendiente (no guarda hasta confirmar).';
+
+      startScanner();
+    }
+
+    async function closeScanner() {
+      await stopScanner();
+      document.getElementById('scanModal').style.display = 'none';
+    }
+
+    async function startScanner() {
+      if (scanning) return;
+      scanning = true;
+
+      try {
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        const video = document.getElementById('scanVideo');
+
+        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+        const deviceId = pickBackCamera(devices)?.deviceId || devices?.[0]?.deviceId;
+        if (!deviceId) throw new Error('No hay cámara disponible.');
+
+        torchOn = false;
+        document.getElementById('btnTorch').style.display = 'none';
+
+        await codeReader.decodeFromVideoDevice(deviceId, video, (result) => {
+          if (result) onScanResult(result.getText());
+        });
+
+        setTimeout(() => tryEnableTorchButton(video), 500);
+
+      } catch (e) {
+        toastScan('warn', 'No pude abrir la cámara. Usá MANUAL.');
+        scanning = false;
+      }
+    }
+
+    async function stopScanner() {
+      scanning = false;
+      try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch(_) {}
+      document.getElementById('btnTorch').style.display = 'none';
+    }
+
+    function pickBackCamera(devices) {
+      if (!devices || !devices.length) return null;
+      const back = devices.find(d => /back|rear|environment/i.test(d.label || ''));
+      return back || devices[devices.length - 1];
+    }
+
+    function tryEnableTorchButton(video) {
+      try {
+        const track = video?.srcObject?.getVideoTracks?.()[0];
+        const caps = track?.getCapabilities ? track.getCapabilities() : null;
+        if (caps && 'torch' in caps) document.getElementById('btnTorch').style.display = 'inline-flex';
+      } catch(_) {}
+    }
+
+    async function toggleTorch() {
+      const video = document.getElementById('scanVideo');
+      const track = video?.srcObject?.getVideoTracks?.()[0];
+      if (!track) return;
+
+      try {
+        const caps = track.getCapabilities ? track.getCapabilities() : null;
+        if (!caps || !('torch' in caps)) return;
+
+        torchOn = !torchOn;
+        await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+      } catch(_) {}
+    }
+
+    function onScanResult(codeRaw) {
+      const code = String(codeRaw || '').trim();
+      if (!code) return;
+
+      const now = Date.now();
+      if (lastScanCode === code && (now - lastScanTs) < 900) return;
+      lastScanCode = code;
+      lastScanTs = now;
+
+      const hit = barcodeIndex.get(code);
+      if (!hit) {
+        toastScan('warn', `Código no registrado: ${code}`);
+        document.getElementById('scanLastPill').innerHTML = `Último: <b>${escapeHtml(code)}</b>`;
+        return;
+      }
+
+      applyScan(hit.sku_id, Number(hit.multiplier || 1), code);
+    }
+
+    function openManualEntry() {
+      if (!barcodeIndex.size) return alert('No hay barcodes cargados.');
+      const code = prompt('Ingresá el código (barcode):');
+      if (!code) return;
+      onScanResult(code);
+    }
+
+    function applyScan(skuId, mult, barcode) {
+      const sku = allSkus.find(s => s.id === Number(skuId));
+      if (!sku) return toastScan('warn', `SKU no existe para este código (${barcode}).`);
+
+      if (!pendingAgg.has(sku.id)) pendingAgg.set(sku.id, { byType: {}, countedQty: null });
+      const pend = pendingAgg.get(sku.id);
+
+      let label = '';
+      const isCount = (scanMode === 'INVENTARIO_FISICO');
+
+      if (isCount) {
+        pend.countedQty = (pend.countedQty === null ? 0 : pend.countedQty) + mult;
+        label = `${sku.name} · CONTEO (+${mult})`;
+      } else {
+        const signed = (scanMode === 'AJUSTE_NEGATIVO') ? -mult : +mult;
+        pend.byType[scanMode] = safeNum(pend.byType[scanMode]) + signed;
+        sku.stock_working = Math.max(0, safeNum(sku.stock_working) + signed);
+
+        label =
+          scanMode === 'AJUSTE_POSITIVO' ? `${sku.name} · INGRESO (+${mult})` :
+          scanMode === 'AJUSTE_NEGATIVO' ? `${sku.name} · EGRESO (-${mult})` :
+          `${sku.name} · RECEPCIÓN (+${mult})`;
+      }
+
+      lastScans.unshift({ skuId: sku.id, type: scanMode, delta: mult, barcode, isCount });
+      if (lastScans.length > 30) lastScans.pop();
+
+      document.getElementById('scanLastPill').innerHTML = `Último: <b>${escapeHtml(sku.name)}</b>`;
+      toastScan('ok', `✅ ${label}`);
+      updatePendingUI();
+      renderList(getCurrentList());
+      focusRow(sku.id);
+    }
+
+    function focusRow(skuId) {
+      const row = document.getElementById('row-' + skuId);
+      if (!row) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.classList.add('row-flash');
+      setTimeout(() => row.classList.remove('row-flash'), 900);
+    }
+
+    function undoLastScan() {
+      const item = lastScans.shift();
+      if (!item) return;
+
+      const sku = allSkus.find(s => s.id === Number(item.skuId));
+      const pend = pendingAgg.get(Number(item.skuId));
+      if (!sku || !pend) return;
+
+      if (item.isCount) {
+        pend.countedQty = Math.max(0, safeNum(pend.countedQty) - safeNum(item.delta));
+      } else {
+        const signed = (item.type === 'AJUSTE_NEGATIVO') ? -safeNum(item.delta) : +safeNum(item.delta);
+        pend.byType[item.type] = safeNum(pend.byType[item.type]) - signed;
+        sku.stock_working = Math.max(0, safeNum(sku.stock_working) - signed);
+      }
+
+      cleanupPendingForSku(Number(item.skuId));
+      updatePendingUI();
+      renderList(getCurrentList());
+    }
+
+    function cleanupPendingForSku(skuId) {
+      const pend = pendingAgg.get(skuId);
+      if (!pend) return;
+
+      Object.keys(pend.byType || {}).forEach(t => {
+        if (safeNum(pend.byType[t]) === 0) delete pend.byType[t];
+      });
+
+      const hasTypes = Object.keys(pend.byType || {}).length > 0;
+      const hasCount = pend.countedQty !== null && pend.countedQty !== undefined && pend.countedQty !== 0;
+
+      if (!hasTypes && !hasCount) pendingAgg.delete(skuId);
+    }
+
+    function clearPending(silent = false) {
+      pendingAgg.clear();
+      lastScans.length = 0;
+      allSkus.forEach(s => s.stock_working = safeNum(s.stock_current));
+      updatePendingUI();
+      renderList(getCurrentList());
+      if (!silent) alert('Pendientes limpiados.');
+    }
+
+    function toastScan(type, msg) {
+      const el = document.getElementById('scanToast');
+      el.className = 'toast ' + (type === 'ok' ? 'ok' : 'warn');
+      el.textContent = msg;
+    }
+
+    function updatePendingUI() {
+      const items = pendingAgg.size;
+      document.getElementById('scanPendingPill').innerHTML = `Pendientes: <b>${items}</b>`;
+      pendingStatusEl.textContent = items ? `Cambios pendientes: ${items} insumos` : 'Sin cambios pendientes.';
+
+      const btn = document.getElementById('btnConfirmBatch');
+      btn.disabled = (items === 0);
+    }
+
+    function getNetDelta(pend) {
+      let net = 0;
+      Object.values(pend.byType || {}).forEach(v => net += safeNum(v));
+      return net;
+    }
+
+    function openBatchModal() {
+      if (!pendingAgg.size) return;
+
+      const list = document.getElementById('batchList');
+      const items = Array.from(pendingAgg.entries())
+        .map(([skuId, pend]) => ({ sku: allSkus.find(s => s.id === Number(skuId)), pend }))
+        .filter(x => !!x.sku)
+        .sort((a,b) => (a.sku.name || '').localeCompare(b.sku.name || ''));
+
+      document.getElementById('batchCount').textContent = `${items.length} items`;
+
+      list.innerHTML = items.map(({sku, pend}) => {
+        const net = getNetDelta(pend);
+        const countInfo = (pend.countedQty !== null && pend.countedQty !== undefined)
+          ? `Conteo: ${safeNum(pend.countedQty)}`
+          : '';
+
+        const pill = net === 0
+          ? `<span class="delta-pill">${countInfo ? 'CONTEO' : '—'}</span>`
+          : `<span class="delta-pill ${net>0?'pos':'neg'}">${net>0?'+':''}${net}</span>`;
+
+        return `
+          <div class="batch-row">
+            <div>
+              <div class="row-title">${escapeHtml(sku.name)}</div>
+              <div class="row-sub-text">
+                Stock actual: ${safeNum(sku.stock_current)} → Vista: ${safeNum(sku.stock_working)}
+                ${countInfo ? ` · <b>${escapeHtml(countInfo)}</b>` : ''}
+              </div>
+            </div>
+            <div class="text-center">${pill}</div>
+            <div class="text-right row-sub-text">${escapeHtml(buildTypesLabel(pend))}</div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('batchNotes').value = '';
+      document.getElementById('batchModal').style.display = 'flex';
+    }
+
+    function buildTypesLabel(pend) {
+      const keys = Object.keys(pend.byType || {});
+      const parts = [];
+      keys.forEach(k => {
+        const v = safeNum(pend.byType[k]);
+        if (v === 0) return;
+        const label =
+          k === 'AJUSTE_POSITIVO' ? 'Ingreso' :
+          k === 'AJUSTE_NEGATIVO' ? 'Egreso' :
+          k === 'RECEPCION_COMPRA' ? 'Recepción' : k;
+        parts.push(`${label}:${v>0?'+':''}${v}`);
+      });
+      if (pend.countedQty !== null && pend.countedQty !== undefined && pend.countedQty !== 0) {
+        parts.push(`Conteo:${safeNum(pend.countedQty)}`);
+      }
+      return parts.join(' · ') || '—';
+    }
+
+    function closeBatchModal() { document.getElementById('batchModal').style.display = 'none'; }
+
+    async function commitBatch() {
+      const notes = (document.getElementById('batchNotes').value || '').trim();
+      if (!notes) return alert('La nota/justificación es obligatoria.');
+
+      const btn = document.getElementById('btnCommitBatch');
+      btn.disabled = true;
+      btn.textContent = 'GUARDANDO...';
+
+      try {
+        const eventDate = new Date().toISOString().split('T')[0];
+        const movements = [];
+        const stockUpserts = [];
+
+        for (const [skuId, pend] of pendingAgg.entries()) {
+          const sku = allSkus.find(s => s.id === Number(skuId));
+          if (!sku) continue;
+
+          for (const [type, signed] of Object.entries(pend.byType || {})) {
+            const amt = safeNum(signed);
+            if (amt === 0) continue;
+
+            movements.push({
+              sku_id: sku.id,
+              user_id: currentUser.id || null,
+              change_amount: amt,
+              movement_type: type,
+              notes: notes,
+              event_date: eventDate
+            });
+          }
+
+          if (pend.countedQty !== null && pend.countedQty !== undefined && pend.countedQty !== 0) {
+            const counted = safeNum(pend.countedQty);
+            const diff = counted - safeNum(sku.stock_working);
+            if (diff !== 0) {
+              movements.push({
+                sku_id: sku.id,
+                user_id: currentUser.id || null,
+                change_amount: diff,
+                movement_type: 'INVENTARIO_FISICO',
+                notes: notes,
+                event_date: eventDate
+              });
+            }
+            sku.stock_working = counted;
+          }
+
+          stockUpserts.push({
+            sku_id: sku.id,
+            stock_current: Math.max(0, safeNum(sku.stock_working))
+          });
         }
 
-        input.value = '';
-        await loadData();
+        if (movements.length) {
+          const { error } = await client.from('inventory_movements').insert(movements);
+          if (error) throw error;
+        }
+
+        if (stockUpserts.length) {
+          const { error } = await client.from('inventory_stock').upsert(stockUpserts, { onConflict: 'sku_id' });
+          if (error) throw error;
+        }
+
+        stockUpserts.forEach(u => {
+          const sku = allSkus.find(s => s.id === Number(u.sku_id));
+          if (!sku) return;
+          sku.stock_current = safeNum(u.stock_current);
+          sku.stock_working = safeNum(u.stock_current);
+        });
+
+        clearPending(true);
+        closeBatchModal();
+        alert('✅ Cambios guardados.');
+        renderList(getCurrentList());
+
       } catch (e) {
-        console.error(e);
-        alert('Error al solicitar: ' + e.message);
+        alert('Error al guardar: ' + (e.message || e));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'CONFIRMAR';
       }
+    }
+
+    function safeNum(v) {
+      const n = Number(String(v ?? '').replace(',', '.'));
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
     }
   </script>
 </body>
 </html>
-
