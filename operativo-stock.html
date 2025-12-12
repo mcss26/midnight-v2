@@ -7,20 +7,15 @@
 
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-
-  <!-- ZXing UMD (Scanner) -->
-  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.2/umd/index.min.js"></script>
 </head>
 
 <body>
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-
-        <div class="header-left">
+        <div style="display:flex; align-items:center;">
           <button onclick="window.location.href='operativo-index.html'" class="btn-back">VOLVER</button>
         </div>
 
@@ -29,59 +24,54 @@
         <div class="admin-header-right">
           <span class="session-chip">Operativo</span>
         </div>
-
       </div>
     </div>
   </header>
 
-  <main class="admin-container has-scanbar">
+  <main class="admin-container">
     <section class="section-header">
       <h1 class="section-title">STOCK GLOBAL OPERATIVO</h1>
-      <p class="section-desc">
-        Control de inventario físico, ajustes rápidos y solicitudes de reposición hacia Compras/Admin.
-      </p>
+      <p class="section-desc">Control de inventario físico, ajustes rápidos y solicitudes de reposición hacia Compras/Admin.</p>
     </section>
 
-    <div class="op-toolbar">
-      <div class="op-toolbar-search">
-        <input
-          type="text"
-          id="searchInput"
-          class="search-input-admin"
-          placeholder="🔍 Buscar por nombre o categoría..."
-          oninput="filterList()"
-        >
+    <div class="box-soft" style="margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:260px; max-width:520px;">
+          <input
+            type="text"
+            id="searchInput"
+            class="search-input-admin"
+            placeholder="🔍 Buscar por nombre o categoría..."
+            oninput="filterList()"
+          >
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span id="countSkus" class="tag tag-gray">0 insumos</span>
+          <button onclick="loadData()" class="btn-secondary">REFRESCAR DATOS</button>
+        </div>
       </div>
 
-      <div class="op-toolbar-actions">
-        <span id="countSkus" class="tag tag-gray">0 insumos</span>
-        <span id="scanDbStatus" class="tag tag-gray">Scanner: —</span>
-        <button onclick="loadData(true)" class="btn-secondary">REFRESCAR DATOS</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:12px; flex-wrap:wrap;">
+        <span id="stockStatus" class="inline-status">Cargando inventario...</span>
       </div>
-    </div>
-
-    <div class="op-statusbar">
-      <span id="stockStatus" class="inline-status">Cargando inventario...</span>
-      <span id="pendingStatus" class="inline-status">Sin cambios pendientes.</span>
     </div>
 
     <div class="table-container">
       <table class="sku-table">
         <thead>
           <tr>
-            <th class="col-name">INSUMO / CATEGORÍA</th>
-            <th class="col-format">FORMATO</th>
-            <th class="col-stock">STOCK (UN)</th>
-            <th class="col-ideal">IDEAL</th>
-            <th class="col-quick">AJUSTE RÁPIDO</th>
-            <th class="col-req">SOLICITAR REPOSICIÓN</th>
+            <th style="padding-left:20px;">INSUMO / CATEGORÍA</th>
+            <th>FORMATO</th>
+            <th class="text-center" style="width:120px;">STOCK (UN)</th>
+            <th class="text-center" style="width:100px;">IDEAL</th>
+            <th class="text-center" style="width:160px;">AJUSTE RÁPIDO</th>
+            <th class="text-center" style="width:240px; padding-right:20px;">SOLICITAR REPOSICIÓN</th>
           </tr>
         </thead>
         <tbody id="skuList">
           <tr>
-            <td colspan="6" class="text-center text-muted">
-              Cargando inventario...
-            </td>
+            <td colspan="6" class="text-center text-muted" style="padding:40px;">Cargando inventario...</td>
           </tr>
         </tbody>
       </table>
@@ -93,10 +83,10 @@
     <div class="modal-box">
       <div class="modal-header">
         <div>
-          <h3 class="section-title modal-title-sm">AJUSTE DE STOCK</h3>
-          <p class="section-desc modal-desc-sm">Registra un movimiento manual (impacta al instante).</p>
+          <h3 class="section-title" style="font-size:18px; margin:0;">AJUSTE DE STOCK</h3>
+          <p class="section-desc" style="margin:0; font-size:12px;">Registra un movimiento manual (impacta al instante).</p>
         </div>
-        <div class="text-right">
+        <div style="text-align:right;">
           <span id="adjToday" class="tag tag-gray">Hoy</span>
         </div>
       </div>
@@ -104,122 +94,37 @@
       <input type="hidden" id="adjSkuId">
       <input type="hidden" id="adjCurrentStock">
 
-      <div class="box-soft">
+      <div class="box-soft" style="margin-bottom:16px;">
         <label class="input-label">INSUMO SELECCIONADO</label>
-        <div id="adjSkuName" class="row-title">—</div>
+        <div id="adjSkuName" class="row-title" style="font-size:16px;">—</div>
         <div id="adjSkuMeta" class="row-sub-text">Stock actual: —</div>
       </div>
 
-      <div class="op-toolbar op-modal-row">
-        <div class="op-modal-col">
+      <div style="display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:240px;">
           <label class="input-label">TIPO DE MOVIMIENTO</label>
           <select id="adjType" class="modal-select">
             <option value="AJUSTE_POSITIVO">INGRESO / AJUSTE (+)</option>
             <option value="AJUSTE_NEGATIVO">EGRESO / AJUSTE (-)</option>
-            <option value="RECEPCION_COMPRA">RECEPCIÓN DE COMPRA</option>
+            <option value="RECEPCION_COMPRA">RECEPCIÓN DE COMPRA (+)</option>
             <option value="INVENTARIO_FISICO">CONTEO FÍSICO (CORRECCIÓN)</option>
           </select>
         </div>
 
-        <div class="op-modal-col op-modal-col--qty">
+        <div style="width:140px;">
           <label class="input-label">CANTIDAD</label>
           <input type="number" id="adjAmount" class="modal-input" placeholder="0" inputmode="numeric">
         </div>
       </div>
 
-      <div>
+      <div style="margin-bottom:8px;">
         <label class="input-label">NOTA / JUSTIFICACIÓN (OBLIGATORIO)</label>
-        <textarea id="adjNotes" class="modal-input" placeholder="Motivo del ajuste..."></textarea>
+        <textarea id="adjNotes" class="modal-input" placeholder="Motivo del ajuste..." style="height:90px;"></textarea>
       </div>
 
       <div class="modal-btns">
-        <button onclick="closeModal()" class="btn-secondary">Cancelar</button>
-        <button onclick="saveAdjustment()" id="btnSaveAdj" class="btn-primary">Confirmar Ajuste</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Confirmación Batch (Scanner) -->
-  <div id="batchModal" class="modal-overlay">
-    <div class="modal-box modal-box--wide">
-      <div class="modal-header">
-        <div>
-          <h3 class="section-title modal-title-sm">CONFIRMAR CAMBIOS (SCANNER)</h3>
-          <p class="section-desc modal-desc-sm">Se guardan movimientos y se actualiza stock.</p>
-        </div>
-        <div class="text-right">
-          <span class="tag tag-gray" id="batchCount">0 items</span>
-        </div>
-      </div>
-
-      <div class="batch-list" id="batchList"></div>
-
-      <div>
-        <label class="input-label">NOTA / JUSTIFICACIÓN (OBLIGATORIO)</label>
-        <textarea id="batchNotes" class="modal-input" placeholder="Ej: Reposición barra / Recepción proveedor / Conteo físico..."></textarea>
-      </div>
-
-      <div class="modal-btns">
-        <button class="btn-secondary" onclick="closeBatchModal()">Cancelar</button>
-        <button class="btn-primary" id="btnCommitBatch" onclick="commitBatch()">CONFIRMAR</button>
-      </div>
-
-      <p class="modal-note">Tip: si algo salió mal, usá <b>DESHACER</b> antes de confirmar.</p>
-    </div>
-  </div>
-
-  <!-- Scanner Modal (camera) -->
-  <div id="scanModal" class="modal-overlay">
-    <div class="modal-box modal-box--scan">
-      <div class="scan-head">
-        <div class="scan-head-left">
-          <div class="scan-title" id="scanTitle">ESCÁNER</div>
-          <div class="scan-sub" id="scanSub">Apuntá al código. Cada lectura suma automáticamente.</div>
-        </div>
-        <div class="row-inline">
-          <button class="btn-secondary btn-soft" onclick="toggleTorch()" id="btnTorch">FLASH</button>
-          <button class="btn-secondary btn-danger" onclick="closeScanner()">CERRAR</button>
-        </div>
-      </div>
-
-      <div class="scan-video-wrap">
-        <video id="scanVideo" class="scan-video" muted playsinline></video>
-        <div class="scan-overlay"><div class="scan-frame"></div></div>
-      </div>
-
-      <div class="scan-footer">
-        <div class="toast" id="scanToast"></div>
-        <div class="scanbar-actions">
-          <button class="btn-secondary btn-soft" onclick="undoLastScan()">DESHACER ÚLTIMO</button>
-          <button class="btn-secondary" onclick="openManualEntry()">CARGAR CÓDIGO</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Sticky Scanbar -->
-  <div class="scanbar">
-    <div class="scanbar-inner">
-      <div class="segmented">
-        <button class="seg-btn active" id="m-AJUSTE_POSITIVO" onclick="setScanMode('AJUSTE_POSITIVO')">INGRESO (+)</button>
-        <button class="seg-btn" id="m-AJUSTE_NEGATIVO" onclick="setScanMode('AJUSTE_NEGATIVO')">EGRESO (-)</button>
-        <button class="seg-btn" id="m-RECEPCION_COMPRA" onclick="setScanMode('RECEPCION_COMPRA')">RECEPCIÓN</button>
-        <button class="seg-btn" id="m-INVENTARIO_FISICO" onclick="setScanMode('INVENTARIO_FISICO')">CONTEO</button>
-      </div>
-
-      <div class="scanbar-actions">
-        <button class="btn-primary btn-gold" id="btnScan" onclick="openScanner()">📷 ESCANEAR</button>
-        <button class="btn-secondary" onclick="openManualEntry()">MANUAL</button>
-        <button class="btn-secondary btn-soft" onclick="undoLastScan()">DESHACER</button>
-        <button class="btn-secondary btn-danger" onclick="clearPending()">LIMPIAR</button>
-        <button class="btn-secondary btn-ok" id="btnConfirmBatch" onclick="openBatchModal()" disabled>CONFIRMAR CAMBIOS</button>
-        <button class="btn-secondary btn-soft" id="btnOnlyChanged" onclick="toggleOnlyChanged()">VER CAMBIADOS: NO</button>
-      </div>
-
-      <div class="scanbar-meta">
-        <span class="pill" id="scanModePill">Modo: <b>INGRESO (+)</b></span>
-        <span class="pill" id="scanPendingPill">Pendientes: <b>0</b></span>
-        <span class="pill" id="scanLastPill">Último: <b>—</b></span>
+        <button onclick="closeModal()" class="btn-secondary">CANCELAR</button>
+        <button onclick="saveAdjustment()" id="btnSaveAdj" class="btn-primary">CONFIRMAR</button>
       </div>
     </div>
   </div>
@@ -228,25 +133,8 @@
     let allSkus = [];
     let currentUser = null;
 
-    let barcodeIndex = new Map();
-    let scannerReady = false;
-
-    let scanMode = 'AJUSTE_POSITIVO';
-    let onlyChanged = false;
-
-    const pendingAgg = new Map();
-    const lastScans = [];
-    let codeReader = null;
-    let scanning = false;
-    let lastScanTs = 0;
-    let lastScanCode = null;
-
-    let torchOn = false;
-
     const statusEl = document.getElementById('stockStatus');
     const countEl = document.getElementById('countSkus');
-    const pendingStatusEl = document.getElementById('pendingStatus');
-    const scanDbStatusEl = document.getElementById('scanDbStatus');
 
     document.addEventListener('DOMContentLoaded', async () => {
       const session = localStorage.getItem('mc_user');
@@ -255,24 +143,18 @@
 
       document.getElementById('adjToday').innerText = new Date().toLocaleDateString('es-AR');
 
-      await loadData(true);
-      initScannerLibStatus();
+      // click fuera para cerrar modal
+      document.getElementById('adjustModal').addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'adjustModal') closeModal();
+      });
+
+      await loadData();
     });
 
-    function initScannerLibStatus() {
-      scannerReady = !!(window.ZXing && window.ZXing.BrowserMultiFormatReader);
-      scanDbStatusEl.textContent = scannerReady ? 'Scanner: OK' : 'Scanner: NO';
-      scanDbStatusEl.className = scannerReady ? 'tag tag-gray' : 'tag tag-red';
-
-      if (!scannerReady) {
-        const b = document.getElementById('btnScan');
-        if (b) b.disabled = true;
-      }
-      const torchBtn = document.getElementById('btnTorch');
-      if (torchBtn) torchBtn.style.display = 'none';
-    }
-
-    async function loadData(resetPending = false) {
+    // =========================
+    // CARGA DE DATOS
+    // =========================
+    async function loadData() {
       try {
         statusEl.textContent = 'Actualizando datos...';
 
@@ -300,33 +182,23 @@
         const pendingRequests = new Map();
         (reqData || []).forEach(r => {
           const prev = pendingRequests.get(r.sku_id) || 0;
-          pendingRequests.set(r.sku_id, prev + (Number(r.requested_qty) || 0));
+          pendingRequests.set(r.sku_id, prev + (safeNum(r.requested_qty) || 0));
         });
 
         allSkus = (skusData || []).map(item => {
-          const stockRecord = Array.isArray(item.inventory_stock)
-            ? item.inventory_stock[0]
-            : item.inventory_stock;
-
-          const cur = stockRecord ? Number(stockRecord.stock_current) : 0;
-
+          const stockRecord = Array.isArray(item.inventory_stock) ? item.inventory_stock[0] : item.inventory_stock;
           return {
             id: Number(item.id),
-            name: item.name,
-            category: item.category,
-            unit_type: item.unit_type,
+            name: item.name || '',
+            category: item.category || null,
+            unit_type: item.unit_type || null,
             pack_size: item.pack_size,
-            unit_label: item.unit_label,
-            stock_current: cur,
-            stock_working: cur,
-            stock_ideal: stockRecord ? Number(stockRecord.stock_ideal) : 0,
+            unit_label: item.unit_label || null,
+            stock_current: stockRecord ? safeNum(stockRecord.stock_current) : 0,
+            stock_ideal: stockRecord ? safeNum(stockRecord.stock_ideal) : 0,
             pending_request: pendingRequests.get(item.id) || 0
           };
         });
-
-        await loadBarcodesSafe();
-
-        if (resetPending) clearPending(true);
 
         renderList(getCurrentList());
         updateCount();
@@ -336,64 +208,23 @@
       } catch (e) {
         console.error('Error:', e);
         document.getElementById('skuList').innerHTML =
-          '<tr><td colspan="6" class="text-center" style="color:var(--accent-red); padding:40px;">Error de conexión: ' + escapeHtml(e.message || e) + '</td></tr>';
+          '<tr><td colspan="6" class="text-center" style="padding: 40px; color:var(--accent-red);">Error de conexión: ' + escapeHtml(e.message || e) + '</td></tr>';
         statusEl.textContent = 'Error de conexión. Intentá nuevamente.';
       }
     }
 
-    async function loadBarcodesSafe() {
-      barcodeIndex = new Map();
-      try {
-        // incluye true o NULL (muchas veces el default queda NULL)
-        const { data, error } = await client
-          .from('inventory_barcodes')
-          .select('barcode, sku_id, multiplier, is_active')
-          .or('is_active.is.null,is_active.eq.true');
+    function updateCount() { countEl.textContent = `${allSkus.length} insumos`; }
 
-        if (error) throw error;
-
-        (data || []).forEach(row => {
-          const bc = normalizeBarcode(row.barcode);
-          if (!bc) return;
-          barcodeIndex.set(bc, {
-            sku_id: Number(row.sku_id),
-            multiplier: Number(row.multiplier || 1)
-          });
-        });
-
-        scanDbStatusEl.textContent = `Scanner: ${barcodeIndex.size} códigos`;
-        scanDbStatusEl.className = 'tag tag-gray';
-
-      } catch (e) {
-        scanDbStatusEl.textContent = 'Scanner: sin barcodes';
-        scanDbStatusEl.className = 'tag tag-red';
-      }
-    }
-
-    // SOLO DÍGITOS. (evita espacios, guiones, prefijos raros)
-    function normalizeBarcode(v) {
-      const s = String(v ?? '').trim();
-      if (!s) return '';
-      return s.replace(/\D+/g, '');
-    }
-
-    function updateCount() {
-      countEl.textContent = `${allSkus.length} insumos`;
-    }
-
+    // =========================
+    // LISTA & FILTRO
+    // =========================
     function getCurrentList() {
       const t = (document.getElementById('searchInput').value || '').toLowerCase().trim();
-      let base = allSkus;
-
-      if (t) {
-        base = allSkus.filter(i =>
-          (i.name || '').toLowerCase().includes(t) ||
-          (i.category || '').toLowerCase().includes(t)
-        );
-      }
-
-      if (onlyChanged) base = base.filter(i => pendingAgg.has(i.id));
-      return base;
+      if (!t) return allSkus;
+      return allSkus.filter(i =>
+        (i.name || '').toLowerCase().includes(t) ||
+        (i.category || '').toLowerCase().includes(t)
+      );
     }
 
     function filterList() { renderList(getCurrentList()); }
@@ -407,7 +238,7 @@
       }
 
       tbody.innerHTML = list.map(i => {
-        const stockVal = safeNum(i.stock_working);
+        const stockVal = safeNum(i.stock_current);
         const idealVal = safeNum(i.stock_ideal);
 
         let stockColor = 'var(--text-primary)';
@@ -415,7 +246,7 @@
           if (stockVal <= (idealVal * 0.2)) stockColor = 'var(--accent-red)';
           else if (stockVal < idealVal) stockColor = 'var(--accent-gold)';
           else stockColor = 'var(--accent-green)';
-        } else if (idealVal === 0) {
+        } else {
           stockColor = 'var(--text-secondary)';
         }
 
@@ -425,39 +256,45 @@
         }
 
         const pendingText = i.pending_request > 0
-          ? `<div class="pending-text">⏳ Pendiente: ${i.pending_request}</div>`
+          ? `<div style="font-size:10px; color:var(--accent-gold); margin-top:4px;">⏳ Pendiente: ${i.pending_request}</div>`
           : '';
 
-        const pend = pendingAgg.get(i.id);
-        const pendingInfo = buildPendingInfoForRow(i.id, pend);
-
         return `
-          <tr id="row-${i.id}">
-            <td class="col-name">
+          <tr>
+            <td style="padding-left: 20px;">
               <div class="row-title">${escapeHtml(i.name)}</div>
               <div class="row-sub-text">${escapeHtml(i.category || 'SIN CATEGORÍA')}</div>
             </td>
 
-            <td class="col-format">${presentation}</td>
+            <td style="font-size:11px;">${presentation}</td>
 
-            <td class="col-stock" style="font-size:14px; font-weight:800; color:${stockColor};">
+            <td class="text-center" style="font-size:14px; font-weight:800; color:${stockColor};">
               ${stockVal}
-              ${pendingInfo}
             </td>
 
-            <td class="col-ideal text-muted">
+            <td class="text-center text-muted">
               ${idealVal || '-'}
             </td>
 
-            <td class="col-quick">
+            <td class="text-center">
               <button onclick="openModal(${i.id}, 1)" class="btn-icon" title="Ingreso rápido">+</button>
-              <button onclick="openModal(${i.id}, -1)" class="btn-icon" title="Egreso rápido">−</button>
+              <button onclick="openModal(${i.id}, -1)" class="btn-icon" title="Egreso rápido" style="margin-left:6px;">−</button>
             </td>
 
-            <td class="col-req">
-              <div class="row-inline">
-                <input type="number" min="1" id="req-${i.id}" class="table-input req-input" placeholder="0" inputmode="numeric">
-                <button class="btn-primary" onclick="handleRequest(${i.id})">PEDIR</button>
+            <td class="text-center" style="padding-right:20px;">
+              <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                <input
+                  type="number"
+                  min="1"
+                  id="req-${i.id}"
+                  class="table-input"
+                  style="width:70px; border:1px solid var(--border-subtle);"
+                  placeholder="0"
+                  inputmode="numeric"
+                >
+                <button class="btn-primary" style="padding:6px 10px; font-size:10px;" onclick="handleRequest(${i.id})">
+                  PEDIR
+                </button>
               </div>
               ${pendingText}
             </td>
@@ -466,46 +303,41 @@
       }).join('');
     }
 
-    function buildPendingInfoForRow(skuId, pend) {
-      if (!pend) return '';
-      const parts = [];
-
-      const net = getNetDelta(pend);
-      if (net !== 0) parts.push(`<div class="stock-sub">Δ pendiente: <b>${net > 0 ? '+' + net : net}</b></div>`);
-      if (pend.countedQty !== null && pend.countedQty !== undefined) {
-        parts.push(`<div class="stock-sub">Conteo: <b>${safeNum(pend.countedQty)}</b></div>`);
-      }
-      return parts.length ? parts.join('') : '';
-    }
-
+    // =========================
+    // MODAL AJUSTE
+    // =========================
     function openModal(skuId, typeSign) {
       const sku = allSkus.find(x => x.id === Number(skuId));
       if (!sku) return;
 
       document.getElementById('adjSkuId').value = sku.id;
-      document.getElementById('adjCurrentStock').value = sku.stock_current;
+      document.getElementById('adjCurrentStock').value = safeNum(sku.stock_current);
       document.getElementById('adjSkuName').innerText = sku.name;
       document.getElementById('adjSkuMeta').innerText = `Stock actual: ${safeNum(sku.stock_current)} ${sku.unit_type || 'UNIDAD'}`;
 
-      const saveBtn = document.getElementById('btnSaveAdj');
       const selectType = document.getElementById('adjType');
+      const btn = document.getElementById('btnSaveAdj');
 
       if (typeSign === 1) {
         selectType.value = 'AJUSTE_POSITIVO';
-        saveBtn.innerText = 'CONFIRMAR INGRESO';
+        btn.textContent = 'CONFIRMAR INGRESO';
       } else {
         selectType.value = 'AJUSTE_NEGATIVO';
-        saveBtn.innerText = 'CONFIRMAR EGRESO';
+        btn.textContent = 'CONFIRMAR EGRESO';
       }
 
       document.getElementById('adjAmount').value = '';
       document.getElementById('adjNotes').value = '';
+
       document.getElementById('adjustModal').style.display = 'flex';
-      document.getElementById('adjAmount').focus();
+      setTimeout(() => document.getElementById('adjAmount').focus(), 50);
     }
 
     function closeModal() { document.getElementById('adjustModal').style.display = 'none'; }
 
+    // =========================
+    // ACCIONES
+    // =========================
     async function saveAdjustment() {
       const skuId = Number(document.getElementById('adjSkuId').value);
       const currentStock = safeNum(document.getElementById('adjCurrentStock').value);
@@ -513,29 +345,36 @@
       const amount = safeNum(document.getElementById('adjAmount').value);
       const notes = (document.getElementById('adjNotes').value || '').trim();
 
-      if (!amount || amount <= 0) return alert('Ingresa una cantidad válida.');
+      if (!amount || amount <= 0) return alert('Ingresá una cantidad válida.');
       if (!notes) return alert('La justificación es obligatoria.');
 
       let changeAmount = amount;
+
       if (type === 'AJUSTE_NEGATIVO') changeAmount = -amount;
-      if (type === 'INVENTARIO_FISICO') changeAmount = amount - currentStock;
+      if (type === 'INVENTARIO_FISICO') {
+        // amount = conteo total
+        changeAmount = amount - currentStock;
+      }
+      // RECEPCION_COMPRA => positivo, queda tal cual
 
       const newStock = currentStock + changeAmount;
-      if (newStock < 0) return alert('Error: El stock resultante no puede ser negativo.');
+      if (newStock < 0) return alert('El stock resultante no puede ser negativo.');
 
       const btn = document.getElementById('btnSaveAdj');
-      const originalText = btn.innerText;
+      const originalText = btn.textContent;
       btn.disabled = true;
-      btn.innerText = 'PROCESANDO...';
+      btn.textContent = 'PROCESANDO...';
 
       try {
+        const eventDate = getLocalISODate();
+
         const { error: moveError } = await client.from('inventory_movements').insert({
           sku_id: skuId,
-          user_id: currentUser.id || null,
+          user_id: currentUser?.id || null,
           change_amount: changeAmount,
           movement_type: type,
           notes: notes,
-          event_date: new Date().toISOString().split('T')[0]
+          event_date: eventDate
         });
         if (moveError) throw moveError;
 
@@ -545,21 +384,27 @@
         }, { onConflict: 'sku_id' });
         if (stockError) throw stockError;
 
+        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
+          MC_UTILS.showToast('Stock actualizado.');
+        }
+
         closeModal();
-        await loadData(true);
+        await loadData();
 
       } catch (e) {
+        console.error(e);
         alert('Error: ' + (e.message || e));
       } finally {
         btn.disabled = false;
-        btn.innerText = originalText;
+        btn.textContent = originalText;
       }
     }
 
     async function handleRequest(skuId) {
       const input = document.getElementById(`req-${skuId}`);
       const qty = safeNum(input.value);
-      if (!qty || qty <= 0) return alert('Ingresa una cantidad válida.');
+
+      if (!qty || qty <= 0) return alert('Ingresá una cantidad válida.');
 
       const sku = allSkus.find(x => x.id === Number(skuId));
       if (!sku) return;
@@ -568,476 +413,26 @@
 
       try {
         const { error } = await client.from('stock_requests').insert({
-          sku_id: skuId,
+          sku_id: Number(skuId),
           requested_qty: qty,
-          requested_by: currentUser.id || null,
+          requested_by: currentUser?.id || null,
           status: 'PENDING'
         });
+
         if (error) throw error;
 
         input.value = '';
-        await loadData(false);
+        await loadData();
 
       } catch (e) {
+        console.error(e);
         alert('Error al solicitar: ' + (e.message || e));
       }
     }
 
-    function setScanMode(mode) {
-      scanMode = mode;
-      ['AJUSTE_POSITIVO','AJUSTE_NEGATIVO','RECEPCION_COMPRA','INVENTARIO_FISICO'].forEach(m => {
-        const b = document.getElementById('m-' + m);
-        if (b) b.classList.toggle('active', m === mode);
-      });
-
-      const label =
-        mode === 'AJUSTE_POSITIVO' ? 'INGRESO (+)' :
-        mode === 'AJUSTE_NEGATIVO' ? 'EGRESO (-)' :
-        mode === 'RECEPCION_COMPRA' ? 'RECEPCIÓN' : 'CONTEO';
-
-      document.getElementById('scanModePill').innerHTML = `Modo: <b>${label}</b>`;
-    }
-
-    function toggleOnlyChanged() {
-      onlyChanged = !onlyChanged;
-      document.getElementById('btnOnlyChanged').textContent = `VER CAMBIADOS: ${onlyChanged ? 'SI' : 'NO'}`;
-      renderList(getCurrentList());
-    }
-
-    function openScanner() {
-      if (!scannerReady) return alert('Scanner no disponible.');
-      if (!barcodeIndex.size) return alert('No hay barcodes cargados en inventory_barcodes.');
-
-      document.getElementById('scanModal').style.display = 'flex';
-      document.getElementById('scanToast').className = 'toast';
-      document.getElementById('scanToast').textContent = '';
-
-      const title =
-        scanMode === 'AJUSTE_POSITIVO' ? 'ESCÁNER — INGRESO (+)' :
-        scanMode === 'AJUSTE_NEGATIVO' ? 'ESCÁNER — EGRESO (-)' :
-        scanMode === 'RECEPCION_COMPRA' ? 'ESCÁNER — RECEPCIÓN' : 'ESCÁNER — CONTEO FÍSICO';
-
-      document.getElementById('scanTitle').textContent = title;
-      document.getElementById('scanSub').textContent =
-        scanMode === 'INVENTARIO_FISICO'
-          ? 'Cada lectura cuenta 1 (o pack) para el CONTEO.'
-          : 'Cada lectura aplica un ajuste pendiente (no guarda hasta confirmar).';
-
-      startScannerFromUserGesture();
-    }
-
-    async function closeScanner() {
-      await stopScanner();
-      document.getElementById('scanModal').style.display = 'none';
-    }
-
-    function buildZXingHints() {
-      const hints = new Map();
-      try {
-        const formats = [
-          ZXing.BarcodeFormat.EAN_13,
-          ZXing.BarcodeFormat.EAN_8,
-          ZXing.BarcodeFormat.UPC_A,
-          ZXing.BarcodeFormat.UPC_E
-        ];
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-      } catch (_) {}
-      return hints;
-    }
-
-    async function startScannerFromUserGesture() {
-      if (scanning) return;
-      scanning = true;
-
-      const video = document.getElementById('scanVideo');
-      let stream = null;
-
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          audio: false
-        });
-
-        video.srcObject = stream;
-        video.setAttribute('playsinline', '');
-        video.muted = true;
-        try { await video.play(); } catch (_) {}
-
-        codeReader = new ZXing.BrowserMultiFormatReader(buildZXingHints(), 450);
-
-        if (typeof codeReader.decodeFromStream === 'function') {
-          await codeReader.decodeFromStream(stream, video, (result) => {
-            if (!result) return;
-            const text = (result.getText ? result.getText() : (result.text || '')).toString();
-            if (text) onScanResult(text);
-          });
-        } else if (typeof codeReader.decodeFromVideoElement === 'function') {
-          await codeReader.decodeFromVideoElement(video, (result) => {
-            if (!result) return;
-            const text = (result.getText ? result.getText() : (result.text || '')).toString();
-            if (text) onScanResult(text);
-          });
-        } else {
-          throw new Error('ZXing no soporta decode en este entorno.');
-        }
-
-        torchOn = false;
-        const torchBtn = document.getElementById('btnTorch');
-        if (torchBtn) torchBtn.style.display = 'none';
-        setTimeout(() => tryEnableTorchButton(video), 450);
-
-      } catch (e) {
-        console.error('CAM/ZX ERROR:', e);
-        toastScan('warn', `No se puede abrir la cámara. Usá MANUAL. (${e?.name || 'ERR'})`);
-        scanning = false;
-
-        try {
-          const tracks = video?.srcObject?.getTracks?.() || [];
-          tracks.forEach(t => t.stop());
-        } catch (_) {}
-        try { video.srcObject = null; } catch (_) {}
-      }
-    }
-
-    async function stopScanner() {
-      scanning = false;
-
-      const video = document.getElementById('scanVideo');
-
-      try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch(_) {}
-
-      try {
-        const tracks = video?.srcObject?.getTracks?.() || [];
-        tracks.forEach(t => t.stop());
-      } catch(_) {}
-      try { video.srcObject = null; } catch(_) {}
-
-      const torchBtn = document.getElementById('btnTorch');
-      if (torchBtn) torchBtn.style.display = 'none';
-      torchOn = false;
-    }
-
-    function tryEnableTorchButton(video) {
-      try {
-        const track = video?.srcObject?.getVideoTracks?.()[0];
-        const caps = track?.getCapabilities ? track.getCapabilities() : null;
-        if (caps && 'torch' in caps) {
-          const torchBtn = document.getElementById('btnTorch');
-          if (torchBtn) torchBtn.style.display = 'inline-flex';
-        }
-      } catch(_) {}
-    }
-
-    async function toggleTorch() {
-      const video = document.getElementById('scanVideo');
-      const track = video?.srcObject?.getVideoTracks?.()[0];
-      if (!track) return;
-
-      try {
-        const caps = track.getCapabilities ? track.getCapabilities() : null;
-        if (!caps || !('torch' in caps)) return;
-
-        torchOn = !torchOn;
-        await track.applyConstraints({ advanced: [{ torch: torchOn }] });
-      } catch(_) {}
-    }
-
-    function onScanResult(codeRaw) {
-      const raw = String(codeRaw ?? '');
-      const code = normalizeBarcode(raw);
-      if (!code) return;
-
-      const now = Date.now();
-      if (lastScanCode === code && (now - lastScanTs) < 900) return;
-      lastScanCode = code;
-      lastScanTs = now;
-
-      // fallback UPC/EAN:
-      // - si viene 12 dígitos, probamos 0 + code
-      // - si viene 13 y arranca con 0, probamos sin 0
-      const candidates = [];
-      if (code.length === 12) candidates.push('0' + code);
-      candidates.push(code);
-      if (code.length === 13 && code.startsWith('0')) candidates.push(code.slice(1));
-
-      let hit = null;
-      let used = null;
-      for (const c of candidates) {
-        const h = barcodeIndex.get(c);
-        if (h) { hit = h; used = c; break; }
-      }
-
-      if (!hit) {
-        toastScan('warn', `Código no registrado: ${code}`);
-        document.getElementById('scanLastPill').innerHTML = `Último: <b>${escapeHtml(code)}</b>`;
-        return;
-      }
-
-      applyScan(hit.sku_id, Number(hit.multiplier || 1), used || code);
-    }
-
-    function openManualEntry() {
-      if (!barcodeIndex.size) return alert('No hay barcodes cargados.');
-      const code = prompt('Ingresá el código (barcode):');
-      if (!code) return;
-      onScanResult(code);
-    }
-
-    function applyScan(skuId, mult, barcode) {
-      const sku = allSkus.find(s => s.id === Number(skuId));
-      if (!sku) return toastScan('warn', `SKU no existe para este código (${barcode}).`);
-
-      if (!pendingAgg.has(sku.id)) pendingAgg.set(sku.id, { byType: {}, countedQty: null });
-      const pend = pendingAgg.get(sku.id);
-
-      let label = '';
-      const isCount = (scanMode === 'INVENTARIO_FISICO');
-
-      if (isCount) {
-        pend.countedQty = (pend.countedQty === null ? 0 : pend.countedQty) + mult;
-        label = `${sku.name} · CONTEO (+${mult})`;
-      } else {
-        const signed = (scanMode === 'AJUSTE_NEGATIVO') ? -mult : +mult;
-        pend.byType[scanMode] = safeNum(pend.byType[scanMode]) + signed;
-        sku.stock_working = Math.max(0, safeNum(sku.stock_working) + signed);
-
-        label =
-          scanMode === 'AJUSTE_POSITIVO' ? `${sku.name} · INGRESO (+${mult})` :
-          scanMode === 'AJUSTE_NEGATIVO' ? `${sku.name} · EGRESO (-${mult})` :
-          `${sku.name} · RECEPCIÓN (+${mult})`;
-      }
-
-      lastScans.unshift({ skuId: sku.id, type: scanMode, delta: mult, barcode, isCount });
-      if (lastScans.length > 30) lastScans.pop();
-
-      document.getElementById('scanLastPill').innerHTML = `Último: <b>${escapeHtml(sku.name)}</b>`;
-      toastScan('ok', `✅ ${label}`);
-      updatePendingUI();
-      renderList(getCurrentList());
-      focusRow(sku.id);
-    }
-
-    function focusRow(skuId) {
-      const row = document.getElementById('row-' + skuId);
-      if (!row) return;
-      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      row.classList.add('row-flash');
-      setTimeout(() => row.classList.remove('row-flash'), 900);
-    }
-
-    function undoLastScan() {
-      const item = lastScans.shift();
-      if (!item) return;
-
-      const sku = allSkus.find(s => s.id === Number(item.skuId));
-      const pend = pendingAgg.get(Number(item.skuId));
-      if (!sku || !pend) return;
-
-      if (item.isCount) {
-        pend.countedQty = Math.max(0, safeNum(pend.countedQty) - safeNum(item.delta));
-      } else {
-        const signed = (item.type === 'AJUSTE_NEGATIVO') ? -safeNum(item.delta) : +safeNum(item.delta);
-        pend.byType[item.type] = safeNum(pend.byType[item.type]) - signed;
-        sku.stock_working = Math.max(0, safeNum(sku.stock_working) - signed);
-      }
-
-      cleanupPendingForSku(Number(item.skuId));
-      updatePendingUI();
-      renderList(getCurrentList());
-    }
-
-    function cleanupPendingForSku(skuId) {
-      const pend = pendingAgg.get(skuId);
-      if (!pend) return;
-
-      Object.keys(pend.byType || {}).forEach(t => {
-        if (safeNum(pend.byType[t]) === 0) delete pend.byType[t];
-      });
-
-      const hasTypes = Object.keys(pend.byType || {}).length > 0;
-      const hasCount = pend.countedQty !== null && pend.countedQty !== undefined && pend.countedQty !== 0;
-
-      if (!hasTypes && !hasCount) pendingAgg.delete(skuId);
-    }
-
-    function clearPending(silent = false) {
-      pendingAgg.clear();
-      lastScans.length = 0;
-      allSkus.forEach(s => s.stock_working = safeNum(s.stock_current));
-      updatePendingUI();
-      renderList(getCurrentList());
-      if (!silent) alert('Pendientes limpiados.');
-    }
-
-    function toastScan(type, msg) {
-      const el = document.getElementById('scanToast');
-      el.className = 'toast ' + (type === 'ok' ? 'ok' : 'warn');
-      el.textContent = msg;
-    }
-
-    function updatePendingUI() {
-      const items = pendingAgg.size;
-      document.getElementById('scanPendingPill').innerHTML = `Pendientes: <b>${items}</b>`;
-      pendingStatusEl.textContent = items ? `Cambios pendientes: ${items} insumos` : 'Sin cambios pendientes.';
-
-      const btn = document.getElementById('btnConfirmBatch');
-      btn.disabled = (items === 0);
-    }
-
-    function getNetDelta(pend) {
-      let net = 0;
-      Object.values(pend.byType || {}).forEach(v => net += safeNum(v));
-      return net;
-    }
-
-    function openBatchModal() {
-      if (!pendingAgg.size) return;
-
-      const list = document.getElementById('batchList');
-      const items = Array.from(pendingAgg.entries())
-        .map(([skuId, pend]) => ({ sku: allSkus.find(s => s.id === Number(skuId)), pend }))
-        .filter(x => !!x.sku)
-        .sort((a,b) => (a.sku.name || '').localeCompare(b.sku.name || ''));
-
-      document.getElementById('batchCount').textContent = `${items.length} items`;
-
-      list.innerHTML = items.map(({sku, pend}) => {
-        const net = getNetDelta(pend);
-        const countInfo = (pend.countedQty !== null && pend.countedQty !== undefined)
-          ? `Conteo: ${safeNum(pend.countedQty)}`
-          : '';
-
-        const pill = net === 0
-          ? `<span class="delta-pill">${countInfo ? 'CONTEO' : '—'}</span>`
-          : `<span class="delta-pill ${net>0?'pos':'neg'}">${net>0?'+':''}${net}</span>`;
-
-        return `
-          <div class="batch-row">
-            <div>
-              <div class="row-title">${escapeHtml(sku.name)}</div>
-              <div class="row-sub-text">
-                Stock actual: ${safeNum(sku.stock_current)} → Vista: ${safeNum(sku.stock_working)}
-                ${countInfo ? ` · <b>${escapeHtml(countInfo)}</b>` : ''}
-              </div>
-            </div>
-            <div class="text-center">${pill}</div>
-            <div class="text-right row-sub-text">${escapeHtml(buildTypesLabel(pend))}</div>
-          </div>
-        `;
-      }).join('');
-
-      document.getElementById('batchNotes').value = '';
-      document.getElementById('batchModal').style.display = 'flex';
-    }
-
-    function buildTypesLabel(pend) {
-      const keys = Object.keys(pend.byType || {});
-      const parts = [];
-      keys.forEach(k => {
-        const v = safeNum(pend.byType[k]);
-        if (v === 0) return;
-        const label =
-          k === 'AJUSTE_POSITIVO' ? 'Ingreso' :
-          k === 'AJUSTE_NEGATIVO' ? 'Egreso' :
-          k === 'RECEPCION_COMPRA' ? 'Recepción' : k;
-        parts.push(`${label}:${v>0?'+':''}${v}`);
-      });
-      if (pend.countedQty !== null && pend.countedQty !== undefined && pend.countedQty !== 0) {
-        parts.push(`Conteo:${safeNum(pend.countedQty)}`);
-      }
-      return parts.join(' · ') || '—';
-    }
-
-    function closeBatchModal() { document.getElementById('batchModal').style.display = 'none'; }
-
-    async function commitBatch() {
-      const notes = (document.getElementById('batchNotes').value || '').trim();
-      if (!notes) return alert('La nota/justificación es obligatoria.');
-
-      const btn = document.getElementById('btnCommitBatch');
-      btn.disabled = true;
-      btn.textContent = 'GUARDANDO...';
-
-      try {
-        const eventDate = new Date().toISOString().split('T')[0];
-        const movements = [];
-        const stockUpserts = [];
-
-        for (const [skuId, pend] of pendingAgg.entries()) {
-          const sku = allSkus.find(s => s.id === Number(skuId));
-          if (!sku) continue;
-
-          for (const [type, signed] of Object.entries(pend.byType || {})) {
-            const amt = safeNum(signed);
-            if (amt === 0) continue;
-
-            movements.push({
-              sku_id: sku.id,
-              user_id: currentUser.id || null,
-              change_amount: amt,
-              movement_type: type,
-              notes: notes,
-              event_date: eventDate
-            });
-          }
-
-          if (pend.countedQty !== null && pend.countedQty !== undefined && pend.countedQty !== 0) {
-            const counted = safeNum(pend.countedQty);
-            const diff = counted - safeNum(sku.stock_working);
-            if (diff !== 0) {
-              movements.push({
-                sku_id: sku.id,
-                user_id: currentUser.id || null,
-                change_amount: diff,
-                movement_type: 'INVENTARIO_FISICO',
-                notes: notes,
-                event_date: eventDate
-              });
-            }
-            sku.stock_working = counted;
-          }
-
-          stockUpserts.push({
-            sku_id: sku.id,
-            stock_current: Math.max(0, safeNum(sku.stock_working))
-          });
-        }
-
-        if (movements.length) {
-          const { error } = await client.from('inventory_movements').insert(movements);
-          if (error) throw error;
-        }
-
-        if (stockUpserts.length) {
-          const { error } = await client.from('inventory_stock').upsert(stockUpserts, { onConflict: 'sku_id' });
-          if (error) throw error;
-        }
-
-        stockUpserts.forEach(u => {
-          const sku = allSkus.find(s => s.id === Number(u.sku_id));
-          if (!sku) return;
-          sku.stock_current = safeNum(u.stock_current);
-          sku.stock_working = safeNum(u.stock_current);
-        });
-
-        clearPending(true);
-        closeBatchModal();
-        alert('✅ Cambios guardados.');
-        renderList(getCurrentList());
-
-      } catch (e) {
-        alert('Error al guardar: ' + (e.message || e));
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'CONFIRMAR';
-      }
-    }
-
+    // =========================
+    // HELPERS
+    // =========================
     function safeNum(v) {
       const n = Number(String(v ?? '').replace(',', '.'));
       return Number.isFinite(n) ? n : 0;
@@ -1050,6 +445,14 @@
         .replaceAll('>','&gt;')
         .replaceAll('"','&quot;')
         .replaceAll("'","&#039;");
+    }
+
+    function getLocalISODate() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     }
   </script>
 </body>
