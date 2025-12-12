@@ -110,7 +110,6 @@
         <div id="adjSkuMeta" class="row-sub-text">Stock actual: —</div>
       </div>
 
-      <!-- Layout row: movement type + qty -->
       <div class="op-toolbar op-modal-row">
         <div class="op-modal-col">
           <label class="input-label">TIPO DE MOVIMIENTO</label>
@@ -229,15 +228,12 @@
     let allSkus = [];
     let currentUser = null;
 
-    // Barcode map: barcode -> { sku_id, multiplier }
     let barcodeIndex = new Map();
     let scannerReady = false;
 
-    // Scanner session state
     let scanMode = 'AJUSTE_POSITIVO';
     let onlyChanged = false;
 
-    // pendingAgg[skuId] = { byType: {TYPE: signedAmount}, countedQty: number|null }
     const pendingAgg = new Map();
     const lastScans = [];
     let codeReader = null;
@@ -268,7 +264,6 @@
       scanDbStatusEl.textContent = scannerReady ? 'Scanner: OK' : 'Scanner: NO';
       scanDbStatusEl.className = scannerReady ? 'tag tag-gray' : 'tag tag-red';
 
-      // si no hay zxing, escondemos el botón escanear para evitar confusión
       if (!scannerReady) {
         const b = document.getElementById('btnScan');
         if (b) b.disabled = true;
@@ -349,10 +344,11 @@
     async function loadBarcodesSafe() {
       barcodeIndex = new Map();
       try {
+        // incluye true o NULL (muchas veces el default queda NULL)
         const { data, error } = await client
           .from('inventory_barcodes')
           .select('barcode, sku_id, multiplier, is_active')
-          .eq('is_active', true);
+          .or('is_active.is.null,is_active.eq.true');
 
         if (error) throw error;
 
@@ -374,11 +370,11 @@
       }
     }
 
+    // SOLO DÍGITOS. (evita espacios, guiones, prefijos raros)
     function normalizeBarcode(v) {
       const s = String(v ?? '').trim();
       if (!s) return '';
-      // guardamos/igualamos sin espacios, tab, guiones
-      return s.replace(/[\s-]+/g, '');
+      return s.replace(/\D+/g, '');
     }
 
     function updateCount() {
@@ -635,10 +631,21 @@
       document.getElementById('scanModal').style.display = 'none';
     }
 
-    // *** FIX iOS SAFARI ***
-    // 1) arrancar el getUserMedia DENTRO del click (openScanner)
-    // 2) usar facingMode ideal + fallback
-    // 3) playsinline + video.play()
+    function buildZXingHints() {
+      const hints = new Map();
+      try {
+        const formats = [
+          ZXing.BarcodeFormat.EAN_13,
+          ZXing.BarcodeFormat.EAN_8,
+          ZXing.BarcodeFormat.UPC_A,
+          ZXing.BarcodeFormat.UPC_E
+        ];
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      } catch (_) {}
+      return hints;
+    }
+
     async function startScannerFromUserGesture() {
       if (scanning) return;
       scanning = true;
@@ -647,34 +654,38 @@
       let stream = null;
 
       try {
-        // abrimos cámara con getUserMedia directo (Safari friendly)
-        stream = await getBackCameraStream();
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+
         video.srcObject = stream;
         video.setAttribute('playsinline', '');
         video.muted = true;
-
         try { await video.play(); } catch (_) {}
 
-        // armamos ZXing sobre el stream existente
-        codeReader = new ZXing.BrowserMultiFormatReader();
+        codeReader = new ZXing.BrowserMultiFormatReader(buildZXingHints(), 450);
 
-        // Algunos iOS no soportan decodeFromStream estable. Igual ZXing UMD suele traerlo.
         if (typeof codeReader.decodeFromStream === 'function') {
-          await codeReader.decodeFromStream(stream, video, (result, err) => {
-            if (result) onScanResult(result.getText());
+          await codeReader.decodeFromStream(stream, video, (result) => {
+            if (!result) return;
+            const text = (result.getText ? result.getText() : (result.text || '')).toString();
+            if (text) onScanResult(text);
+          });
+        } else if (typeof codeReader.decodeFromVideoElement === 'function') {
+          await codeReader.decodeFromVideoElement(video, (result) => {
+            if (!result) return;
+            const text = (result.getText ? result.getText() : (result.text || '')).toString();
+            if (text) onScanResult(text);
           });
         } else {
-          // fallback: decodeFromVideoElement (si existe)
-          if (typeof codeReader.decodeFromVideoElement === 'function') {
-            await codeReader.decodeFromVideoElement(video, (result, err) => {
-              if (result) onScanResult(result.getText());
-            });
-          } else {
-            throw new Error('ZXing no soporta decodeFromStream en este entorno.');
-          }
+          throw new Error('ZXing no soporta decode en este entorno.');
         }
 
-        // Torch
         torchOn = false;
         const torchBtn = document.getElementById('btnTorch');
         if (torchBtn) torchBtn.style.display = 'none';
@@ -685,7 +696,6 @@
         toastScan('warn', `No se puede abrir la cámara. Usá MANUAL. (${e?.name || 'ERR'})`);
         scanning = false;
 
-        // cortamos stream si quedó a medias
         try {
           const tracks = video?.srcObject?.getTracks?.() || [];
           tracks.forEach(t => t.stop());
@@ -694,28 +704,13 @@
       }
     }
 
-    async function getBackCameraStream() {
-      // intento 1: ideal trasera
-      try {
-        return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false
-        });
-      } catch (e1) {
-        // intento 2: cualquier cámara
-        return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      }
-    }
-
     async function stopScanner() {
       scanning = false;
 
       const video = document.getElementById('scanVideo');
 
-      // frenar zxing
       try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch(_) {}
 
-      // frenar cámara
       try {
         const tracks = video?.srcObject?.getTracks?.() || [];
         tracks.forEach(t => t.stop());
@@ -753,7 +748,8 @@
     }
 
     function onScanResult(codeRaw) {
-      const code = normalizeBarcode(codeRaw);
+      const raw = String(codeRaw ?? '');
+      const code = normalizeBarcode(raw);
       if (!code) return;
 
       const now = Date.now();
@@ -761,14 +757,28 @@
       lastScanCode = code;
       lastScanTs = now;
 
-      const hit = barcodeIndex.get(code);
+      // fallback UPC/EAN:
+      // - si viene 12 dígitos, probamos 0 + code
+      // - si viene 13 y arranca con 0, probamos sin 0
+      const candidates = [];
+      if (code.length === 12) candidates.push('0' + code);
+      candidates.push(code);
+      if (code.length === 13 && code.startsWith('0')) candidates.push(code.slice(1));
+
+      let hit = null;
+      let used = null;
+      for (const c of candidates) {
+        const h = barcodeIndex.get(c);
+        if (h) { hit = h; used = c; break; }
+      }
+
       if (!hit) {
         toastScan('warn', `Código no registrado: ${code}`);
         document.getElementById('scanLastPill').innerHTML = `Último: <b>${escapeHtml(code)}</b>`;
         return;
       }
 
-      applyScan(hit.sku_id, Number(hit.multiplier || 1), code);
+      applyScan(hit.sku_id, Number(hit.multiplier || 1), used || code);
     }
 
     function openManualEntry() {
