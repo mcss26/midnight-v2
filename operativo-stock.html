@@ -110,115 +110,9 @@
         <div id="adjSkuMeta" class="row-sub-text">Stock actual: —</div>
       </div>
 
-      <div class="op-toolbar" aria-hidden="true"></div>
-
-      <div class="op-toolbar" role="presentation"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" id="__layoutFix" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
-      <div class="op-toolbar" style="display:none;"></div>
-
       <!-- Layout row: movement type + qty -->
-      <div class="op-toolbar" style="margin-bottom:12px;">
-        <div style="flex:1; min-width:240px;">
+      <div class="op-toolbar op-modal-row">
+        <div class="op-modal-col">
           <label class="input-label">TIPO DE MOVIMIENTO</label>
           <select id="adjType" class="modal-select">
             <option value="AJUSTE_POSITIVO">INGRESO / AJUSTE (+)</option>
@@ -228,7 +122,7 @@
           </select>
         </div>
 
-        <div style="width:120px;">
+        <div class="op-modal-col op-modal-col--qty">
           <label class="input-label">CANTIDAD</label>
           <input type="number" id="adjAmount" class="modal-input" placeholder="0" inputmode="numeric">
         </div>
@@ -373,7 +267,14 @@
       scannerReady = !!(window.ZXing && window.ZXing.BrowserMultiFormatReader);
       scanDbStatusEl.textContent = scannerReady ? 'Scanner: OK' : 'Scanner: NO';
       scanDbStatusEl.className = scannerReady ? 'tag tag-gray' : 'tag tag-red';
-      document.getElementById('btnTorch').style.display = 'none';
+
+      // si no hay zxing, escondemos el botón escanear para evitar confusión
+      if (!scannerReady) {
+        const b = document.getElementById('btnScan');
+        if (b) b.disabled = true;
+      }
+      const torchBtn = document.getElementById('btnTorch');
+      if (torchBtn) torchBtn.style.display = 'none';
     }
 
     async function loadData(resetPending = false) {
@@ -456,7 +357,7 @@
         if (error) throw error;
 
         (data || []).forEach(row => {
-          const bc = String(row.barcode || '').trim();
+          const bc = normalizeBarcode(row.barcode);
           if (!bc) return;
           barcodeIndex.set(bc, {
             sku_id: Number(row.sku_id),
@@ -471,6 +372,13 @@
         scanDbStatusEl.textContent = 'Scanner: sin barcodes';
         scanDbStatusEl.className = 'tag tag-red';
       }
+    }
+
+    function normalizeBarcode(v) {
+      const s = String(v ?? '').trim();
+      if (!s) return '';
+      // guardamos/igualamos sin espacios, tab, guiones
+      return s.replace(/[\s-]+/g, '');
     }
 
     function updateCount() {
@@ -719,7 +627,7 @@
           ? 'Cada lectura cuenta 1 (o pack) para el CONTEO.'
           : 'Cada lectura aplica un ajuste pendiente (no guarda hasta confirmar).';
 
-      startScanner();
+      startScannerFromUserGesture();
     }
 
     async function closeScanner() {
@@ -727,50 +635,106 @@
       document.getElementById('scanModal').style.display = 'none';
     }
 
-    async function startScanner() {
+    // *** FIX iOS SAFARI ***
+    // 1) arrancar el getUserMedia DENTRO del click (openScanner)
+    // 2) usar facingMode ideal + fallback
+    // 3) playsinline + video.play()
+    async function startScannerFromUserGesture() {
       if (scanning) return;
       scanning = true;
 
+      const video = document.getElementById('scanVideo');
+      let stream = null;
+
       try {
+        // abrimos cámara con getUserMedia directo (Safari friendly)
+        stream = await getBackCameraStream();
+        video.srcObject = stream;
+        video.setAttribute('playsinline', '');
+        video.muted = true;
+
+        try { await video.play(); } catch (_) {}
+
+        // armamos ZXing sobre el stream existente
         codeReader = new ZXing.BrowserMultiFormatReader();
-        const video = document.getElementById('scanVideo');
 
-        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-        const deviceId = pickBackCamera(devices)?.deviceId || devices?.[0]?.deviceId;
-        if (!deviceId) throw new Error('No hay cámara disponible.');
+        // Algunos iOS no soportan decodeFromStream estable. Igual ZXing UMD suele traerlo.
+        if (typeof codeReader.decodeFromStream === 'function') {
+          await codeReader.decodeFromStream(stream, video, (result, err) => {
+            if (result) onScanResult(result.getText());
+          });
+        } else {
+          // fallback: decodeFromVideoElement (si existe)
+          if (typeof codeReader.decodeFromVideoElement === 'function') {
+            await codeReader.decodeFromVideoElement(video, (result, err) => {
+              if (result) onScanResult(result.getText());
+            });
+          } else {
+            throw new Error('ZXing no soporta decodeFromStream en este entorno.');
+          }
+        }
 
+        // Torch
         torchOn = false;
-        document.getElementById('btnTorch').style.display = 'none';
-
-        await codeReader.decodeFromVideoDevice(deviceId, video, (result) => {
-          if (result) onScanResult(result.getText());
-        });
-
-        setTimeout(() => tryEnableTorchButton(video), 500);
+        const torchBtn = document.getElementById('btnTorch');
+        if (torchBtn) torchBtn.style.display = 'none';
+        setTimeout(() => tryEnableTorchButton(video), 450);
 
       } catch (e) {
-        toastScan('warn', 'No pude abrir la cámara. Usá MANUAL.');
+        console.error('CAM/ZX ERROR:', e);
+        toastScan('warn', `No se puede abrir la cámara. Usá MANUAL. (${e?.name || 'ERR'})`);
         scanning = false;
+
+        // cortamos stream si quedó a medias
+        try {
+          const tracks = video?.srcObject?.getTracks?.() || [];
+          tracks.forEach(t => t.stop());
+        } catch (_) {}
+        try { video.srcObject = null; } catch (_) {}
+      }
+    }
+
+    async function getBackCameraStream() {
+      // intento 1: ideal trasera
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        });
+      } catch (e1) {
+        // intento 2: cualquier cámara
+        return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
     }
 
     async function stopScanner() {
       scanning = false;
-      try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch(_) {}
-      document.getElementById('btnTorch').style.display = 'none';
-    }
 
-    function pickBackCamera(devices) {
-      if (!devices || !devices.length) return null;
-      const back = devices.find(d => /back|rear|environment/i.test(d.label || ''));
-      return back || devices[devices.length - 1];
+      const video = document.getElementById('scanVideo');
+
+      // frenar zxing
+      try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch(_) {}
+
+      // frenar cámara
+      try {
+        const tracks = video?.srcObject?.getTracks?.() || [];
+        tracks.forEach(t => t.stop());
+      } catch(_) {}
+      try { video.srcObject = null; } catch(_) {}
+
+      const torchBtn = document.getElementById('btnTorch');
+      if (torchBtn) torchBtn.style.display = 'none';
+      torchOn = false;
     }
 
     function tryEnableTorchButton(video) {
       try {
         const track = video?.srcObject?.getVideoTracks?.()[0];
         const caps = track?.getCapabilities ? track.getCapabilities() : null;
-        if (caps && 'torch' in caps) document.getElementById('btnTorch').style.display = 'inline-flex';
+        if (caps && 'torch' in caps) {
+          const torchBtn = document.getElementById('btnTorch');
+          if (torchBtn) torchBtn.style.display = 'inline-flex';
+        }
       } catch(_) {}
     }
 
@@ -789,7 +753,7 @@
     }
 
     function onScanResult(codeRaw) {
-      const code = String(codeRaw || '').trim();
+      const code = normalizeBarcode(codeRaw);
       if (!code) return;
 
       const now = Date.now();
