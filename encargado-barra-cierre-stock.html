@@ -3,82 +3,339 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Midnight - Cierre Inventario</title>
-  
+  <title>Midnight — Cierre Stock (Barra)</title>
+
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 
+  <!-- ZXing UMD (Scanner) -->
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.2/umd/index.min.js"></script>
+
   <style>
-    .mobile-input-group {
-      margin-bottom: 12px;
-      background: rgba(255,255,255,0.03);
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border-subtle);
-    }
-    
-    .sku-label {
-      font-weight: 700;
-      color: #fff;
-      font-size: 14px;
-      margin-bottom: 4px;
-      display: block;
-    }
-    .sku-meta {
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-      display: block;
+    :root{
+      --cierre-warn: rgba(255, 10, 30, 0.16);
+      --cierre-ok: rgba(0, 230, 118, 0.14);
+      --cierre-card: rgba(255,255,255,0.03);
     }
 
-    .inputs-row {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
+    /* Layout helpers */
+    .sticky-top {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(11,12,13,0.88);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 0 10px;
+      margin-bottom: 14px;
+    }
+
+    .progress-row{
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+      padding: 0 2px;
+    }
+    .meta-left{ display:flex; flex-direction:column; gap:4px; }
+    .meta-title{ font-family: 'Outfit', sans-serif; font-weight:800; letter-spacing:0.4px; font-size:14px; color:#fff; }
+    .meta-sub{ font-size:11px; color: var(--text-secondary); }
+
+    .top-actions{ display:flex; gap:8px; align-items:center; }
+    .btn-mini{
+      border: 1px solid var(--border-subtle);
+      background: rgba(255,255,255,0.04);
+      color:#fff;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor:pointer;
+      white-space: nowrap;
+    }
+    .btn-mini:active{ transform: translateY(1px); }
+    .btn-mini.danger{ border-color: rgba(255,10,30,0.35); background: rgba(255,10,30,0.12); }
+    .btn-mini.gold{ border-color: rgba(250,204,21,0.45); background: rgba(250,204,21,0.12); color: #fff; }
+
+    /* Cards */
+    .sku-card{
+      margin-bottom: 12px;
+      background: var(--cierre-card);
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+    }
+    .sku-top{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+      margin-bottom: 10px;
+    }
+    .sku-name{ font-weight: 800; color:#fff; font-size: 14px; line-height: 1.2; }
+    .sku-unit{ font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .sku-badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    .chip{
+      font-size:10px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.03);
+      white-space:nowrap;
+      user-select:none;
+    }
+    .chip.ok{ background: var(--cierre-ok); border-color: rgba(0,230,118,0.22); color:#c7ffe5; }
+    .chip.warn{ background: var(--cierre-warn); border-color: rgba(255,10,30,0.22); color:#ffb5be; }
+    .chip.muted{ opacity: 0.7; }
+
+    .inputs-row{ display:grid; gap:10px; }
+    .grid-2{ grid-template-columns: 1fr 1fr; }
+    .grid-1{ grid-template-columns: 1fr; }
+
+    .input-label{ display:block; font-size:10px; color: var(--text-secondary); font-weight:700; letter-spacing:0.6px; margin-bottom:6px; }
+    .audit-input{
+      background:#000;
+      border: 1px solid var(--border-subtle);
+      color:#fff;
+      text-align:center;
+      border-radius: 10px;
+      padding: 12px 10px;
+      width:100%;
+      font-size: 16px;
+      font-weight: 800;
+      outline:none;
+    }
+    .audit-input:focus{ border-color: rgba(250,204,21,0.5); }
+    .audit-input.is-touched{ border-color: rgba(255,255,255,0.18); }
+    .audit-input.is-missing{ border-color: rgba(255,10,30,0.4); }
+
+    .helper-row{
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+      margin-top: 8px;
+    }
+    .helper-left{ display:flex; gap:8px; align-items:center; }
+    .tick{
+      display:flex; align-items:center; gap:8px;
+      font-size:11px; color: var(--text-secondary);
+      user-select:none;
+    }
+    .tick input{ width: 18px; height: 18px; accent-color: #facc15; }
+
+    /* Secondary tabs (bars) */
+    .bar-tabs{
+      display:flex; gap:8px; margin: 10px 0 14px;
+      overflow-x:auto; padding-bottom: 6px;
+    }
+    .bar-btn{
+      flex: 0 0 auto;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-secondary);
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor:pointer;
+      letter-spacing:0.3px;
+    }
+    .bar-btn.active{
+      color:#000;
+      background: rgba(250,204,21,0.95);
+      border-color: rgba(250,204,21,0.65);
+    }
+
+    /* Search + last scans */
+    .search-wrap{ margin-bottom: 10px; }
+    .last-scans{
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.02);
+      padding: 10px;
+      margin-bottom: 14px;
+    }
+    .last-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .last-title{ font-weight: 800; color:#fff; font-size: 12px; letter-spacing: 0.4px; }
+    .last-actions{ display:flex; gap:8px; }
+    .last-item{
+      display:flex; justify-content:space-between; align-items:center;
+      gap:10px;
+      padding: 8px 6px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 12px;
+      color: #fff;
+    }
+    .last-item small{ color: var(--text-secondary); font-size: 11px; }
+    .btn-x{
+      border: 1px solid var(--border-subtle);
+      background: rgba(255,255,255,0.04);
+      color:#fff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor:pointer;
+    }
+
+    /* Sticky scanner bar */
+    .scanner-bar{
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 50;
+      background: rgba(11,12,13,0.92);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border-subtle);
+      padding: 10px 12px 12px;
+    }
+    .scanner-inner{ max-width: 860px; margin: 0 auto; display:flex; flex-direction:column; gap:10px; }
+    .segmented{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    .seg-btn{
+      border: 1px solid var(--border-subtle);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-secondary);
+      padding: 10px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor:pointer;
+      letter-spacing:0.2px;
+      text-align:center;
+    }
+    .seg-btn.active{
+      background: rgba(250,204,21,0.95);
+      color:#000;
+      border-color: rgba(250,204,21,0.65);
+    }
+    .scan-row{
+      display:flex; gap:10px; align-items:center;
+    }
+    .select{
+      flex: 1;
+      background:#000;
+      border: 1px solid var(--border-subtle);
+      color:#fff;
+      border-radius: 12px;
+      padding: 12px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      outline:none;
+    }
+    .scan-btn{
+      flex: 1;
+      background: rgba(250,204,21,0.95);
+      color:#000;
+      border: 1px solid rgba(250,204,21,0.65);
+      border-radius: 12px;
+      padding: 12px 12px;
+      font-size: 13px;
+      font-weight: 1000;
+      cursor:pointer;
+      letter-spacing: 0.4px;
+    }
+    .scan-btn:disabled{ opacity: .55; cursor:not-allowed; }
+    .manual-btn{
+      border: 1px solid var(--border-subtle);
+      background: rgba(255,255,255,0.03);
+      color:#fff;
+      border-radius: 12px;
+      padding: 12px 12px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    /* Spacer so content isn't hidden by scanner bar */
+    .bottom-spacer{ height: 150px; }
+
+    /* Scanner modal */
+    .scan-modal{
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display:none;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(6px);
+      padding: 14px;
+    }
+    .scan-modal.is-open{ display:block; }
+    .scan-box{
+      max-width: 860px;
+      margin: 0 auto;
+      background: #0b0c0d;
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .scan-head{
+      display:flex; justify-content:space-between; align-items:center;
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
       gap: 10px;
     }
-    
-    .audit-input {
-      background: #000;
-      border: 1px solid var(--border-subtle);
-      color: #fff;
-      text-align: center;
-      border-radius: 6px;
-      padding: 10px;
+    .scan-head .title{
+      font-family:'Outfit',sans-serif; font-weight:900; color:#fff; font-size: 13px;
+      letter-spacing:0.4px;
+    }
+    .scan-head .sub{
+      font-size: 11px; color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .scan-head-left{ display:flex; flex-direction:column; }
+    .scan-video-wrap{
+      position: relative;
       width: 100%;
-      font-size: 16px;
-      font-weight: 600;
+      background: #000;
+      aspect-ratio: 3 / 4;
     }
-    .audit-input:focus {
-      border-color: var(--accent-gold);
-      outline: none;
+    video#scanVideo{
+      width:100%;
+      height:100%;
+      object-fit: cover;
+      display:block;
     }
+    .scan-overlay{
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      pointer-events:none;
+    }
+    .scan-frame{
+      width: 78%;
+      height: 46%;
+      border: 2px solid rgba(250,204,21,0.7);
+      border-radius: 16px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.24);
+    }
+    .scan-footer{
+      padding: 12px 12px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .toast{
+      display:none;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03);
+      color:#fff;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+    .toast.ok{ display:block; border-color: rgba(0,230,118,0.25); background: rgba(0,230,118,0.12); }
+    .toast.warn{ display:block; border-color: rgba(255,10,30,0.25); background: rgba(255,10,30,0.12); color:#ffd0d6; }
 
-    .result-box {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    /* Small screens */
+    @media (min-width: 700px){
+      .scan-video-wrap{ aspect-ratio: 16 / 9; }
     }
-    .result-val {
-      font-family: var(--font-display, system-ui);
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-      text-align: right;
-    }
-    .result-val.neg { color: var(--accent-red); }
-    .result-val.pos { color: var(--accent-green); }
   </style>
 </head>
-<body>
 
+<body>
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
@@ -94,456 +351,1280 @@
   </header>
 
   <main class="admin-container">
-    
-    <div class="section-header">
-      <h2 class="section-title">AUDITORÍA DE CIERRE</h2>
-      <p class="section-desc" id="eventSubtitle">
-        Ingresá el stock físico final por ubicación.
-      </p>
+
+    <!-- Sticky meta + actions -->
+    <div class="sticky-top">
+      <div class="progress-row">
+        <div class="meta-left">
+          <div class="meta-title">CIERRE — STOCK REAL</div>
+          <div class="meta-sub" id="eventSubtitle">Cargando…</div>
+        </div>
+        <div class="top-actions">
+          <button class="btn-mini" id="btnSaveDraft">GUARDAR</button>
+          <button class="btn-mini danger" id="btnResetDraft">RESET</button>
+        </div>
+      </div>
     </div>
 
+    <div class="search-wrap">
+      <input
+        type="search"
+        id="searchSku"
+        class="search-input-admin"
+        placeholder="🔍 Buscar producto…"
+        oninput="renderCurrentTab()"
+      >
+    </div>
+
+    <!-- Last scans (UX) -->
+    <div class="last-scans" id="lastScansBox" style="display:none;">
+      <div class="last-head">
+        <div class="last-title">ÚLTIMOS ESCANEOS</div>
+        <div class="last-actions">
+          <button class="btn-mini" onclick="undoLastScan()">DESHACER</button>
+          <button class="btn-mini" onclick="clearScans()">LIMPIAR</button>
+        </div>
+      </div>
+      <div id="lastScansList"></div>
+    </div>
+
+    <!-- Primary tabs -->
     <nav class="tab-nav tabs-gold" id="auditTabs">
-      <button class="tab-btn active" onclick="switchTab('deposito')">1. DEPÓSITO</button>
-      <button class="tab-btn" onclick="switchTab('barras')">2. BARRAS</button>
-      <button class="tab-btn" onclick="switchTab('resumen')">3. RESUMEN</button>
+      <button class="tab-btn active" id="tab-deposito" onclick="switchTab('deposito')">1. DEPÓSITO</button>
+      <button class="tab-btn" id="tab-barras" onclick="switchTab('barras')">2. BARRAS</button>
+      <button class="tab-btn" id="tab-resumen" onclick="switchTab('resumen')">3. RESUMEN</button>
     </nav>
 
-    <!-- TAB 1: DEPÓSITO -->
+    <!-- DEPÓSITO -->
     <section id="view-deposito">
-      <div style="background:rgba(250, 204, 21, 0.1); padding:12px; border-radius:8px; margin-bottom:15px; border:1px solid rgba(250, 204, 21, 0.3);">
-        <p class="text-muted" style="font-size:12px; margin:0;">
-          ⚠️ <b>Apertura:</b> Stock inicial (Viernes / pre-noche).<br>
-          📦 <b>Cierre Depósito:</b> Lo que quedó hoy en estantería.
-        </p>
+      <div style="background:rgba(250, 204, 21, 0.10); padding:10px; border-radius:12px; margin-bottom:12px; font-size:11px; color:var(--text-secondary); line-height: 1.45;">
+        <span style="color:#fff; font-weight:900;">DEPÓSITO (REAL):</span><br>
+        • Cargá <b>INGRESOS</b> solo si entró mercadería hoy.<br>
+        • Cargá <b>FINAL DEPÓSITO</b> con lo que contaste físicamente.
       </div>
+
       <div id="list-deposito">
-        <div style="text-align:center; padding:40px;">Cargando...</div>
+        <div style="text-align:center; padding:40px;">Cargando…</div>
       </div>
-      <button class="btn-primary" style="width:100%; margin-top:20px;" onclick="switchTab('barras')">
+
+      <button class="btn-primary" style="width:100%; margin-top:14px;" onclick="switchTab('barras')">
         SIGUIENTE: BARRAS →
       </button>
     </section>
 
-    <!-- TAB 2: BARRAS -->
+    <!-- BARRAS -->
     <section id="view-barras" style="display:none;">
-      <div style="margin-bottom:15px;">
-        <p class="text-muted" style="font-size:12px; margin:0;">
-          Ingresá el sobrante (botellas cerradas + abiertas) en cada punto de servicio.
-        </p>
+      <div style="background: rgba(255,255,255,0.02); border:1px solid var(--border-subtle); padding:10px; border-radius:12px; margin-bottom:12px; font-size:11px; color:var(--text-secondary); line-height:1.45;">
+        <span style="color:#fff; font-weight:900;">SOBRANTE REAL POR BARRA:</span><br>
+        Elegí la barra y cargá el sobrante físico (cerradas + abiertas).
       </div>
+
+      <div class="bar-tabs" id="barTabs">
+        <button class="bar-btn active" onclick="setActiveBar('B1')">B1</button>
+        <button class="bar-btn" onclick="setActiveBar('B2')">B2</button>
+        <button class="bar-btn" onclick="setActiveBar('VIP')">VIP</button>
+        <button class="bar-btn" onclick="setActiveBar('PATIO')">PATIO</button>
+      </div>
+
       <div id="list-barras"></div>
-      <div style="display:flex; gap:10px; margin-top:20px;">
+
+      <div style="display:flex; gap:10px; margin-top:14px;">
         <button class="btn-secondary" style="flex:1;" onclick="switchTab('deposito')">← VOLVER</button>
         <button class="btn-primary" style="flex:1;" onclick="switchTab('resumen')">VER RESUMEN →</button>
       </div>
     </section>
 
-    <!-- TAB 3: RESUMEN -->
+    <!-- RESUMEN -->
     <section id="view-resumen" style="display:none;">
-      <div class="section-header" style="margin-bottom:20px;">
-        <h3 class="dash-title">RESULTADO DE LA NOCHE</h3>
+      <div style="background: rgba(255,255,255,0.02); border:1px solid var(--border-subtle); padding:10px; border-radius:12px; margin-bottom:12px; font-size:11px; color:var(--text-secondary); line-height:1.45;">
+        <span style="color:#fff; font-weight:900;">RESUMEN:</span><br>
+        No te muestro “teóricos”. Solo estados para saber qué falta o qué revisar.
       </div>
-      
+
       <div id="list-resumen"></div>
 
-      <div style="margin-top:30px; border-top:1px solid var(--border-subtle); padding-top:20px;">
+      <div style="margin-top:18px; border-top:1px solid var(--border-subtle); padding-top:16px;">
         <label class="input-label">COMENTARIOS DEL CIERRE</label>
         <textarea
           id="auditNotes"
           class="modal-input"
-          placeholder="Novedades, roturas no cargadas, diferencias..."
-          style="height:80px; margin-bottom:20px;"
+          placeholder="Novedades, roturas, códigos desconocidos, etc."
+          style="height:90px; margin-bottom:14px;"
         ></textarea>
-        
+
         <button
-          onclick="submitAudit()"
-          id="btnFinalizar"
+          onclick="openConfirmModal()"
           class="btn-primary"
-          style="width:100%; padding:16px; background:var(--accent-gold); color:#000;"
+          style="width:100%; padding:16px; background:rgba(250,204,21,0.95); color:#000; border-color: rgba(250,204,21,0.65);"
         >
-          🔒 FINALIZAR Y CERRAR STOCK
+          📝 PREVISUALIZAR Y CONFIRMAR
         </button>
       </div>
     </section>
 
+    <div class="bottom-spacer"></div>
   </main>
 
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 720px;">
+      <h3 class="section-title">CIERRE — PREVISUALIZACIÓN</h3>
+      <p class="section-desc">Solo estados (sin números guía). Si falta algo, volvés y lo contás.</p>
+
+      <div style="max-height: 46vh; overflow-y:auto; margin: 14px 0; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 10px;">
+        <div id="confirmList"></div>
+      </div>
+
+      <div id="confirmAlert" style="display:none; background:rgba(255,10,30,0.18); padding:10px; border-radius:10px; color:#ffd0d6; font-size:12px; margin-bottom:12px;">
+        ⚠️ Hay productos sin conteo real (depósito o barras). Revisá antes de confirmar.
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="closeConfirmModal()">CORREGIR</button>
+        <button class="btn-primary" id="btnConfirm" onclick="confirmAndSave()">CONFIRMAR (GUARDA AUDITORÍA)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scanner modal -->
+  <div class="scan-modal" id="scanModal">
+    <div class="scan-box">
+      <div class="scan-head">
+        <div class="scan-head-left">
+          <div class="title" id="scanTitle">ESCÁNER</div>
+          <div class="sub" id="scanSub">Apuntá al código de barras.</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-mini" onclick="toggleTorch()" id="btnTorch" style="display:none;">FLASH</button>
+          <button class="btn-mini danger" onclick="closeScanner()">CERRAR</button>
+        </div>
+      </div>
+
+      <div class="scan-video-wrap">
+        <video id="scanVideo" muted playsinline></video>
+        <div class="scan-overlay"><div class="scan-frame"></div></div>
+      </div>
+
+      <div class="scan-footer">
+        <div class="toast" id="scanToast"></div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-mini" style="flex:1;" onclick="undoLastScan()">DESHACER ÚLTIMO</button>
+          <button class="btn-mini" style="flex:1;" onclick="openManualEntry()">CARGAR CÓDIGO</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky scanner bar -->
+  <div class="scanner-bar">
+    <div class="scanner-inner">
+      <div class="segmented">
+        <button class="seg-btn" id="mode-ingresos" onclick="setScanMode('INGRESOS')">INGRESOS</button>
+        <button class="seg-btn active" id="mode-depfinal" onclick="setScanMode('DEP_FINAL')">FINAL DEP.</button>
+        <button class="seg-btn" id="mode-barra" onclick="setScanMode('BARRA')">SOBRANTE</button>
+      </div>
+
+      <div class="scan-row">
+        <select class="select" id="barSelect">
+          <option value="B1">B1</option>
+          <option value="B2">B2</option>
+          <option value="VIP">VIP</option>
+          <option value="PATIO">PATIO</option>
+        </select>
+
+        <button class="scan-btn" id="btnScan" onclick="openScanner()">📷 ESCANEAR</button>
+        <button class="manual-btn" onclick="openManualEntry()">MANUAL</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // ---------------------------
+    // Estado global
+    // ---------------------------
     let currentUser = null;
     let currentEvent = null;
     let eventDate = null;
 
-    let products = [];   // SKUs
-    let auditState = {}; // { skuId: { name, unit, depotInit, depotFinal, bar1, bar2, vip, patio } }
+    let products = [];                 // [{id,name,unit_type, unit_label?}]
+    let auditState = {};               // per sku
+    let barcodeIndex = new Map();      // barcode -> { sku_id, multiplier }
+    let currentTab = 'deposito';
+    let activeBar = 'B1';
 
+    // Scanner state
+    let scanMode = 'DEP_FINAL';        // 'INGRESOS' | 'DEP_FINAL' | 'BARRA'
+    let codeReader = null;
+    let scanning = false;
+    let lastScanTs = 0;
+    let lastScanCode = null;
+    let lastScans = [];                // stack for undo [{sku_id, field, delta, label, ts}]
+    let torchSupported = false;
+    let torchOn = false;
+
+    // Draft
+    function draftKey() { return `mc_cierre_barra_${eventDate || 'no_date'}`; }
+
+    // ---------------------------
+    // Init
+    // ---------------------------
     document.addEventListener('DOMContentLoaded', async () => {
-      // Sesión
-      const sessionRaw = localStorage.getItem('mc_user');
-      if (!sessionRaw) {
-        window.location.href = 'index.html';
-        return;
-      }
-      currentUser = JSON.parse(sessionRaw);
+      const session = localStorage.getItem('mc_user');
+      if (!session) { window.location.href = 'index.html'; return; }
+      currentUser = JSON.parse(session);
 
-      // Evento actual (definido en operativo-evento)
-      const evRaw = localStorage.getItem('mc_current_event');
-      if (!evRaw) {
-        alert('No hay evento activo seleccionado.');
-        window.location.href = 'operativo-evento.html';
-        return;
+      const todayIso = new Date().toISOString().split('T')[0];
+      try {
+        const { data: events } = await client
+          .from('staff_events')
+          .select('*')
+          .eq('status', 'OPEN')
+          .order('operational_date', {ascending: false})
+          .limit(1);
+
+        if (events && events.length) {
+          currentEvent = events[0];
+          eventDate = currentEvent.operational_date;
+        } else {
+          eventDate = todayIso;
+        }
+      } catch(e) {
+        eventDate = todayIso;
       }
-      currentEvent = JSON.parse(evRaw);
-      eventDate = currentEvent.event_date || new Date().toISOString().split('T')[0];
 
       hydrateHeader();
-      await loadData();
+      wireTopButtons();
+      wireScanControls();
+
+      await loadProducts();
+      await loadBarcodesSafe();
+
+      initState();
+      restoreDraftIfAny();
+      refreshTabCounts();
+      renderCurrentTab();
     });
 
     function hydrateHeader() {
       const chip = document.getElementById('chipBarra');
       const sub = document.getElementById('eventSubtitle');
-      const d = formatDateShort(eventDate);
+      const d = (eventDate || '').split('-').reverse().join('/');
       if (chip) chip.textContent = `Barra · ${d}`;
-      if (sub && currentEvent?.name) {
-        sub.textContent = `Evento: ${currentEvent.name} · ${d}. Ingresá el stock físico final por ubicación.`;
-      }
+      if (sub) sub.textContent = `Cierre del ${d} · ${currentUser?.username || 'usuario'}`;
     }
 
-    function formatDateShort(dateStr) {
-      if (!dateStr) return '';
-      const [y, m, d] = dateStr.split('-').map(Number);
-      if (!y || !m || !d) return dateStr;
-      return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}`;
-    }
-
-    // ---------------------------
-    // Navegación tabs
-    // ---------------------------
-    function switchTab(tabId) {
-      ['deposito', 'barras', 'resumen'].forEach(t => {
-        const sec = document.getElementById('view-' + t);
-        if (sec) sec.style.display = (t === tabId ? 'block' : 'none');
+    function wireTopButtons(){
+      document.getElementById('btnSaveDraft').addEventListener('click', () => {
+        saveDraft(true);
       });
+      document.getElementById('btnResetDraft').addEventListener('click', () => {
+        if (!confirm('¿Resetear el cierre? Se borra el borrador local.')) return;
+        localStorage.removeItem(draftKey());
+        lastScans = [];
+        renderLastScans();
+        initState();
+        refreshTabCounts();
+        renderCurrentTab();
+        toastMini('Reset listo.');
+      });
+    }
 
-      const buttons = document.querySelectorAll('#auditTabs .tab-btn');
-      buttons.forEach(b => b.classList.remove('active'));
-      if (tabId === 'deposito') buttons[0].classList.add('active');
-      if (tabId === 'barras') buttons[1].classList.add('active');
-      if (tabId === 'resumen') {
-        buttons[2].classList.add('active');
-        renderResumen();
-      }
-
-      window.scrollTo(0, 0);
+    function wireScanControls(){
+      document.getElementById('barSelect').addEventListener('change', (e) => {
+        activeBar = e.target.value;
+        setActiveBar(activeBar);
+      });
+      updateScanModeUI();
     }
 
     // ---------------------------
-    // Carga de datos
+    // Data load
     // ---------------------------
-    async function loadData() {
+    async function loadProducts() {
       try {
         const { data, error } = await client
           .from('inventory_skus')
-          .select(`
-            id,
-            name,
-            unit_type,
-            inventory_stock (stock_current)
-          `)
-          .in('category', ['BEBIDAS', 'INSUMOS BARRA'])
+          .select('id, name, unit_type, unit_label')
           .eq('is_active', true)
           .order('name');
 
         if (error) throw error;
-
         products = data || [];
+      } catch (e) {
+        console.error(e);
+        products = [];
+        document.getElementById('list-deposito').innerHTML =
+          '<div style="text-align:center; padding:40px; color:var(--accent-red);">Error al cargar SKUs.</div>';
+      }
+    }
+
+    async function loadBarcodesSafe(){
+      // Si la tabla no existe aún, no rompe la UI.
+      barcodeIndex = new Map();
+      try {
+        const { data, error } = await client
+          .from('inventory_barcodes')
+          .select('barcode, sku_id, multiplier, is_active')
+          .eq('is_active', true);
+
+        if (error) throw error;
+
+        (data || []).forEach(row => {
+          if (!row?.barcode || !row?.sku_id) return;
+          barcodeIndex.set(String(row.barcode).trim(), {
+            sku_id: Number(row.sku_id),
+            multiplier: Number(row.multiplier || 1)
+          });
+        });
+      } catch (e) {
+        // fallback: usar external_id si lo querés después; por ahora silencioso
+        console.warn('inventory_barcodes no disponible (ok por ahora).');
+      }
+    }
+
+    function initState(){
+      auditState = {};
+      products.forEach(p => {
+        auditState[p.id] = {
+          sku_id: p.id,
+          name: p.name,
+          unit: p.unit_label || p.unit_type || '',
+          ingresos: null,           // null = no tocado
+          dep_final: null,          // null = no contado
+          dep_counted: false,
+
+          bars: { B1: null, B2: null, VIP: null, PATIO: null }, // null = no contado
+          bar_counted: { B1:false, B2:false, VIP:false, PATIO:false },
+
+          touched: false
+        };
+      });
+    }
+
+    // ---------------------------
+    // Tabs & render
+    // ---------------------------
+    function switchTab(tabId) {
+      currentTab = tabId;
+      document.querySelectorAll('#auditTabs .tab-btn').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById('tab-' + tabId);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      ['deposito','barras','resumen'].forEach(t => {
+        const el = document.getElementById('view-' + t);
+        if (el) el.style.display = (t === tabId ? 'block' : 'none');
+      });
+
+      // UX: auto set scan mode based on tab
+      if (tabId === 'deposito' && scanMode === 'BARRA') setScanMode('DEP_FINAL');
+      if (tabId === 'barras') setScanMode('BARRA');
+
+      renderCurrentTab();
+      window.scrollTo(0, 0);
+    }
+
+    function setActiveBar(bar){
+      activeBar = bar;
+      // Sync UI
+      document.querySelectorAll('#barTabs .bar-btn').forEach(btn => btn.classList.remove('active'));
+      const btn = Array.from(document.querySelectorAll('#barTabs .bar-btn'))
+        .find(b => (b.textContent || '').trim() === bar);
+      if (btn) btn.classList.add('active');
+
+      const sel = document.getElementById('barSelect');
+      if (sel && sel.value !== bar) sel.value = bar;
+
+      if (currentTab === 'barras') renderBarras(getFilteredProducts());
+      updateScanModeUI();
+    }
+
+    function getFilteredProducts(){
+      const term = (document.getElementById('searchSku').value || '').toLowerCase().trim();
+      if (!term) return products;
+      return products.filter(p => (p.name || '').toLowerCase().includes(term));
+    }
+
+    function renderCurrentTab() {
+      const filtered = getFilteredProducts();
+      if (currentTab === 'deposito') renderDeposito(filtered);
+      if (currentTab === 'barras') renderBarras(filtered);
+      if (currentTab === 'resumen') renderResumen(filtered);
+      refreshTabCounts();
+    }
+
+    function renderDeposito(list) {
+      const c = document.getElementById('list-deposito');
+      if (!list.length) { c.innerHTML = '<div class="text-muted text-center">Sin resultados.</div>'; return; }
+
+      c.innerHTML = list.map(p => {
+        const s = auditState[p.id];
+
+        const ingVal = (s.ingresos === null ? '' : s.ingresos);
+        const depVal = (s.dep_final === null ? '' : s.dep_final);
+
+        const ingTouched = s.ingresos !== null;
+        const depMissing = !s.dep_counted;
+
+        return `
+          <div class="sku-card" id="card-${p.id}">
+            <div class="sku-top">
+              <div>
+                <div class="sku-name">${escapeHtml(p.name)}</div>
+                <div class="sku-unit">${escapeHtml(s.unit || '')}</div>
+              </div>
+              <div class="sku-badges">
+                ${s.dep_counted ? `<span class="chip ok">DEPÓSITO ✅</span>` : `<span class="chip warn">DEPÓSITO ⏳</span>`}
+                ${s.ingresos !== null && s.ingresos > 0 ? `<span class="chip ok">INGRESOS</span>` : `<span class="chip muted">INGRESOS</span>`}
+              </div>
+            </div>
+
+            <div class="inputs-row grid-2">
+              <div>
+                <label class="input-label">INGRESOS (HOY)</label>
+                <input
+                  type="number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  min="0"
+                  step="1"
+                  class="audit-input ${ingTouched ? 'is-touched' : ''}"
+                  value="${ingVal}"
+                  placeholder="0"
+                  onchange="updField(${p.id}, 'ingresos', this.value)"
+                  oninput="liveField(${p.id}, 'ingresos', this.value)"
+                />
+              </div>
+
+              <div>
+                <label class="input-label">FINAL DEPÓSITO (CONTEO)</label>
+                <input
+                  type="number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  min="0"
+                  step="1"
+                  class="audit-input ${depMissing ? 'is-missing' : 'is-touched'}"
+                  value="${depVal}"
+                  placeholder="0"
+                  onchange="updField(${p.id}, 'dep_final', this.value)"
+                  oninput="liveField(${p.id}, 'dep_final', this.value)"
+                />
+              </div>
+            </div>
+
+            <div class="helper-row">
+              <div class="helper-left">
+                <label class="tick">
+                  <input type="checkbox" ${s.dep_counted ? 'checked' : ''} onchange="toggleCounted(${p.id}, 'DEP', this.checked)">
+                  Contado
+                </label>
+              </div>
+              <div style="font-size:11px; color: var(--text-secondary);">
+                Tip: podés usar escáner (FINAL DEP.) para contar rápido
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderBarras(list) {
+      const c = document.getElementById('list-barras');
+      if (!list.length) { c.innerHTML = '<div class="text-muted text-center">Sin resultados.</div>'; return; }
+
+      c.innerHTML = list.map(p => {
+        const s = auditState[p.id];
+        const v = (s.bars[activeBar] === null ? '' : s.bars[activeBar]);
+        const missing = !s.bar_counted[activeBar];
+
+        return `
+          <div class="sku-card" id="card-${p.id}">
+            <div class="sku-top">
+              <div>
+                <div class="sku-name">${escapeHtml(p.name)}</div>
+                <div class="sku-unit">${escapeHtml(s.unit || '')}</div>
+              </div>
+              <div class="sku-badges">
+                ${missing ? `<span class="chip warn">${activeBar} ⏳</span>` : `<span class="chip ok">${activeBar} ✅</span>`}
+              </div>
+            </div>
+
+            <div class="inputs-row grid-1">
+              <div>
+                <label class="input-label">SOBRANTE ${activeBar} (CONTEO)</label>
+                <input
+                  type="number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  min="0"
+                  step="1"
+                  class="audit-input ${missing ? 'is-missing' : 'is-touched'}"
+                  value="${v}"
+                  placeholder="0"
+                  onchange="updBar(${p.id}, '${activeBar}', this.value)"
+                  oninput="liveBar(${p.id}, '${activeBar}', this.value)"
+                />
+              </div>
+            </div>
+
+            <div class="helper-row">
+              <div class="helper-left">
+                <label class="tick">
+                  <input type="checkbox" ${s.bar_counted[activeBar] ? 'checked' : ''} onchange="toggleCounted(${p.id}, 'BAR', this.checked, '${activeBar}')">
+                  Contado (${activeBar})
+                </label>
+              </div>
+              <div style="font-size:11px; color: var(--text-secondary);">
+                Tip: escáner en modo SOBRANTE
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderResumen(list) {
+      const c = document.getElementById('list-resumen');
+      const touched = list.filter(p => isTouched(p.id));
+
+      if (!touched.length) {
+        c.innerHTML = '<div class="text-muted text-center" style="padding:18px;">No hay datos cargados todavía.</div>';
+        return;
+      }
+
+      // Build grouped lists
+      const groups = { CRITICO: [], FALTA: [], OK: [] };
+
+      touched.forEach(p => {
+        const st = getSkuStatus(p.id);
+        groups[st.status].push({ p, st });
+      });
+
+      const renderGroup = (title, arr) => {
+        if (!arr.length) return '';
+        return `
+          <div style="margin-bottom:12px;">
+            <div style="font-family:'Outfit',sans-serif; font-weight:900; letter-spacing:0.4px; color:#fff; font-size:12px; margin: 10px 0 8px;">
+              ${title} <span style="color:var(--text-secondary); font-weight:700;">(${arr.length})</span>
+            </div>
+            ${arr.map(({p,st}) => `
+              <div class="sku-card" style="margin-bottom:10px;">
+                <div class="sku-top" style="margin-bottom:0;">
+                  <div>
+                    <div class="sku-name">${escapeHtml(p.name)}</div>
+                    <div class="sku-unit">${escapeHtml((auditState[p.id]?.unit)||'')}</div>
+                  </div>
+                  <div class="sku-badges">
+                    ${st.status === 'OK' ? `<span class="chip ok">OK</span>` : st.status === 'FALTA' ? `<span class="chip warn">FALTA</span>` : `<span class="chip warn">CRÍTICO</span>`}
+                  </div>
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+                  ${st.flags.includes('DEP') ? `<span class="chip ok">DEPÓSITO ✅</span>` : `<span class="chip warn">DEPÓSITO ⏳</span>`}
+                  ${st.flags.includes('B1') ? `<span class="chip ok">B1 ✅</span>` : `<span class="chip muted">B1</span>`}
+                  ${st.flags.includes('B2') ? `<span class="chip ok">B2 ✅</span>` : `<span class="chip muted">B2</span>`}
+                  ${st.flags.includes('VIP') ? `<span class="chip ok">VIP ✅</span>` : `<span class="chip muted">VIP</span>`}
+                  ${st.flags.includes('PATIO') ? `<span class="chip ok">PATIO ✅</span>` : `<span class="chip muted">PATIO</span>`}
+                </div>
+
+                ${st.reason ? `<div style="margin-top:10px; font-size:11px; color:var(--text-secondary); line-height:1.35;">${escapeHtml(st.reason)}</div>` : ''}
+
+                <div style="margin-top:10px; display:flex; gap:10px;">
+                  <button class="btn-mini" onclick="jumpTo('${p.id}','deposito')">IR DEPÓSITO</button>
+                  <button class="btn-mini" onclick="jumpTo('${p.id}','barras')">IR BARRAS</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      };
+
+      c.innerHTML =
+        renderGroup('CRÍTICO', groups.CRITICO) +
+        renderGroup('FALTA CONTEO', groups.FALTA) +
+        renderGroup('OK', groups.OK);
+    }
+
+    function jumpTo(skuId, tab){
+      switchTab(tab);
+      if (tab === 'barras') setActiveBar(activeBar);
+      setTimeout(() => {
+        const el = document.getElementById('card-' + skuId);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        flash(el);
+      }, 60);
+    }
+
+    // ---------------------------
+    // Update handlers (manual)
+    // ---------------------------
+    function liveField(id, key, val){
+      // only for UI responsiveness; do not mark counted until onchange or checkbox
+      // Still store so draft save can happen if user types and closes
+      const num = normalizeNum(val);
+      auditState[id][key] = (val === '' ? null : num);
+      auditState[id].touched = true;
+      saveDraft(false);
+      refreshTabCounts();
+    }
+
+    function updField(id, key, val){
+      const num = normalizeNum(val);
+      auditState[id][key] = (val === '' ? null : num);
+      auditState[id].touched = true;
+
+      if (key === 'dep_final') {
+        auditState[id].dep_counted = (val !== '');
+      }
+      saveDraft(false);
+
+      // If on resumen, refresh
+      if (currentTab === 'resumen') renderResumen(getFilteredProducts());
+      refreshTabCounts();
+    }
+
+    function liveBar(id, bar, val){
+      const num = normalizeNum(val);
+      auditState[id].bars[bar] = (val === '' ? null : num);
+      auditState[id].touched = true;
+      saveDraft(false);
+      refreshTabCounts();
+    }
+
+    function updBar(id, bar, val){
+      const num = normalizeNum(val);
+      auditState[id].bars[bar] = (val === '' ? null : num);
+      auditState[id].bar_counted[bar] = (val !== '');
+      auditState[id].touched = true;
+
+      saveDraft(false);
+      if (currentTab === 'resumen') renderResumen(getFilteredProducts());
+      refreshTabCounts();
+    }
+
+    function toggleCounted(id, type, checked, bar){
+      if (type === 'DEP') {
+        auditState[id].dep_counted = !!checked;
+        if (checked && auditState[id].dep_final === null) auditState[id].dep_final = 0;
+        if (!checked) {
+          // keep value but mark pending
+        }
+      } else if (type === 'BAR') {
+        const b = bar || activeBar;
+        auditState[id].bar_counted[b] = !!checked;
+        if (checked && auditState[id].bars[b] === null) auditState[id].bars[b] = 0;
+      }
+      auditState[id].touched = true;
+      saveDraft(false);
+      refreshTabCounts();
+      renderCurrentTab();
+    }
+
+    // ---------------------------
+    // Status logic (no teóricos)
+    // ---------------------------
+    function isTouched(id){
+      const s = auditState[id];
+      if (!s) return false;
+      if (s.ingresos !== null && s.ingresos !== 0) return true;
+      if (s.dep_final !== null || s.dep_counted) return true;
+      const bars = s.bars || {};
+      return ['B1','B2','VIP','PATIO'].some(b => bars[b] !== null && bars[b] !== 0) ||
+             ['B1','B2','VIP','PATIO'].some(b => s.bar_counted[b]);
+    }
+
+    function getSkuStatus(id){
+      const s = auditState[id];
+      const flags = [];
+
+      if (s.dep_counted) flags.push('DEP');
+      ['B1','B2','VIP','PATIO'].forEach(b => { if (s.bar_counted[b]) flags.push(b); });
+
+      // "CRÍTICO": algún valor negativo (imposible en conteo real)
+      const negatives =
+        (s.ingresos !== null && s.ingresos < 0) ||
+        (s.dep_final !== null && s.dep_final < 0) ||
+        ['B1','B2','VIP','PATIO'].some(b => s.bars[b] !== null && s.bars[b] < 0);
+
+      if (negatives) {
+        return { status:'CRITICO', flags, reason:'Hay un valor negativo cargado. En conteo real no puede ser negativo.' };
+      }
+
+      // "FALTA": tocó algo pero falta conteo de depósito o de barra(s) relevantes
+      // Regla simple: si tocó depósito (ingresos o dep_final) => exigir dep_counted
+      // Si tocó barras (cualquier barra) => exigir que esas barras estén marcadas
+      let missing = false;
+      let reasons = [];
+
+      const touchedDeposit = (s.ingresos !== null && s.ingresos !== 0) || (s.dep_final !== null) || s.dep_counted;
+      if (touchedDeposit && !s.dep_counted) { missing = true; reasons.push('Falta marcar/confirmar conteo real de DEPÓSITO.'); }
+
+      const touchedBars = ['B1','B2','VIP','PATIO'].some(b => (s.bars[b] !== null && s.bars[b] !== 0) || s.bar_counted[b]);
+      if (touchedBars) {
+        ['B1','B2','VIP','PATIO'].forEach(b => {
+          const tb = (s.bars[b] !== null && s.bars[b] !== 0) || s.bar_counted[b];
+          if (tb && !s.bar_counted[b]) { missing = true; reasons.push(`Falta confirmar conteo real en ${b}.`); }
+        });
+      }
+
+      if (missing) return { status:'FALTA', flags, reason: reasons.join(' ') };
+
+      return { status:'OK', flags, reason:'' };
+    }
+
+    // ---------------------------
+    // Tab counts
+    // ---------------------------
+    function refreshTabCounts(){
+      // Depósito: faltan = SKUs sin dep_counted
+      const depMissing = products.reduce((acc, p) => acc + (auditState[p.id]?.dep_counted ? 0 : 1), 0);
+
+      // Barras: faltan para barra activa
+      const barMissing = products.reduce((acc, p) => acc + (auditState[p.id]?.bar_counted?.[activeBar] ? 0 : 1), 0);
+
+      // Resumen: items touched
+      const touched = products.reduce((acc, p) => acc + (isTouched(p.id) ? 1 : 0), 0);
+
+      document.getElementById('tab-deposito').textContent = `1. DEPÓSITO (${depMissing} faltan)`;
+      document.getElementById('tab-barras').textContent = `2. BARRAS (${activeBar}: ${barMissing} faltan)`;
+      document.getElementById('tab-resumen').textContent = `3. RESUMEN (${touched})`;
+    }
+
+    // ---------------------------
+    // Draft save/restore
+    // ---------------------------
+    function saveDraft(showToast){
+      try{
+        const payload = {
+          v: 1,
+          eventDate,
+          activeBar,
+          scanMode,
+          notes: document.getElementById('auditNotes')?.value || '',
+          state: auditState,
+          lastScans
+        };
+        localStorage.setItem(draftKey(), JSON.stringify(payload));
+        if (showToast) toastMini('Borrador guardado.');
+      } catch (e){
+        console.warn('No se pudo guardar borrador', e);
+      }
+    }
+
+    function restoreDraftIfAny(){
+      try{
+        const raw = localStorage.getItem(draftKey());
+        if (!raw) return;
+        const payload = JSON.parse(raw);
+
+        if (payload?.eventDate !== eventDate) return;
+
+        if (payload?.state) {
+          // Merge only known skus (avoid stale)
+          Object.keys(payload.state).forEach(k => {
+            const id = Number(k);
+            if (!auditState[id]) return;
+            const src = payload.state[k];
+            auditState[id] = {
+              ...auditState[id],
+              ingresos: (src.ingresos ?? auditState[id].ingresos),
+              dep_final: (src.dep_final ?? auditState[id].dep_final),
+              dep_counted: !!src.dep_counted,
+              bars: { ...auditState[id].bars, ...(src.bars || {}) },
+              bar_counted: { ...auditState[id].bar_counted, ...(src.bar_counted || {}) },
+              touched: !!src.touched
+            };
+          });
+        }
+
+        if (payload?.notes !== undefined) {
+          const t = document.getElementById('auditNotes');
+          if (t) t.value = payload.notes || '';
+        }
+        if (payload?.activeBar) setActiveBar(payload.activeBar);
+        if (payload?.scanMode) setScanMode(payload.scanMode);
+
+        if (Array.isArray(payload?.lastScans)) lastScans = payload.lastScans;
+
+        renderLastScans();
+        toastMini('Borrador recuperado.');
+      } catch (e){
+        console.warn('No se pudo restaurar borrador', e);
+      }
+    }
+
+    // ---------------------------
+    // Confirm modal (UI-only save to inventory_audits)
+    // ---------------------------
+    function openConfirmModal(){
+      // Build list only touched SKUs
+      const touched = products.filter(p => isTouched(p.id));
+      const el = document.getElementById('confirmList');
+
+      if (!touched.length){
+        el.innerHTML = `<div style="padding:18px; text-align:center; color: var(--text-secondary);">No hay datos para confirmar.</div>`;
+        document.getElementById('confirmAlert').style.display = 'none';
+        document.getElementById('btnConfirm').disabled = true;
+        document.getElementById('confirmModal').style.display = 'flex';
+        return;
+      }
+
+      let hasMissing = false;
+
+      el.innerHTML = touched.map(p => {
+        const st = getSkuStatus(p.id);
+        if (st.status !== 'OK') hasMissing = true;
+
+        return `
+          <div class="audit-row" style="display:grid; grid-template-columns: 1.8fr 1fr 1fr; gap:10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 10px 6px; align-items:center;">
+            <div style="font-weight:800; color:#fff;">${escapeHtml(p.name)}</div>
+            <div style="text-align:center;">
+              ${st.flags.includes('DEP') ? `<span class="chip ok">DEP ✅</span>` : `<span class="chip warn">DEP ⏳</span>`}
+            </div>
+            <div style="text-align:right;">
+              ${st.status === 'OK' ? `<span class="chip ok">OK</span>` : st.status === 'FALTA' ? `<span class="chip warn">FALTA</span>` : `<span class="chip warn">CRÍTICO</span>`}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('confirmAlert').style.display = hasMissing ? 'block' : 'none';
+      document.getElementById('btnConfirm').disabled = false;
+
+      document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function closeConfirmModal(){
+      document.getElementById('confirmModal').style.display = 'none';
+    }
+
+    async function confirmAndSave(){
+      const btn = document.getElementById('btnConfirm');
+      btn.disabled = true;
+      btn.textContent = 'GUARDANDO…';
+
+      try{
+        const notes = (document.getElementById('auditNotes')?.value || '').trim();
+
+        // Payload (UI-only): no movimientos, no stock. Solo auditoría.
+        const details = {
+          mode: 'UI_REAL_ONLY_V1',
+          eventDate,
+          user: { id: currentUser?.id, username: currentUser?.username },
+          deposit: {},
+          bars: { B1:{}, B2:{}, VIP:{}, PATIO:{} },
+          lastScans
+        };
 
         products.forEach(p => {
-          const stockRel = Array.isArray(p.inventory_stock)
-            ? p.inventory_stock[0]
-            : p.inventory_stock;
-          const currentStock = stockRel ? Number(stockRel.stock_current) : 0;
-
-          auditState[p.id] = {
-            name: p.name,
-            unit: p.unit_type,
-            depotInit: currentStock, // snapshot sistema (editable)
-            depotFinal: 0,
-            bar1: 0,
-            bar2: 0,
-            vip: 0,
-            patio: 0
-          };
-        });
-
-        renderDeposito();
-        renderBarras();
-
-      } catch (e) {
-        console.error(e);
-        const cont = document.getElementById('list-deposito');
-        if (cont) {
-          cont.innerHTML = '<div style="text-align:center; padding:40px; color:var(--accent-red);">Error al cargar inventario.</div>';
-        }
-      }
-    }
-
-    // ---------------------------
-    // Render: Depósito
-    // ---------------------------
-    function renderDeposito() {
-      const container = document.getElementById('list-deposito');
-      if (!container) return;
-
-      if (!products.length) {
-        container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">No hay insumos configurados.</div>';
-        return;
-      }
-
-      container.innerHTML = products.map(p => {
-        const s = auditState[p.id];
-        return `
-          <div class="mobile-input-group">
-            <span class="sku-label">${p.name}</span>
-            <span class="sku-meta">Unidad: ${p.unit_type || '-'}</span>
-            <div class="inputs-row">
-              <div>
-                <label class="input-label" style="text-align:center;">APERTURA (Inicio)</label>
-                <input
-                  type="number"
-                  class="audit-input"
-                  style="border-color:var(--accent-gold); color:var(--accent-gold);"
-                  value="${s.depotInit}"
-                  onchange="updateState(${p.id}, 'depotInit', this.value)"
-                >
-              </div>
-              <div>
-                <label class="input-label" style="text-align:center;">CIERRE DEPÓSITO</label>
-                <input
-                  type="number"
-                  class="audit-input"
-                  placeholder="0"
-                  value="${s.depotFinal || ''}"
-                  onchange="updateState(${p.id}, 'depotFinal', this.value)"
-                >
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // ---------------------------
-    // Render: Barras
-    // ---------------------------
-    function renderBarras() {
-      const container = document.getElementById('list-barras');
-      if (!container) return;
-
-      if (!products.length) {
-        container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">No hay insumos configurados.</div>';
-        return;
-      }
-
-      container.innerHTML = products.map(p => {
-        const s = auditState[p.id];
-        return `
-          <div class="mobile-input-group">
-            <span class="sku-label">${p.name}</span>
-            <div class="inputs-row" style="grid-template-columns: repeat(4, 1fr); gap:6px;">
-              <div>
-                <label class="input-label" style="font-size:9px; text-align:center;">B1</label>
-                <input
-                  type="number"
-                  class="audit-input"
-                  placeholder="0"
-                  value="${s.bar1 || ''}"
-                  onchange="updateState(${p.id}, 'bar1', this.value)"
-                >
-              </div>
-              <div>
-                <label class="input-label" style="font-size:9px; text-align:center;">B2</label>
-                <input
-                  type="number"
-                  class="audit-input"
-                  placeholder="0"
-                  value="${s.bar2 || ''}"
-                  onchange="updateState(${p.id}, 'bar2', this.value)"
-                >
-              </div>
-              <div>
-                <label class="input-label" style="font-size:9px; text-align:center;">VIP</label>
-                <input
-                  type="number"
-                  class="audit-input"
-                  placeholder="0"
-                  value="${s.vip || ''}"
-                  onchange="updateState(${p.id}, 'vip', this.value)"
-                >
-              </div>
-              <div>
-                <label class="input-label" style="font-size:9px; text-align:center;">PATIO</label>
-                <input
-                  type="number"
-                  class="audit-input"
-                  placeholder="0"
-                  value="${s.patio || ''}"
-                  onchange="updateState(${p.id}, 'patio', this.value)"
-                >
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // ---------------------------
-    // Render: Resumen
-    // ---------------------------
-    function renderResumen() {
-      const container = document.getElementById('list-resumen');
-      if (!container) return;
-
-      if (!products.length) {
-        container.innerHTML = '<div class="text-muted text-center">No hay productos.</div>';
-        return;
-      }
-
-      const rows = products.map(p => {
-        const s = auditState[p.id];
-
-        const totalFinal = (s.depotFinal || 0) +
-                           (s.bar1 || 0) +
-                           (s.bar2 || 0) +
-                           (s.vip || 0) +
-                           (s.patio || 0);
-
-        const consumo = (s.depotInit || 0) - totalFinal;
-
-        return `
-          <div class="result-box">
-            <div>
-              <div class="sku-label">${p.name}</div>
-              <div class="sku-meta">
-                Ini: ${s.depotInit || 0} | Fin Total: ${totalFinal}
-                <br>
-                (Dep: ${s.depotFinal || 0} / B1: ${s.bar1 || 0} / B2: ${s.bar2 || 0} / VIP: ${s.vip || 0} / Patio: ${s.patio || 0})
-              </div>
-            </div>
-            <div class="text-right">
-              <div class="input-label">CONSUMO</div>
-              <div class="result-val ${consumo < 0 ? 'neg' : 'pos'}">
-                ${consumo}
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      container.innerHTML = rows || '<div class="text-muted text-center">No hay productos.</div>';
-    }
-
-    // ---------------------------
-    // State helpers
-    // ---------------------------
-    function updateState(id, field, value) {
-      const val = parseFloat(value) || 0;
-      if (auditState[id]) {
-        auditState[id][field] = val;
-      }
-    }
-
-    // ---------------------------
-    // Guardar Cierre
-    // ---------------------------
-    async function submitAudit() {
-      if (!confirm("¿Confirmar cierre de stock?\n\nSe actualizará el inventario global con el conteo del DEPÓSITO.")) {
-        return;
-      }
-
-      const btn = document.getElementById('btnFinalizar');
-      btn.disabled = true;
-      btn.textContent = "PROCESANDO...";
-
-      try {
-        const notes = document.getElementById('auditNotes').value || '';
-        const todayIso = new Date().toISOString().split('T')[0];
-        const effectiveDate = eventDate || todayIso;
-
-        let totalConsumedItems = 0;
-        const auditDetails = [];
-        const updates = [];
-
-        for (const p of products) {
           const s = auditState[p.id];
+          if (!isTouched(p.id)) return;
 
-          const totalFinal = (s.depotFinal || 0) +
-                             (s.bar1 || 0) +
-                             (s.bar2 || 0) +
-                             (s.vip || 0) +
-                             (s.patio || 0);
+          details.deposit[p.id] = {
+            ingresos: s.ingresos,
+            dep_final: s.dep_final,
+            dep_counted: s.dep_counted
+          };
 
-          const consumo = (s.depotInit || 0) - totalFinal;
-          if (consumo > 0) totalConsumedItems += consumo;
-
-          auditDetails.push({
-            sku_id: p.id,
-            sku: s.name,
-            unit: s.unit,
-            init: s.depotInit || 0,
-            final_depot: s.depotFinal || 0,
-            bars: {
-              b1: s.bar1 || 0,
-              b2: s.bar2 || 0,
-              vip: s.vip || 0,
-              patio: s.patio || 0
-            },
-            consumption: consumo
+          ['B1','B2','VIP','PATIO'].forEach(b => {
+            details.bars[b][p.id] = {
+              qty: s.bars[b],
+              counted: s.bar_counted[b]
+            };
           });
+        });
 
-          updates.push(
-            client.from('inventory_stock').upsert(
-              {
-                sku_id: p.id,
-                stock_current: s.depotFinal || 0,
-                updated_at: new Date()
-              },
-              { onConflict: 'sku_id' }
-            )
-          );
+        // Best-effort save to inventory_audits (if exists)
+        const payload = {
+          event_date: eventDate,
+          user_id: currentUser?.id || null,
+          audit_type: 'CIERRE_BARRA_UI',
+          notes: notes,
+          details: details
+        };
+
+        // Insert if table exists; otherwise just keep draft and exit
+        let saved = false;
+        try{
+          const { error } = await client.from('inventory_audits').insert(payload);
+          if (error) throw error;
+          saved = true;
+        } catch (e){
+          console.warn('No se pudo guardar en inventory_audits (ok por ahora):', e?.message || e);
         }
 
-        // Actualizar stocks
-        await Promise.all(updates);
+        saveDraft(true);
 
-        // Movimiento agregado global (opcional, mantiene tu lógica actual)
-        await client.from('inventory_movements').insert({
-          user_id: currentUser.id || null,
-          sku_id: null,
-          change_amount: totalConsumedItems,
-          movement_type: 'CIERRE_NOCHE_GLOBAL',
-          notes: `Cierre ${effectiveDate}. Notas: ${notes}`,
-          event_date: effectiveDate
-        });
+        alert(saved
+          ? '✅ Auditoría guardada (sin movimientos todavía).'
+          : '✅ Listo. Guardé el borrador local (la tabla inventory_audits no está disponible o falló).'
+        );
 
-        // Log detallado en tabla de auditoría
-        await client.from('inventory_audits').insert({
-          event_date: effectiveDate,
-          user_id: currentUser.id || null,
-          audit_type: 'CIERRE_NOCHE',
-          notes: notes,
-          details: auditDetails
-        });
+        closeConfirmModal();
 
-        alert("✅ Cierre exitoso. Stock de Depósito actualizado.");
-        window.location.href = 'encargado-barra-index.html';
-
-      } catch (e) {
+      } catch (e){
         console.error(e);
-        alert("Error al cerrar stock: " + e.message);
+        alert('Error: ' + (e.message || e));
+      } finally {
         btn.disabled = false;
-        btn.textContent = "Reintentar";
+        btn.textContent = 'CONFIRMAR (GUARDA AUDITORÍA)';
       }
+    }
+
+    // ---------------------------
+    // Scanner mode + UI
+    // ---------------------------
+    function setScanMode(mode){
+      scanMode = mode;
+
+      // If user selects BARRA mode but not in barras tab, keep allowed
+      // but UI will show bar selector only when needed.
+      updateScanModeUI();
+      saveDraft(false);
+    }
+
+    function updateScanModeUI(){
+      document.getElementById('mode-ingresos').classList.toggle('active', scanMode === 'INGRESOS');
+      document.getElementById('mode-depfinal').classList.toggle('active', scanMode === 'DEP_FINAL');
+      document.getElementById('mode-barra').classList.toggle('active', scanMode === 'BARRA');
+
+      const barSelect = document.getElementById('barSelect');
+      // Only show bar selector when in BARRA mode
+      barSelect.style.display = (scanMode === 'BARRA') ? 'block' : 'none';
+
+      // Keep activeBar synced
+      if (scanMode === 'BARRA') {
+        const sel = document.getElementById('barSelect');
+        if (sel) activeBar = sel.value;
+      }
+    }
+
+    // ---------------------------
+    // Scanner open/close
+    // ---------------------------
+    async function openScanner(){
+      if (!window.ZXing || !window.ZXing.BrowserMultiFormatReader){
+        alert('Scanner no disponible (ZXing no cargó).');
+        return;
+      }
+
+      document.getElementById('scanModal').classList.add('is-open');
+      document.getElementById('scanToast').className = 'toast';
+      document.getElementById('scanToast').textContent = '';
+
+      // Title
+      const title = scanMode === 'INGRESOS' ? 'ESCÁNER — INGRESOS'
+                  : scanMode === 'DEP_FINAL' ? 'ESCÁNER — FINAL DEPÓSITO'
+                  : `ESCÁNER — SOBRANTE ${activeBar}`;
+      document.getElementById('scanTitle').textContent = title;
+      document.getElementById('scanSub').textContent = 'Apuntá al código. Cada lectura suma automáticamente.';
+
+      await startScanner();
+    }
+
+    async function closeScanner(){
+      await stopScanner();
+      document.getElementById('scanModal').classList.remove('is-open');
+    }
+
+    async function startScanner(){
+      if (scanning) return;
+      scanning = true;
+
+      try{
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        const video = document.getElementById('scanVideo');
+
+        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+        // choose back camera if possible
+        const preferred = pickBackCamera(devices);
+        const deviceId = preferred?.deviceId || (devices?.[0]?.deviceId);
+
+        if (!deviceId) throw new Error('No hay cámara disponible.');
+
+        // Torch detect (best-effort)
+        torchSupported = false;
+        torchOn = false;
+        document.getElementById('btnTorch').style.display = 'none';
+
+        // Start decoding
+        await codeReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
+          if (result) onScanResult(result.getText());
+        });
+
+        // Attempt torch support check
+        setTimeout(() => {
+          tryEnableTorchButton(video);
+        }, 600);
+
+      } catch(e){
+        console.error(e);
+        toastScan('warn', 'No pude abrir la cámara. Probá MANUAL.');
+        scanning = false;
+      }
+    }
+
+    async function stopScanner(){
+      scanning = false;
+      try{
+        if (codeReader) {
+          codeReader.reset();
+          codeReader = null;
+        }
+      } catch(e){ /* noop */ }
+      torchSupported = false;
+      torchOn = false;
+      const btnTorch = document.getElementById('btnTorch');
+      if (btnTorch) btnTorch.style.display = 'none';
+    }
+
+    function pickBackCamera(devices){
+      if (!devices || !devices.length) return null;
+      const back = devices.find(d => /back|rear|environment/i.test(d.label || ''));
+      return back || devices[devices.length - 1];
+    }
+
+    // ---------------------------
+    // Torch (best-effort)
+    // ---------------------------
+    function tryEnableTorchButton(video){
+      try{
+        const track = video?.srcObject?.getVideoTracks?.()[0];
+        if (!track) return;
+        const caps = track.getCapabilities ? track.getCapabilities() : null;
+        if (caps && 'torch' in caps) {
+          torchSupported = true;
+          const btn = document.getElementById('btnTorch');
+          btn.style.display = 'inline-flex';
+          btn.textContent = 'FLASH';
+        }
+      } catch(e){ /* noop */ }
+    }
+
+    async function toggleTorch(){
+      const video = document.getElementById('scanVideo');
+      const track = video?.srcObject?.getVideoTracks?.()[0];
+      if (!track) return;
+
+      try{
+        const caps = track.getCapabilities ? track.getCapabilities() : null;
+        if (!caps || !('torch' in caps)) return;
+
+        torchOn = !torchOn;
+        await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+
+        const btn = document.getElementById('btnTorch');
+        btn.textContent = torchOn ? 'FLASH ON' : 'FLASH';
+      } catch(e){
+        console.warn('Torch error', e);
+      }
+    }
+
+    // ---------------------------
+    // Scan handling
+    // ---------------------------
+    function onScanResult(codeRaw){
+      const code = String(codeRaw || '').trim();
+      if (!code) return;
+
+      // Debounce to avoid duplicate reads
+      const now = Date.now();
+      if (lastScanCode === code && (now - lastScanTs) < 900) return;
+
+      lastScanCode = code;
+      lastScanTs = now;
+
+      // Resolve barcode
+      const hit = barcodeIndex.get(code);
+
+      if (!hit){
+        toastScan('warn', `Código no registrado: ${code}`);
+        appendUnknownBarcodeToNotes(code);
+        return;
+      }
+
+      const skuId = hit.sku_id;
+      const mult = Number(hit.multiplier || 1);
+
+      applyScan(skuId, mult, code);
+    }
+
+    function applyScan(skuId, mult, barcode){
+      const s = auditState[skuId];
+      if (!s) {
+        toastScan('warn', `SKU no existe para este código (${barcode}).`);
+        return;
+      }
+
+      let field = '';
+      let label = '';
+      if (scanMode === 'INGRESOS'){
+        field = 'ingresos';
+        s.ingresos = (s.ingresos === null ? 0 : s.ingresos) + mult;
+        label = `${s.name} · INGRESOS (+${mult})`;
+      } else if (scanMode === 'DEP_FINAL'){
+        field = 'dep_final';
+        s.dep_final = (s.dep_final === null ? 0 : s.dep_final) + mult;
+        s.dep_counted = true;
+        label = `${s.name} · FINAL DEP. (+${mult})`;
+      } else {
+        const bar = activeBar;
+        field = `bars.${bar}`;
+        s.bars[bar] = (s.bars[bar] === null ? 0 : s.bars[bar]) + mult;
+        s.bar_counted[bar] = true;
+        label = `${s.name} · ${bar} (+${mult})`;
+      }
+
+      s.touched = true;
+
+      // Push to undo stack
+      lastScans.unshift({
+        ts: Date.now(),
+        sku_id: skuId,
+        delta: mult,
+        mode: scanMode,
+        bar: (scanMode === 'BARRA' ? activeBar : null),
+        barcode,
+        label
+      });
+      lastScans = lastScans.slice(0, 20);
+
+      renderLastScans();
+      saveDraft(false);
+
+      toastScan('ok', `✅ Agregado: ${label}`);
+
+      // Re-render current view (fast enough)
+      renderCurrentTab();
+
+      // Scroll + highlight
+      const card = document.getElementById('card-' + skuId);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        flash(card);
+      }
+    }
+
+    function undoLastScan(){
+      const item = lastScans.shift();
+      if (!item){
+        toastMini('Nada para deshacer.');
+        return;
+      }
+      const s = auditState[item.sku_id];
+      if (!s) return;
+
+      if (item.mode === 'INGRESOS'){
+        s.ingresos = (s.ingresos === null ? 0 : s.ingresos) - item.delta;
+        if (s.ingresos <= 0) s.ingresos = 0;
+      } else if (item.mode === 'DEP_FINAL'){
+        s.dep_final = (s.dep_final === null ? 0 : s.dep_final) - item.delta;
+        if (s.dep_final <= 0) s.dep_final = 0;
+        // keep counted true (no teórico). User can uncheck if needed.
+      } else {
+        const b = item.bar || activeBar;
+        s.bars[b] = (s.bars[b] === null ? 0 : s.bars[b]) - item.delta;
+        if (s.bars[b] <= 0) s.bars[b] = 0;
+      }
+
+      s.touched = true;
+
+      renderLastScans();
+      saveDraft(false);
+      renderCurrentTab();
+      toastMini('Deshecho.');
+    }
+
+    function clearScans(){
+      lastScans = [];
+      renderLastScans();
+      saveDraft(false);
+      toastMini('Lista de escaneos limpia.');
+    }
+
+    function renderLastScans(){
+      const box = document.getElementById('lastScansBox');
+      const list = document.getElementById('lastScansList');
+      if (!lastScans.length){
+        box.style.display = 'none';
+        return;
+      }
+      box.style.display = 'block';
+      list.innerHTML = lastScans.slice(0, 5).map((x, idx) => {
+        const when = new Date(x.ts);
+        const hh = String(when.getHours()).padStart(2,'0');
+        const mm = String(when.getMinutes()).padStart(2,'0');
+        return `
+          <div class="last-item">
+            <div>
+              <div style="font-weight:800;">${escapeHtml(x.label)}</div>
+              <small>${hh}:${mm} · ${escapeHtml(x.barcode)}</small>
+            </div>
+            <button class="btn-x" onclick="undoLastScan()" title="Deshacer">↩</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function appendUnknownBarcodeToNotes(code){
+      const t = document.getElementById('auditNotes');
+      if (!t) return;
+      const line = `Código desconocido: ${code}`;
+      if ((t.value || '').includes(line)) return;
+      t.value = (t.value ? (t.value.trim() + '\n') : '') + line;
+      saveDraft(false);
+    }
+
+    function toastScan(type, msg){
+      const el = document.getElementById('scanToast');
+      el.className = 'toast ' + (type === 'ok' ? 'ok' : 'warn');
+      el.textContent = msg;
+    }
+
+    function toastMini(msg){
+      // lightweight: reuse confirmAlert style? We'll just use alert-like quick console + small toast in scan if open
+      const scanOpen = document.getElementById('scanModal')?.classList.contains('is-open');
+      if (scanOpen) toastScan('ok', msg);
+      else console.log(msg);
+    }
+
+    // Manual barcode entry
+    function openManualEntry(){
+      const code = prompt('Ingresá el código (barcode):');
+      if (!code) return;
+      onScanResult(code);
+    }
+
+    // ---------------------------
+    // Helpers
+    // ---------------------------
+    function normalizeNum(v){
+      if (v === '' || v === null || v === undefined) return 0;
+      const n = Number(String(v).replace(',', '.'));
+      if (!Number.isFinite(n)) return 0;
+      // Keep integer (you can change to decimals if needed)
+      return Math.max(0, Math.floor(n));
+    }
+
+    function escapeHtml(str){
+      return String(str ?? '')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
+    }
+
+    function flash(el){
+      el.style.transition = 'box-shadow .25s ease, border-color .25s ease';
+      const prevBorder = el.style.borderColor;
+      el.style.borderColor = 'rgba(250,204,21,0.75)';
+      el.style.boxShadow = '0 0 0 2px rgba(250,204,21,0.18)';
+      setTimeout(() => {
+        el.style.borderColor = prevBorder;
+        el.style.boxShadow = '';
+      }, 900);
     }
   </script>
 </body>
