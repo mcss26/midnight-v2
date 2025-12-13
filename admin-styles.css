@@ -982,3 +982,52 @@ input[type=number] {
 
 .toolbar--start{ justify-content:flex-start; }
 .toolbar--tight{ gap:10px; margin-bottom:0; }
+
+/* ================================
+   ORDERS / CALENDARIO (UTIL + UI)
+   ================================ */
+
+/* Utilidades de spacing (livianas) */
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 12px; }
+.mt-3 { margin-top: 16px; }
+.mt-4 { margin-top: 32px; }
+.mb-2 { margin-bottom: 12px; }
+
+.section-title-left { text-align: left; }
+.section-title-sm { font-size: 18px; letter-spacing: 0.14em; }
+
+.orders-status { text-align: center; margin-top: 8px; min-height: 20px; }
+
+.orders-filters-row { flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.orders-search { flex: 1; min-width: 240px; }
+.orders-filter-panel { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; min-width: 260px; }
+.filter-label { font-size: 11px; }
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+.filter-btn.active {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #fff;
+  color: #fff;
+}
+
+.orders-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.orders-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.orders-fixed-row { flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+
+.input-sm { max-width: 180px; }
+.input-date-sm { max-width: 160px; }
+
+.actions-stack { display: flex; flex-direction: column; gap: 6px; }

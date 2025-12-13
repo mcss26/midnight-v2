@@ -10,51 +10,51 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-</head>
-<body>
-  <header class="admin-header">
-    <div class="admin-header-inner">
-      <div class="admin-header-top">
-        <div></div>
+<header class="admin-header">
+  <div class="admin-header-inner">
+    <div class="admin-header-top">
 
-        <div class="admin-logo" aria-hidden="true"></div>
-
-        <div class="admin-header-right">
-          <div class="session-chip" data-session-chip>
-            Sesión no vinculada
-          </div>
-          <button type="button" class="btn-logout" data-logout-button>
-            Salir
-          </button>
-        </div>
+      <div class="header-left">
+        <button class="btn-back" type="button" onclick="window.location.href='administracion-index.html'">
+          VOLVER
+        </button>
       </div>
-    </div>
-  </header>
 
-  <main class="admin-container">
-    <!-- Volver -->
-    <div class="mb-2">
-      <button class="btn-back" type="button" onclick="window.location.href='administracion-index.html'">
-        Volver
-      </button>
-    </div>
+      <div class="admin-logo" aria-hidden="true"></div>
 
-    <!-- Título principal -->
+      <div class="admin-header-right">
+        <div class="session-chip" data-session-chip>Sesión no vinculada</div>
+        <button type="button" class="btn-logout" data-logout-button>Salir</button>
+      </div>
+
+    </div>
+  </div>
+</header>
+
     <section class="section-header">
       <h1 class="section-title">ÓRDENES &amp; CALENDARIO</h1>
       <p class="section-desc">
-        Órdenes de compra de stock y compromisos de pago OPEX / G&amp;A por proveedor y fecha de vencimiento.
+        Órdenes de stock y compromisos de pago OPEX / G&amp;A por proveedor y fecha de vencimiento.
       </p>
     </section>
 
-    <!-- Estado global -->
     <div id="ordersStatus" class="section-desc" style="margin-top:8px; text-align:center;"></div>
 
+    <!-- Tabs principales -->
+    <nav class="tab-nav" id="mainTabs" aria-label="Tipo de órdenes">
+      <button type="button" class="tab-btn active" data-main="STOCK">STOCK (COD)</button>
+      <button type="button" class="tab-btn" data-main="OPEX">OPEX / G&amp;A</button>
+    </nav>
+
+    <!-- KPIs -->
+    <section class="mt-2">
+      <div class="kpi-grid" id="kpiGrid"></div>
+    </section>
+
     <!-- Filtros globales -->
-    <section class="mt-3">
+    <section class="mt-2">
       <div class="summary-card">
-        <div class="summary-row" style="flex-wrap:wrap; align-items:flex-end; gap:12px;">
-          <!-- Buscador -->
+        <div class="summary-row" style="align-items:flex-end;">
           <div style="flex:1; min-width:240px;">
             <label class="input-label" for="searchInput">BÚSQUEDA</label>
             <input
@@ -62,44 +62,46 @@
               id="searchInput"
               class="search-input-admin"
               placeholder="Buscar por proveedor, insumo o concepto..."
-              oninput="renderAllOrders()"
+              oninput="renderAll()"
             />
           </div>
 
-          <!-- Filtros de estado -->
-          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width:260px;">
-            <div style="font-size:11px;" class="text-muted">
-              Estado — Órdenes de stock
-            </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-              <button type="button" class="btn-secondary" onclick="setStatusFilter('ALL')">Todas</button>
-              <button type="button" class="btn-secondary" onclick="setStatusFilter('PENDING')">Pendientes</button>
-              <button type="button" class="btn-secondary" onclick="setStatusFilter('APPROVED')">Aprobadas</button>
-              <button type="button" class="btn-secondary" onclick="setStatusFilter('REALIZED')">Emitidas</button>
-            </div>
+          <div style="min-width:160px;">
+            <label class="input-label" for="dateFrom">DESDE</label>
+            <input type="date" id="dateFrom" class="modal-input" onchange="renderAll()" />
+          </div>
 
-            <div style="font-size:11px; margin-top:4px;" class="text-muted">
-              Estado — Órdenes sin stock (OPEX / G&amp;A)
-            </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-              <button type="button" class="btn-secondary" onclick="setPoStatusFilter('ALL')">Todas</button>
-              <button type="button" class="btn-secondary" onclick="setPoStatusFilter('PENDING')">Pendientes</button>
-              <button type="button" class="btn-secondary" onclick="setPoStatusFilter('PAID')">Pagadas</button>
-              <button type="button" class="btn-secondary" onclick="setPoStatusFilter('CANCELLED')">Canceladas</button>
-            </div>
+          <div style="min-width:160px;">
+            <label class="input-label" for="dateTo">HASTA</label>
+            <input type="date" id="dateTo" class="modal-input" onchange="renderAll()" />
+          </div>
+
+          <div style="min-width:200px; display:flex; align-items:center; gap:8px; justify-content:flex-end;">
+            <input type="checkbox" id="onlyOverdue" onchange="renderAll()" />
+            <label for="onlyOverdue" class="input-label" style="margin:0; cursor:pointer;">Solo vencidas</label>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- BLOQUE A: ÓRDENES DE STOCK (COD) -->
-    <section class="mt-3">
-      <h2 class="section-title" style="font-size:18px; text-align:left; margin-bottom:4px;">
-        ÓRDENES DE STOCK (COD)
-      </h2>
-      <p class="section-desc" style="text-align:left; max-width:none;">
-        Insumos con SKU generados desde el módulo de stock administrativo.
-      </p>
+    <!-- ====== BLOQUE A: STOCK ====== -->
+    <section class="mt-3" id="sectionStock">
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+        <div>
+          <h2 class="section-title" style="font-size:18px; text-align:left; margin-bottom:4px;">ÓRDENES DE STOCK (COD)</h2>
+          <p class="section-desc" style="text-align:left; max-width:none;">
+            Insumos con SKU generados desde el módulo de stock administrativo.
+          </p>
+        </div>
+
+        <nav class="tab-nav tabs-blue" id="stockStatusTabs" aria-label="Estado órdenes stock">
+          <button type="button" class="tab-btn active" data-status="ALL">Todas</button>
+          <button type="button" class="tab-btn" data-status="PENDING">Pendientes</button>
+          <button type="button" class="tab-btn" data-status="APPROVED">Aprobadas</button>
+          <button type="button" class="tab-btn" data-status="REALIZED">Emitidas</button>
+          <button type="button" class="tab-btn" data-status="CANCELLED">Canceladas</button>
+        </nav>
+      </div>
 
       <div class="table-container" style="margin-top: 12px;">
         <table class="sku-table" aria-label="Órdenes de stock y calendario de pagos">
@@ -110,9 +112,9 @@
               <th>PROVEEDOR</th>
               <th>CENTRO COSTO</th>
               <th>INSUMO</th>
-              <th>TOTAL</th>
+              <th class="text-right">TOTAL</th>
               <th>ESTADO</th>
-              <th>ACCIONES</th>
+              <th class="text-center">ACCIÓN</th>
             </tr>
           </thead>
           <tbody id="ordersTableBody">
@@ -126,8 +128,8 @@
       </div>
     </section>
 
-    <!-- BLOQUE B: ÓRDENES SIN STOCK (OPEX / G&A / COD sin SKU) -->
-    <section class="mt-3" style="margin-top:32px;">
+    <!-- ====== BLOQUE B: OPEX ====== -->
+    <section class="mt-3" id="sectionOpex" style="display:none;">
       <div style="display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px;">
         <div>
           <h2 class="section-title" style="font-size:18px; text-align:left; margin-bottom:4px;">
@@ -138,52 +140,54 @@
           </p>
         </div>
 
-        <div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <nav class="tab-nav tabs-gold" id="poStatusTabs" aria-label="Estado órdenes OPEX">
+            <button type="button" class="tab-btn active" data-postatus="ALL">Todas</button>
+            <button type="button" class="tab-btn" data-postatus="PENDING">Pendientes</button>
+            <button type="button" class="tab-btn" data-postatus="PAID">Pagadas</button>
+            <button type="button" class="tab-btn" data-postatus="CANCELLED">Canceladas</button>
+          </nav>
+
           <button type="button" class="btn-primary" id="newPoBtn" onclick="openPoCreateModal()">
-            Nueva orden OPEX / G&amp;A
+            Nueva orden
           </button>
         </div>
       </div>
 
-      <!-- Resumen por centro de costo (solo purchase_orders) -->
-      <div id="ordersSummary" class="stock-summary" style="margin-top:12px;"></div>
+      <!-- Resumen por centro de costo -->
+      <div class="kpi-grid" id="poSummaryGrid" style="margin-top:12px;"></div>
 
       <!-- Automatización de fijos -->
       <div class="summary-card" style="margin-top: 8px;">
-        <div class="summary-row" style="flex-wrap: wrap; align-items: flex-end; gap: 8px;">
-          <div style="flex:1; min-width: 200px;">
+        <div class="summary-row" style="align-items:flex-end;">
+          <div style="flex:1; min-width:200px;">
             <span class="text-muted">Generar órdenes FIJAS desde proveedores</span>
             <div class="row-sub-text">
-              Usa cost_type = FIJO y fixed_amount de cada proveedor activo. No duplica órdenes AUTO_FIXED para la misma fecha.
+              Usa cost_type = FIJO y fixed_amount. No duplica AUTO_FIXED para la misma fecha.
             </div>
           </div>
-          <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-            <input
-              type="date"
-              id="fixedTargetDate"
-              class="modal-input"
-              style="max-width: 160px;"
-            />
-            <select
-              id="fixedPaymentFilter"
-              class="modal-select"
-              style="max-width: 180px;"
-            >
-              <option value="ALL">Todas las frecuencias</option>
-              <option value="DIARIO">Diario</option>
-              <option value="SEMANAL">Semanal</option>
-              <option value="QUINCENAL">Quincenal</option>
-              <option value="MENSUAL">Mensual</option>
-              <option value="TRIMESTRAL">Trimestral</option>
-              <option value="SEMESTRAL">Semestral</option>
-              <option value="ANUAL">Anual</option>
-            </select>
-            <button
-              type="button"
-              class="btn-primary"
-              id="runFixedGenBtn"
-              onclick="generateFixedOrders()"
-            >
+
+          <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-end;">
+            <div style="min-width:160px;">
+              <label class="input-label" for="fixedTargetDate">VENCIMIENTO</label>
+              <input type="date" id="fixedTargetDate" class="modal-input" />
+            </div>
+
+            <div style="min-width:180px;">
+              <label class="input-label" for="fixedPaymentFilter">FRECUENCIA</label>
+              <select id="fixedPaymentFilter" class="modal-select">
+                <option value="ALL">Todas</option>
+                <option value="DIARIO">Diario</option>
+                <option value="SEMANAL">Semanal</option>
+                <option value="QUINCENAL">Quincenal</option>
+                <option value="MENSUAL">Mensual</option>
+                <option value="TRIMESTRAL">Trimestral</option>
+                <option value="SEMESTRAL">Semestral</option>
+                <option value="ANUAL">Anual</option>
+              </select>
+            </div>
+
+            <button type="button" class="btn-primary" id="runFixedGenBtn" onclick="generateFixedOrders()">
               Generar fijos
             </button>
           </div>
@@ -199,10 +203,10 @@
               <th>PROVEEDOR</th>
               <th>CENTRO COSTO</th>
               <th>CONCEPTO</th>
-              <th>TOTAL</th>
+              <th class="text-right">TOTAL</th>
               <th>TIPO</th>
               <th>ESTADO</th>
-              <th>ACCIONES</th>
+              <th class="text-center">ACCIÓN</th>
             </tr>
           </thead>
           <tbody id="poTableBody">
@@ -223,9 +227,7 @@
       <h2 class="section-title" style="font-size:18px; letter-spacing:0.14em; text-align:left;">
         ORDEN SIN STOCK
       </h2>
-      <p class="section-desc" id="poModalSubtitle" style="text-align:left;">
-        Crear orden OPEX / G&amp;A sin SKU.
-      </p>
+      <p class="section-desc" id="poModalSubtitle" style="text-align:left;">Crear orden OPEX / G&amp;A sin SKU.</p>
 
       <form id="poForm">
         <input type="hidden" id="poId" />
@@ -249,54 +251,29 @@
 
         <div class="mt-2">
           <label class="input-label" for="poConcept">Concepto</label>
-          <input
-            type="text"
-            id="poConcept"
-            class="modal-input"
-            placeholder="Ej: SADAIC – Semana 50, EDESA – Noviembre, Fotógrafo 07/12"
-          />
+          <input type="text" id="poConcept" class="modal-input" placeholder="Ej: EDESA – Noviembre, Fotógrafo 07/12" />
         </div>
 
         <div class="mt-2" style="display:flex; gap:12px; flex-wrap:wrap;">
           <div style="flex:1; min-width:140px;">
             <label class="input-label" for="poAmount">Monto total (ARS)</label>
-            <input
-              type="number"
-              id="poAmount"
-              class="modal-input"
-              min="0"
-              step="1"
-              placeholder="Ej: 250000"
-            />
+            <input type="number" id="poAmount" class="modal-input" min="0" step="1" placeholder="Ej: 250000" />
           </div>
           <div style="flex:1; min-width:140px;">
             <label class="input-label" for="poDueDate">Fecha de vencimiento</label>
-            <input
-              type="date"
-              id="poDueDate"
-              class="modal-input"
-            />
+            <input type="date" id="poDueDate" class="modal-input" />
           </div>
         </div>
 
         <div class="mt-2">
           <label class="input-label" for="poPaymentMethod">Método de pago</label>
-          <input
-            type="text"
-            id="poPaymentMethod"
-            class="modal-input"
-            placeholder="Ej: Transferencia, Efectivo, Débito, etc."
-          />
+          <input type="text" id="poPaymentMethod" class="modal-input" placeholder="Ej: Transferencia, Efectivo..." />
         </div>
       </form>
 
       <div class="modal-btns">
-        <button type="button" class="btn-secondary" id="poCancelBtn" onclick="closePoModal()">
-          Cancelar
-        </button>
-        <button type="button" class="btn-primary" id="poSaveBtn" onclick="handleSavePo()">
-          Guardar
-        </button>
+        <button type="button" class="btn-secondary" id="poCancelBtn" onclick="closePoModal()">Cancelar</button>
+        <button type="button" class="btn-primary" id="poSaveBtn" onclick="handleSavePo()">Guardar</button>
       </div>
     </div>
   </div>
@@ -308,8 +285,9 @@
     let allPurchaseOrders = [];
     let suppliersList = [];
 
-    let statusFilter = 'ALL';   // stock_orders
-    let poStatusFilter = 'ALL'; // purchase_orders
+    let statusFilter = 'ALL';
+    let poStatusFilter = 'ALL';
+    let activeMain = 'STOCK';
 
     document.addEventListener('DOMContentLoaded', async () => {
       const session = localStorage.getItem('mc_user');
@@ -321,33 +299,116 @@
         currentUser = JSON.parse(session);
       }
 
+      // defaults filtros fecha (opcional, dejamos vacío)
+      // document.getElementById('dateFrom').value = new Date().toISOString().slice(0,10);
+
       document.addEventListener('keydown', (ev) => {
         if (ev.key === 'Escape') {
           const poModal = document.getElementById('poModal');
-          if (poModal && poModal.style.display === 'flex') {
-            closePoModal();
-          }
+          if (poModal && poModal.style.display === 'flex') closePoModal();
         }
       });
 
+      setupTabs();
       await loadOrders();
     });
+
+    function setupTabs() {
+      // tabs principales
+      document.querySelectorAll('#mainTabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#mainTabs .tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeMain = btn.dataset.main;
+
+          document.getElementById('sectionStock').style.display = (activeMain === 'STOCK') ? '' : 'none';
+          document.getElementById('sectionOpex').style.display  = (activeMain === 'OPEX') ? '' : 'none';
+
+          renderAll();
+        });
+      });
+
+      // status stock
+      document.querySelectorAll('#stockStatusTabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#stockStatusTabs .tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          statusFilter = btn.dataset.status || 'ALL';
+          renderAll();
+        });
+      });
+
+      // status opex
+      document.querySelectorAll('#poStatusTabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#poStatusTabs .tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          poStatusFilter = btn.dataset.postatus || 'ALL';
+          renderAll();
+        });
+      });
+    }
 
     function formatCurrencyLocal(value) {
       const num = Number(value || 0);
       if (!num) return '-';
-      if (window.MC_UTILS && typeof MC_UTILS.formatCurrency === 'function') {
-        return MC_UTILS.formatCurrency(num);
-      }
+      if (window.MC_UTILS && typeof MC_UTILS.formatCurrency === 'function') return MC_UTILS.formatCurrency(num);
       try {
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          maximumFractionDigits: 0
-        }).format(num);
-      } catch (e) {
-        return num.toString();
+        return new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }).format(num);
+      } catch { return String(num); }
+    }
+
+    function parseLocalDate(dateStr) {
+      if (!dateStr) return null;
+      // YYYY-MM-DD
+      const [y,m,d] = String(dateStr).split('-').map(Number);
+      if (!y || !m || !d) return null;
+      return new Date(y, m-1, d, 0,0,0,0);
+    }
+
+    function startOfToday() {
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
+    }
+
+    function dueBadge(dueStr) {
+      const due = parseLocalDate(dueStr);
+      if (!due) return { label: 'Sin definir', cls: 'tag tag-gray' };
+
+      const today = startOfToday();
+      const diffDays = Math.round((due - today) / 86400000);
+
+      if (diffDays < 0) return { label: 'Vencida', cls: 'tag tag-red' };
+      if (diffDays === 0) return { label: 'Hoy', cls: 'tag tag-gold' };
+      if (diffDays <= 2) return { label: 'Próx.', cls: 'tag tag-gold' };
+      return { label: 'OK', cls: 'tag tag-gray' };
+    }
+
+    function passesDateFilter(dueStr) {
+      const fromStr = document.getElementById('dateFrom')?.value || '';
+      const toStr   = document.getElementById('dateTo')?.value || '';
+      const onlyOverdue = !!document.getElementById('onlyOverdue')?.checked;
+
+      const due = parseLocalDate(dueStr);
+      const today = startOfToday();
+
+      if (onlyOverdue) {
+        if (!due) return false;
+        if (due >= today) return false;
       }
+
+      if (!fromStr && !toStr) return true;
+      if (!due) return false;
+
+      const from = fromStr ? parseLocalDate(fromStr) : null;
+      const to   = toStr ? parseLocalDate(toStr) : null;
+
+      if (from && due < from) return false;
+      if (to) {
+        const toEnd = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23,59,59,999);
+        if (due > toEnd) return false;
+      }
+      return true;
     }
 
     async function loadOrders() {
@@ -355,44 +416,22 @@
       const stockTBody = document.getElementById('ordersTableBody');
       const poTBody = document.getElementById('poTableBody');
 
-      if (stockTBody) {
-        stockTBody.innerHTML = `
-          <tr>
-            <td colspan="8" style="text-align:center; padding:40px; color:var(--text-secondary);">
-              Cargando órdenes de stock...
-            </td>
-          </tr>
-        `;
-      }
-      if (poTBody) {
-        poTBody.innerHTML = `
-          <tr>
-            <td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">
-              Cargando órdenes sin stock...
-            </td>
-          </tr>
-        `;
-      }
-
+      stockTBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text-secondary);">Cargando órdenes de stock...</td></tr>`;
+      poTBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">Cargando órdenes sin stock...</td></tr>`;
       statusEl.textContent = 'Cargando órdenes...';
 
       try {
         const [stockRes, poRes, skusRes, suppsRes] = await Promise.all([
-          client
-            .from('stock_orders')
+          client.from('stock_orders')
             .select('id, created_at, event_date, sku_id, quantity, unit_cost, total_cost, status, delivery_eta, payment_day, due_date, payment_method, supplier_id')
             .order('due_date', { ascending: true })
             .order('created_at', { ascending: false }),
-          client
-            .from('purchase_orders')
+          client.from('purchase_orders')
             .select('id, created_at, supplier_id, requested_by, status, total_amount, due_date, payment_method, paid_at, cost_center, is_fixed, concept, source')
             .order('due_date', { ascending: true })
             .order('created_at', { ascending: false }),
-          client
-            .from('inventory_skus')
-            .select('id, name'),
-          client
-            .from('suppliers')
+          client.from('inventory_skus').select('id, name'),
+          client.from('suppliers')
             .select('id, name, legal_name, cuit, bank_name, bank_account_alias, bank_account_cbu, cost_center, cost_type, fixed_amount, payment_terms, is_active')
         ]);
 
@@ -415,69 +454,38 @@
         allPurchaseOrders = (poRes.data || []).map(po => {
           const sup = supplierMap.get(po.supplier_id) || null;
           let costCenter = po.cost_center;
-          if (!costCenter && sup && sup.cost_center) {
-            costCenter = sup.cost_center;
-          }
-          return {
-            ...po,
-            supplier: sup,
-            cost_center: costCenter
-          };
+          if (!costCenter && sup && sup.cost_center) costCenter = sup.cost_center;
+          return { ...po, supplier: sup, cost_center: costCenter };
         });
 
         statusEl.textContent = `Órdenes stock: ${allStockOrders.length} · Órdenes sin stock: ${allPurchaseOrders.length}`;
-        renderAllOrders();
+
+        // default fecha fijos hoy si está vacío
+        const fx = document.getElementById('fixedTargetDate');
+        if (fx && !fx.value) fx.value = new Date().toISOString().slice(0,10);
+
+        renderAll();
       } catch (err) {
         console.error('Error cargando órdenes:', err);
         statusEl.textContent = 'Error al cargar órdenes. Intenta nuevamente.';
-
-        if (stockTBody) {
-          stockTBody.innerHTML = `
-            <tr>
-              <td colspan="8" style="text-align:center; padding:40px; color:var(--state-error);">
-                Error al cargar órdenes de stock.
-              </td>
-            </tr>
-          `;
-        }
-        if (poTBody) {
-          poTBody.innerHTML = `
-            <tr>
-              <td colspan="9" style="text-align:center; padding:40px; color:var(--state-error);">
-                Error al cargar órdenes sin stock.
-              </td>
-            </tr>
-          `;
-        }
+        stockTBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--state-error);">Error al cargar órdenes de stock.</td></tr>`;
+        poTBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--state-error);">Error al cargar órdenes sin stock.</td></tr>`;
       }
     }
 
-    function renderAllOrders() {
-      renderStockOrders();
-      renderPurchaseOrders();
+    function renderAll() {
+      if (activeMain === 'STOCK') renderStockOrders();
+      else renderPurchaseOrders();
+      renderKPIs();
+      if (activeMain === 'OPEX') renderPoSummary();
     }
 
-    function setStatusFilter(value) {
-      statusFilter = value;
-      renderStockOrders();
-    }
-
-    function setPoStatusFilter(value) {
-      poStatusFilter = value;
-      renderPurchaseOrders();
-    }
-
-    function renderStockOrders() {
-      const tbody = document.getElementById('ordersTableBody');
-      if (!tbody) return;
-
+    function getFilteredStockList() {
       const searchText = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
-
       let list = allStockOrders.slice();
 
-      if (statusFilter !== 'ALL') {
-        list = list.filter(o => o.status === statusFilter);
-      }
+      if (statusFilter !== 'ALL') list = list.filter(o => o.status === statusFilter);
+      list = list.filter(o => passesDateFilter(o.due_date));
 
       if (searchText) {
         list = list.filter(o => {
@@ -486,166 +494,11 @@
           return prov.includes(searchText) || skuName.includes(searchText);
         });
       }
-
-      if (!list.length) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="8" style="text-align:center; padding:40px; color:var(--text-secondary);">
-              No hay órdenes de stock para los filtros actuales.
-            </td>
-          </tr>
-        `;
-        return;
-      }
-
-      tbody.innerHTML = list.map(o => {
-        const createdDate = o.created_at ? o.created_at.split('T')[0] : '-';
-        const dueDateValue = o.due_date || '';
-        const dueDateLabel = dueDateValue || '—';
-
-        const supplier = o.supplier;
-        const provName = supplier
-          ? (supplier.legal_name || supplier.name)
-          : 'SIN PROVEEDOR';
-        const cuit = supplier?.cuit || '-';
-
-        const costCenter = supplier?.cost_center || null;
-        let ccLabel = costCenter || '—';
-        let ccClass = 'tag-gray';
-        if (costCenter === 'COD') ccClass = 'tag-green';
-        else if (costCenter === 'OPEX') ccClass = 'tag-blue';
-        else if (costCenter === 'G&A') ccClass = 'tag-purple';
-
-        const supplierInactive = supplier && supplier.is_active === false;
-
-        const skuName = o.sku?.name || 'SKU eliminado';
-
-        const qty = Number(o.quantity) || 0;
-        const total = Number(o.total_cost) || 0;
-        const totalFmt = formatCurrencyLocal(total);
-
-        let statusLabel = 'PENDIENTE';
-        let statusClass = 'tag-gray';
-        if (o.status === 'APPROVED') {
-          statusLabel = 'APROBADO';
-          statusClass = 'tag-green';
-        } else if (o.status === 'REALIZED') {
-          statusLabel = 'EMITIDO';
-          statusClass = 'tag-red';
-        } else if (o.status === 'CANCELLED') {
-          statusLabel = 'CANCELADA';
-          statusClass = 'tag-red';
-        }
-
-        const canApprove = o.status === 'PENDING';
-        const canEmit = o.status === 'APPROVED';
-
-        return `
-          <tr>
-            <td>
-              <div class="row-title">#${o.id}</div>
-              <div class="row-sub-text">Creada: ${createdDate}</div>
-            </td>
-            <td style="text-align:center;">
-              <input
-                type="date"
-                class="table-input"
-                value="${dueDateValue}"
-                onchange="updateDueDate(${o.id}, this.value)"
-                style="max-width: 140px;"
-              />
-              <div class="row-sub-text">${dueDateLabel === '—' ? 'Sin definir' : 'Vence: ' + dueDateLabel}</div>
-            </td>
-            <td>
-              <div class="row-title">${provName}</div>
-              <div class="row-sub-text">CUIT: ${cuit}</div>
-              ${supplierInactive ? '<div class="row-sub-text text-danger">Proveedor inactivo</div>' : ''}
-            </td>
-            <td style="text-align:center;">
-              <span class="tag tag-small ${ccClass}">${ccLabel}</span>
-            </td>
-            <td>
-              <div class="row-title">${skuName}</div>
-              <div class="row-sub-text">${qty ? qty + ' u.' : ''}</div>
-            </td>
-            <td class="col-costo">
-              ${totalFmt}
-            </td>
-            <td>
-              <span class="tag ${statusClass}">${statusLabel}</span>
-            </td>
-            <td>
-              <div style="display:flex; flex-direction:column; gap:6px;">
-                <button
-                  type="button"
-                  class="btn-secondary"
-                  onclick="updateOrderStatus(${o.id}, 'APPROVED')"
-                  ${canApprove ? '' : 'disabled'}
-                >
-                  Aprobado
-                </button>
-                <button
-                  type="button"
-                  class="btn-primary"
-                  onclick="updateOrderStatus(${o.id}, 'REALIZED')"
-                  ${canEmit ? '' : 'disabled'}
-                >
-                  Emitido
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
+      return list;
     }
 
-    function updatePoSummary(list) {
-      const summaryEl = document.getElementById('ordersSummary');
-      if (!summaryEl) return;
-
-      if (!list || !list.length) {
-        summaryEl.innerHTML = '';
-        return;
-      }
-
-      const totals = { COD: 0, OPEX: 0, 'G&A': 0 };
-
-      list.forEach(o => {
-        const total = Number(o.total_amount) || 0;
-        const cc = o.cost_center;
-        if (cc && Object.prototype.hasOwnProperty.call(totals, cc)) {
-          totals[cc] += total;
-        }
-      });
-
-      summaryEl.innerHTML = `
-        <div class="summary-card">
-          <div class="summary-row">
-            <span class="text-muted">Total COD (sin stock)</span>
-            <span class="text-success">${formatCurrencyLocal(totals.COD)}</span>
-          </div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-row">
-            <span class="text-muted">Total OPEX</span>
-            <span>${formatCurrencyLocal(totals.OPEX)}</span>
-          </div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-row">
-            <span class="text-muted">Total G&amp;A</span>
-            <span>${formatCurrencyLocal(totals['G&A'])}</span>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderPurchaseOrders() {
-      const tbody = document.getElementById('poTableBody');
-      if (!tbody) return;
-
+    function getFilteredPoList() {
       const searchText = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
-
       let list = allPurchaseOrders.slice();
 
       if (poStatusFilter !== 'ALL') {
@@ -656,6 +509,8 @@
         });
       }
 
+      list = list.filter(o => passesDateFilter(o.due_date));
+
       if (searchText) {
         list = list.filter(o => {
           const prov = (o.supplier?.name || o.supplier?.legal_name || '').toLowerCase();
@@ -663,30 +518,110 @@
           return prov.includes(searchText) || concept.includes(searchText);
         });
       }
+      return list;
+    }
+
+    function renderStockOrders() {
+      const tbody = document.getElementById('ordersTableBody');
+      const list = getFilteredStockList();
 
       if (!list.length) {
-        updatePoSummary([]);
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">
-              No hay órdenes sin stock para los filtros actuales.
-            </td>
-          </tr>
-        `;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text-secondary);">No hay órdenes de stock para los filtros actuales.</td></tr>`;
         return;
       }
-
-      updatePoSummary(list);
 
       tbody.innerHTML = list.map(o => {
         const createdDate = o.created_at ? o.created_at.split('T')[0] : '-';
         const dueDateValue = o.due_date || '';
-        const dueDateLabel = dueDateValue || '—';
+        const badge = dueBadge(dueDateValue);
 
         const supplier = o.supplier;
-        const provName = supplier
-          ? (supplier.legal_name || supplier.name)
-          : 'SIN PROVEEDOR';
+        const provName = supplier ? (supplier.legal_name || supplier.name) : 'SIN PROVEEDOR';
+        const cuit = supplier?.cuit || '-';
+        const supplierInactive = supplier && supplier.is_active === false;
+
+        const costCenter = supplier?.cost_center || null;
+        let ccLabel = costCenter || '—';
+        let ccClass = 'tag-gray';
+        if (costCenter === 'COD') ccClass = 'tag-green';
+        else if (costCenter === 'OPEX') ccClass = 'tag-blue';
+        else if (costCenter === 'G&A') ccClass = 'tag-purple';
+
+        const skuName = o.sku?.name || 'SKU eliminado';
+        const qty = Number(o.quantity) || 0;
+        const total = Number(o.total_cost) || 0;
+        const totalFmt = formatCurrencyLocal(total);
+
+        let statusLabel = 'PENDIENTE';
+        let statusClass = 'tag-gray';
+        if (o.status === 'APPROVED') { statusLabel = 'APROBADA'; statusClass = 'tag-green'; }
+        else if (o.status === 'REALIZED') { statusLabel = 'EMITIDA'; statusClass = 'tag-red'; }
+        else if (o.status === 'CANCELLED') { statusLabel = 'CANCELADA'; statusClass = 'tag-red'; }
+
+        const primary =
+          o.status === 'PENDING' ? { label: 'Aprobar', cls: 'btn-secondary', next: 'APPROVED', disabled: false } :
+          o.status === 'APPROVED' ? { label: 'Emitir', cls: 'btn-primary', next: 'REALIZED', disabled: false } :
+          { label: '—', cls: 'btn-secondary', next: null, disabled: true };
+
+        return `
+          <tr>
+            <td>
+              <div class="row-title">#${o.id}</div>
+              <div class="row-sub-text">Creada: ${createdDate}</div>
+            </td>
+
+            <td style="text-align:center;">
+              <input type="date" class="table-input" value="${dueDateValue}" onchange="updateDueDate(${o.id}, this.value)" style="max-width: 140px;" />
+              <div style="margin-top:6px;">
+                <span class="${badge.cls}">${badge.label}</span>
+              </div>
+            </td>
+
+            <td>
+              <div class="row-title">${provName}</div>
+              <div class="row-sub-text">CUIT: ${cuit}</div>
+              ${supplierInactive ? '<div class="row-sub-text" style="color:var(--state-warn);">Proveedor inactivo</div>' : ''}
+            </td>
+
+            <td class="text-center">
+              <span class="tag ${ccClass}">${ccLabel}</span>
+            </td>
+
+            <td>
+              <div class="row-title">${skuName}</div>
+              <div class="row-sub-text">${qty ? qty + ' u.' : ''}</div>
+            </td>
+
+            <td class="text-right">${totalFmt}</td>
+
+            <td><span class="tag ${statusClass}">${statusLabel}</span></td>
+
+            <td class="text-center">
+              <button type="button" class="${primary.cls}" onclick="${primary.next ? `updateOrderStatus(${o.id}, '${primary.next}')` : ''}" ${primary.disabled ? 'disabled' : ''}>
+                ${primary.label}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderPurchaseOrders() {
+      const tbody = document.getElementById('poTableBody');
+      const list = getFilteredPoList();
+
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--text-secondary);">No hay órdenes sin stock para los filtros actuales.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(o => {
+        const createdDate = o.created_at ? o.created_at.split('T')[0] : '-';
+        const dueDateValue = o.due_date || '';
+        const badge = dueBadge(dueDateValue);
+
+        const supplier = o.supplier;
+        const provName = supplier ? (supplier.legal_name || supplier.name) : 'SIN PROVEEDOR';
         const cuit = supplier?.cuit || '-';
         const supplierInactive = supplier && supplier.is_active === false;
 
@@ -706,23 +641,16 @@
 
         let statusLabel = 'PENDIENTE';
         let statusClass = 'tag-gray';
-        if (normStatus === 'PAID') {
-          statusLabel = 'PAGADA';
-          statusClass = 'tag-green';
-        } else if (normStatus === 'CANCELLED') {
-          statusLabel = 'CANCELADA';
-          statusClass = 'tag-red';
-        } else if (normStatus === 'PENDING') {
-          statusLabel = 'PENDIENTE';
-          statusClass = 'tag-gray';
-        } else {
-          statusLabel = rawStatus || 'PENDIENTE';
-          statusClass = 'tag-gray';
-        }
+        if (normStatus === 'PAID') { statusLabel = 'PAGADA'; statusClass = 'tag-green'; }
+        else if (normStatus === 'CANCELLED') { statusLabel = 'CANCELADA'; statusClass = 'tag-red'; }
 
         const tipoLabel = o.is_fixed ? 'FIJO' : 'VARIABLE';
 
-        const canMarkPaid = normStatus !== 'PAID' && normStatus !== 'CANCELLED';
+        const primary =
+          (normStatus !== 'PAID' && normStatus !== 'CANCELLED')
+            ? { label: 'Marcar pagada', cls: 'btn-primary', next: 'PAID', disabled: false }
+            : { label: '—', cls: 'btn-secondary', next: null, disabled: true };
+
         const canCancel = normStatus !== 'CANCELLED';
 
         return `
@@ -731,52 +659,36 @@
               <div class="row-title">#${o.id}</div>
               <div class="row-sub-text">Creada: ${createdDate}</div>
             </td>
+
             <td style="text-align:center;">
-              <input
-                type="date"
-                class="table-input"
-                value="${dueDateValue}"
-                onchange="updatePoDueDate(${o.id}, this.value)"
-                style="max-width: 140px;"
-              />
-              <div class="row-sub-text">${dueDateLabel === '—' ? 'Sin definir' : 'Vence: ' + dueDateLabel}</div>
+              <input type="date" class="table-input" value="${dueDateValue}" onchange="updatePoDueDate(${o.id}, this.value)" style="max-width: 140px;" />
+              <div style="margin-top:6px;">
+                <span class="${badge.cls}">${badge.label}</span>
+              </div>
             </td>
+
             <td>
               <div class="row-title">${provName}</div>
               <div class="row-sub-text">CUIT: ${cuit}</div>
-              ${supplierInactive ? '<div class="row-sub-text text-danger">Proveedor inactivo</div>' : ''}
+              ${supplierInactive ? '<div class="row-sub-text" style="color:var(--state-warn);">Proveedor inactivo</div>' : ''}
             </td>
-            <td style="text-align:center;">
-              <span class="tag tag-small ${ccClass}">${ccLabel}</span>
-            </td>
-            <td>
-              <div class="row-title">${concept}</div>
-            </td>
-            <td class="col-costo">
-              ${totalFmt}
-            </td>
-            <td>
-              <span class="tag tag-small ${o.is_fixed ? 'tag-gold' : 'tag-blue'}">${tipoLabel}</span>
-            </td>
-            <td>
-              <span class="tag ${statusClass}">${statusLabel}</span>
-            </td>
-            <td>
-              <div style="display:flex; flex-direction:column; gap:6px;">
-                <button
-                  type="button"
-                  class="btn-primary"
-                  onclick="updatePoStatus(${o.id}, 'PAID')"
-                  ${canMarkPaid ? '' : 'disabled'}
-                >
-                  Marcar pagada
+
+            <td class="text-center"><span class="tag ${ccClass}">${ccLabel}</span></td>
+
+            <td><div class="row-title">${concept}</div></td>
+
+            <td class="text-right">${totalFmt}</td>
+
+            <td><span class="tag ${o.is_fixed ? 'tag-gold' : 'tag-blue'}">${tipoLabel}</span></td>
+
+            <td><span class="tag ${statusClass}">${statusLabel}</span></td>
+
+            <td class="text-center">
+              <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+                <button type="button" class="${primary.cls}" onclick="${primary.next ? `updatePoStatus(${o.id}, '${primary.next}')` : ''}" ${primary.disabled ? 'disabled' : ''}>
+                  ${primary.label}
                 </button>
-                <button
-                  type="button"
-                  class="btn-secondary"
-                  onclick="updatePoStatus(${o.id}, 'CANCELLED')"
-                  ${canCancel ? '' : 'disabled'}
-                >
+                <button type="button" class="btn-secondary" onclick="updatePoStatus(${o.id}, 'CANCELLED')" ${canCancel ? '' : 'disabled'}>
                   Cancelar
                 </button>
               </div>
@@ -786,18 +698,85 @@
       }).join('');
     }
 
+    function renderKPIs() {
+      const el = document.getElementById('kpiGrid');
+      if (!el) return;
+
+      const list = (activeMain === 'STOCK') ? getFilteredStockList() : getFilteredPoList();
+      const today = startOfToday();
+
+      let overdue = 0, dueToday = 0, next7 = 0, total = 0;
+
+      list.forEach(o => {
+        const due = parseLocalDate(o.due_date);
+        const amt = Number(activeMain === 'STOCK' ? o.total_cost : o.total_amount) || 0;
+        total += amt;
+
+        if (!due) return;
+        const diff = Math.round((due - today) / 86400000);
+
+        if (diff < 0) overdue++;
+        else if (diff === 0) dueToday++;
+        else if (diff <= 7) next7++;
+      });
+
+      el.innerHTML = `
+        <div class="summary-card">
+          <div class="summary-label">Vencidas</div>
+          <div class="summary-value" style="color:var(--state-error);">${overdue}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Vencen hoy</div>
+          <div class="summary-value" style="color:var(--state-warn);">${dueToday}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Próx. 7 días</div>
+          <div class="summary-value">${next7}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Total (filtrado)</div>
+          <div class="summary-value">${formatCurrencyLocal(total)}</div>
+        </div>
+      `;
+    }
+
+    function renderPoSummary() {
+      const el = document.getElementById('poSummaryGrid');
+      if (!el) return;
+
+      const list = getFilteredPoList();
+      const totals = { COD: 0, OPEX: 0, 'G&A': 0 };
+
+      list.forEach(o => {
+        const amt = Number(o.total_amount) || 0;
+        const cc = o.cost_center;
+        if (cc && Object.prototype.hasOwnProperty.call(totals, cc)) totals[cc] += amt;
+      });
+
+      el.innerHTML = `
+        <div class="summary-card">
+          <div class="summary-label">Total COD (sin stock)</div>
+          <div class="summary-value">${formatCurrencyLocal(totals.COD)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Total OPEX</div>
+          <div class="summary-value">${formatCurrencyLocal(totals.OPEX)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Total G&amp;A</div>
+          <div class="summary-value">${formatCurrencyLocal(totals['G&A'])}</div>
+        </div>
+      `;
+    }
+
     async function updateDueDate(orderId, dateStr) {
       if (!dateStr) return;
       try {
-        const { error } = await client
-          .from('stock_orders')
-          .update({ due_date: dateStr })
-          .eq('id', orderId);
-
+        const { error } = await client.from('stock_orders').update({ due_date: dateStr }).eq('id', orderId);
         if (error) throw error;
-
         const order = allStockOrders.find(o => o.id === orderId);
         if (order) order.due_date = dateStr;
+        renderAll();
       } catch (err) {
         console.error('Error actualizando vencimiento (stock_orders):', err);
         alert('No se pudo actualizar la fecha de vencimiento.');
@@ -805,16 +784,10 @@
     }
 
     async function updateOrderStatus(orderId, newStatus) {
-      if (!confirm(`Confirmar cambiar estado de la orden #${orderId} a ${newStatus}?`)) {
-        return;
-      }
+      if (!confirm(`Confirmar cambiar estado de la orden #${orderId} a ${newStatus}?`)) return;
 
       try {
-        const { error } = await client
-          .from('stock_orders')
-          .update({ status: newStatus })
-          .eq('id', orderId);
-
+        const { error } = await client.from('stock_orders').update({ status: newStatus }).eq('id', orderId);
         if (error) throw error;
 
         try {
@@ -825,12 +798,12 @@
             details: `Orden stock ${orderId} → ${newStatus}`
           });
         } catch (logErr) {
-          console.warn('No se pudo registrar log de cambio de estado (stock)', logErr);
+          console.warn('No se pudo registrar log (stock)', logErr);
         }
 
         await loadOrders();
       } catch (err) {
-        console.error('Error actualizando estado de orden (stock_orders):', err);
+        console.error('Error actualizando estado (stock_orders):', err);
         alert('No se pudo actualizar el estado de la orden.');
       }
     }
@@ -838,15 +811,11 @@
     async function updatePoDueDate(orderId, dateStr) {
       if (!dateStr) return;
       try {
-        const { error } = await client
-          .from('purchase_orders')
-          .update({ due_date: dateStr })
-          .eq('id', orderId);
-
+        const { error } = await client.from('purchase_orders').update({ due_date: dateStr }).eq('id', orderId);
         if (error) throw error;
-
         const order = allPurchaseOrders.find(o => o.id === orderId);
         if (order) order.due_date = dateStr;
+        renderAll();
       } catch (err) {
         console.error('Error actualizando vencimiento (purchase_orders):', err);
         alert('No se pudo actualizar la fecha de vencimiento.');
@@ -854,21 +823,13 @@
     }
 
     async function updatePoStatus(orderId, newStatus) {
-      if (!confirm(`Confirmar cambiar estado de la orden sin stock #${orderId} a ${newStatus}?`)) {
-        return;
-      }
+      if (!confirm(`Confirmar cambiar estado de la orden sin stock #${orderId} a ${newStatus}?`)) return;
 
       const updatePayload = { status: newStatus };
-      if (newStatus === 'PAID') {
-        updatePayload.paid_at = new Date().toISOString();
-      }
+      if (newStatus === 'PAID') updatePayload.paid_at = new Date().toISOString();
 
       try {
-        const { error } = await client
-          .from('purchase_orders')
-          .update(updatePayload)
-          .eq('id', orderId);
-
+        const { error } = await client.from('purchase_orders').update(updatePayload).eq('id', orderId);
         if (error) throw error;
 
         try {
@@ -879,12 +840,12 @@
             details: `Orden sin stock ${orderId} → ${newStatus}`
           });
         } catch (logErr) {
-          console.warn('No se pudo registrar log de cambio de estado (purchase_orders)', logErr);
+          console.warn('No se pudo registrar log (purchase_orders)', logErr);
         }
 
         await loadOrders();
       } catch (err) {
-        console.error('Error actualizando estado de orden (purchase_orders):', err);
+        console.error('Error actualizando estado (purchase_orders):', err);
         alert('No se pudo actualizar el estado de la orden.');
       }
     }
@@ -899,36 +860,30 @@
       const poDueDate = document.getElementById('poDueDate');
       const poPaymentMethod = document.getElementById('poPaymentMethod');
 
-      if (!poModal) return;
-
       poId.value = '';
       poCostCenter.value = '';
       poConcept.value = '';
       poAmount.value = '';
-      poDueDate.value = '';
+      poDueDate.value = new Date().toISOString().slice(0,10);
       poPaymentMethod.value = '';
 
-      if (poSupplierSelect) {
-        poSupplierSelect.innerHTML = '<option value="">Seleccionar proveedor</option>';
-        (suppliersList || [])
-          .filter(s => s.is_active !== false)
-          .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-          .forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.id;
-            opt.textContent = s.name || s.legal_name || `Proveedor #${s.id}`;
-            poSupplierSelect.appendChild(opt);
-          });
-      }
+      poSupplierSelect.innerHTML = '<option value="">Seleccionar proveedor</option>';
+      (suppliersList || [])
+        .filter(s => s.is_active !== false)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name || s.legal_name || `Proveedor #${s.id}`;
+          poSupplierSelect.appendChild(opt);
+        });
 
       poModal.style.display = 'flex';
     }
 
     function closePoModal() {
       const poModal = document.getElementById('poModal');
-      if (poModal) {
-        poModal.style.display = 'none';
-      }
+      if (poModal) poModal.style.display = 'none';
     }
 
     function handlePoSupplierChange() {
@@ -936,19 +891,14 @@
       const poCostCenter = document.getElementById('poCostCenter');
       const poConcept = document.getElementById('poConcept');
 
-      if (!poSupplierSelect) return;
       const supplierId = Number(poSupplierSelect.value || 0);
       if (!supplierId) return;
 
       const sup = (suppliersList || []).find(s => s.id === supplierId);
       if (!sup) return;
 
-      if (sup.cost_center && poCostCenter && !poCostCenter.value) {
-        poCostCenter.value = sup.cost_center;
-      }
-      if (sup.name && poConcept && !poConcept.value) {
-        poConcept.value = sup.name;
-      }
+      if (sup.cost_center && !poCostCenter.value) poCostCenter.value = sup.cost_center;
+      if ((sup.name || sup.legal_name) && !poConcept.value) poConcept.value = (sup.name || sup.legal_name);
     }
 
     async function handleSavePo() {
@@ -961,28 +911,16 @@
       const poSaveBtn = document.getElementById('poSaveBtn');
 
       const supplierIdVal = Number(poSupplierSelect.value || 0);
-      if (!supplierIdVal) {
-        alert('Debés seleccionar un proveedor.');
-        return;
-      }
+      if (!supplierIdVal) return alert('Debés seleccionar un proveedor.');
 
       const costCenterVal = poCostCenter.value;
-      if (!costCenterVal) {
-        alert('Debés seleccionar un centro de costo.');
-        return;
-      }
+      if (!costCenterVal) return alert('Debés seleccionar un centro de costo.');
 
       const amountNum = Number(poAmount.value || 0);
-      if (!amountNum || amountNum <= 0) {
-        alert('El monto total debe ser mayor a 0.');
-        return;
-      }
+      if (!amountNum || amountNum <= 0) return alert('El monto total debe ser mayor a 0.');
 
       const dueDateVal = poDueDate.value;
-      if (!dueDateVal) {
-        alert('Debés ingresar una fecha de vencimiento.');
-        return;
-      }
+      if (!dueDateVal) return alert('Debés ingresar una fecha de vencimiento.');
 
       const payload = {
         supplier_id: supplierIdVal,
@@ -997,36 +935,25 @@
       };
 
       const userId = (currentUser && currentUser.id !== 'dev') ? currentUser.id : null;
-      if (userId) {
-        payload.requested_by = userId;
-      }
+      if (userId) payload.requested_by = userId;
 
       try {
-        if (poSaveBtn) {
-          poSaveBtn.disabled = true;
-          poSaveBtn.textContent = 'Guardando...';
-        }
+        poSaveBtn.disabled = true;
+        poSaveBtn.textContent = 'Guardando...';
 
-        const { error } = await client
-          .from('purchase_orders')
-          .insert(payload);
-
+        const { error } = await client.from('purchase_orders').insert(payload);
         if (error) throw error;
 
         closePoModal();
         await loadOrders();
 
-        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
-          MC_UTILS.showToast('Orden sin stock creada correctamente.');
-        }
+        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') MC_UTILS.showToast('Orden creada.');
       } catch (err) {
-        console.error('Error al crear orden sin stock:', err);
-        alert('No se pudo crear la orden. Revisá los datos e intentá nuevamente.');
+        console.error('Error al crear orden:', err);
+        alert('No se pudo crear la orden.');
       } finally {
-        if (poSaveBtn) {
-          poSaveBtn.disabled = false;
-          poSaveBtn.textContent = 'Guardar';
-        }
+        poSaveBtn.disabled = false;
+        poSaveBtn.textContent = 'Guardar';
       }
     }
 
@@ -1036,42 +963,23 @@
       const targetDate = dateInput ? dateInput.value : '';
       const paymentFilter = filterSelect ? filterSelect.value : 'ALL';
 
-      if (!targetDate) {
-        alert('Debés elegir una fecha de vencimiento para generar los fijos.');
-        return;
-      }
+      if (!targetDate) return alert('Elegí una fecha de vencimiento.');
 
-      if (!suppliersList || !suppliersList.length) {
-        alert('Todavía no se cargaron los proveedores. Actualizá la página e intentá de nuevo.');
-        return;
-      }
-
-      const candidates = suppliersList.filter(s => {
+      const candidates = (suppliersList || []).filter(s => {
         if (s.is_active === false) return false;
         const costType = (s.cost_type || 'VARIABLE').toUpperCase();
         if (costType !== 'FIJO') return false;
         const amount = Number(s.fixed_amount || 0);
         if (!amount || amount <= 0) return false;
-        if (paymentFilter && paymentFilter !== 'ALL') {
-          return (s.payment_terms || '') === paymentFilter;
-        }
+        if (paymentFilter && paymentFilter !== 'ALL') return (s.payment_terms || '') === paymentFilter;
         return true;
       });
 
-      if (!candidates.length) {
-        alert('No hay proveedores FIJOS que coincidan con los filtros seleccionados.');
-        return;
-      }
+      if (!candidates.length) return alert('No hay proveedores FIJOS con esos filtros.');
 
       const existingBySupId = new Set(
         (allPurchaseOrders || [])
-          .filter(po =>
-            po &&
-            po.is_fixed === true &&
-            po.source === 'AUTO_FIXED' &&
-            po.due_date === targetDate &&
-            po.supplier_id != null
-          )
+          .filter(po => po && po.is_fixed === true && po.source === 'AUTO_FIXED' && po.due_date === targetDate && po.supplier_id != null)
           .map(po => po.supplier_id)
       );
 
@@ -1095,42 +1003,27 @@
           return payload;
         });
 
-      if (!toInsert.length) {
-        alert('Ya existen órdenes AUTO_FIXED para todos los proveedores FIJOS en esa fecha.');
-        return;
-      }
+      if (!toInsert.length) return alert('Ya existen AUTO_FIXED para esa fecha.');
 
-      const confirmMsg = `Se generarán ${toInsert.length} órdenes fijas para la fecha ${targetDate}.\n\n¿Confirmar?`;
-      if (!confirm(confirmMsg)) return;
+      if (!confirm(`Se generarán ${toInsert.length} órdenes fijas para ${targetDate}.\n¿Confirmar?`)) return;
 
       const btn = document.getElementById('runFixedGenBtn');
       try {
-        if (btn) {
-          btn.disabled = true;
-          btn.textContent = 'Generando...';
-        }
+        btn.disabled = true;
+        btn.textContent = 'Generando...';
 
-        const { error } = await client
-          .from('purchase_orders')
-          .insert(toInsert);
-
+        const { error } = await client.from('purchase_orders').insert(toInsert);
         if (error) throw error;
 
         await loadOrders();
-
-        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
-          MC_UTILS.showToast(`Órdenes fijas generadas: ${toInsert.length}.`);
-        } else {
-          alert(`Órdenes fijas generadas: ${toInsert.length}.`);
-        }
+        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') MC_UTILS.showToast(`Fijos generados: ${toInsert.length}.`);
+        else alert(`Fijos generados: ${toInsert.length}.`);
       } catch (err) {
-        console.error('Error generando órdenes fijas:', err);
-        alert('No se pudieron generar las órdenes fijas. Revisá el console para más detalle.');
+        console.error('Error generando fijos:', err);
+        alert('No se pudieron generar los fijos.');
       } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Generar fijos';
-        }
+        btn.disabled = false;
+        btn.textContent = 'Generar fijos';
       }
     }
   </script>
