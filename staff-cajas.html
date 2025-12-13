@@ -40,28 +40,77 @@
     </section>
 
     <section class="card">
-      <!-- TERMINAL -->
-      <div class="pos-input-group">
-        <label class="input-label" for="termSelect">Tu terminal</label>
-        <select id="termSelect" class="modal-select">
-          <option value="">Cargando…</option>
-        </select>
+      <!-- TOP: TERMINAL + ESTADO -->
+      <div class="box-soft">
+        <div class="toolbar toolbar--tight">
+          <div class="toolbar-left">
+            <div style="flex:1; min-width:220px;">
+              <label class="input-label" for="termSelect">Tu terminal</label>
+              <select id="termSelect" class="modal-select">
+                <option value="">Cargando…</option>
+              </select>
+              <div class="small-note mt-1">
+                Fecha operativa: si son <b>01:00–05:59</b>, cuenta como <b>la noche anterior</b>.
+              </div>
+            </div>
+
+            <button id="btnRefresh" class="btn-secondary" type="button">Recargar</button>
+          </div>
+
+          <div class="toolbar-right">
+            <span class="pill">FECHA <b id="opDatePill">—</b></span>
+            <span id="headStatusTag" class="tag tag-gray">SIN CIERRE</span>
+          </div>
+        </div>
+
+        <div id="pageStatus" class="inline-status status-line"></div>
+
+        <div class="summary-row" style="margin-bottom:0;">
+          <div class="summary-card">
+            <div class="summary-label">Pendientes</div>
+            <div id="sumPending" class="summary-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Retiros confirmados</div>
+            <div id="sumConfirmed" class="summary-value">$ 0</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Efectivo (ingresado)</div>
+            <div id="sumCash" class="summary-value">$ 0</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Digital (ingresado)</div>
+            <div id="sumDigital" class="summary-value">$ 0</div>
+          </div>
+        </div>
       </div>
 
       <!-- RETIROS PENDIENTES -->
-      <section id="withdrawalSection" hidden>
-        <h2>Retiros pendientes</h2>
-        <p class="text-muted">Confirmá la entrega al encargado. Se registra en el cierre.</p>
+      <section id="withdrawalSection" hidden style="margin-top:16px;">
+        <div class="staff-lib-header">
+          <div>
+            <h2 style="margin:0 0 6px 0;">Retiros pendientes</h2>
+            <p class="section-desc">Confirmá entrega al encargado. Si queda 1 pendiente, no se puede cerrar.</p>
+          </div>
+          <span id="pendingTag" class="tag tag-red">PENDIENTES</span>
+        </div>
+
         <div id="pendingList"></div>
       </section>
 
       <!-- CIERRE -->
-      <section id="closingForm">
-        <h2>Cierre de turno</h2>
+      <section id="closingForm" style="margin-top:18px;">
+        <div class="staff-lib-header">
+          <div>
+            <h2 style="margin:0 0 6px 0;">Cierre de turno</h2>
+            <p class="section-desc">Ingresá montos finales. Se guardan con tu terminal y la fecha operativa.</p>
+          </div>
+          <span id="terminalStatusTag" class="tag tag-gray">NO ENVIADO</span>
+        </div>
 
         <div class="pos-input-group">
           <label class="input-label" for="cashInput">Total efectivo (contado)</label>
-          <input type="number" id="cashInput" class="pos-big-input cash" placeholder="$ 0" inputmode="numeric" />
+          <input type="number" id="cashInput" class="pos-big-input cash" placeholder="$ 0" inputmode="numeric" min="0" />
 
           <div class="calc-grid" id="cashQuickAdd">
             <button class="calc-btn" type="button" data-add="10000">+10k</button>
@@ -73,20 +122,37 @@
 
         <div class="pos-input-group">
           <label class="input-label" for="zocoInput">Total digital (Zoco/QR)</label>
-          <input type="number" id="zocoInput" class="pos-big-input zoco" placeholder="$ 0" inputmode="numeric" />
+          <input type="number" id="zocoInput" class="pos-big-input zoco" placeholder="$ 0" inputmode="numeric" min="0" />
         </div>
 
-        <div class="summary-card">
-          <div class="summary-label">Retiros confirmados</div>
-          <div class="row-sub-text">Entregado a Encargado</div>
-          <div id="autoWithdrawals" class="summary-value">$ 0</div>
+        <div class="box-soft">
+          <div class="row-title">Resumen</div>
+          <div class="row-sub-text">Caja + fecha + retiros confirmados se adjuntan automáticamente.</div>
+
+          <div class="summary-row mt-2" style="margin-bottom:0;">
+            <div class="summary-card border-fiscal">
+              <div class="summary-label">Efectivo</div>
+              <div id="reviewCash" class="summary-value">$ 0</div>
+            </div>
+            <div class="summary-card border-digital">
+              <div class="summary-label">Digital</div>
+              <div id="reviewDigital" class="summary-value">$ 0</div>
+            </div>
+            <div class="summary-card border-internal">
+              <div class="summary-label">Retiros confirmados</div>
+              <div id="reviewWithdrawals" class="summary-value">$ 0</div>
+            </div>
+          </div>
         </div>
 
-        <div class="pos-input-group">
-          <button id="btnOpenIncident" class="btn-secondary" type="button">Reportar problema</button>
+        <div class="toolbar toolbar--tight mt-3">
+          <div class="toolbar-left">
+            <button id="btnOpenIncident" class="btn-secondary" type="button">Reportar problema</button>
+          </div>
+          <div class="toolbar-right">
+            <button id="btnSend" class="btn-primary" type="button">Confirmar y cerrar 🔒</button>
+          </div>
         </div>
-
-        <button id="btnSend" class="btn-primary" type="button">Confirmar y cerrar 🔒</button>
       </section>
     </section>
   </main>
@@ -130,6 +196,10 @@
         return;
       }
 
+      // --- Config ---
+      const STORAGE_TERM = 'mc_staff_term';
+      const OP_SHIFT_HOUR = 6; // 00:00–05:59 cuenta como la noche anterior
+
       // --- Utils ---
       const formatCurrency =
         window.MC_UTILS && typeof window.MC_UTILS.formatCurrency === 'function'
@@ -141,10 +211,33 @@
                 maximumFractionDigits: 0
               }).format(Number(amount) || 0);
 
-      function todayLocalYYYYMMDD() {
+      function toLocalYYYYMMDD(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      }
+
+      function getOperationalDateYYYYMMDD() {
         const d = new Date();
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-        return d.toISOString().slice(0, 10);
+        if (d.getHours() < OP_SHIFT_HOUR) d.setDate(d.getDate() - 1);
+        return toLocalYYYYMMDD(d);
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      function timeHHMM(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
       }
 
       // --- DOM ---
@@ -153,14 +246,30 @@
       const userDisplay = document.getElementById('userDisplay');
 
       const termSelect = document.getElementById('termSelect');
+      const btnRefresh = document.getElementById('btnRefresh');
+
+      const opDatePill = document.getElementById('opDatePill');
+      const headStatusTag = document.getElementById('headStatusTag');
+      const terminalStatusTag = document.getElementById('terminalStatusTag');
+
+      const pageStatus = document.getElementById('pageStatus');
+
+      const sumPending = document.getElementById('sumPending');
+      const sumConfirmed = document.getElementById('sumConfirmed');
+      const sumCash = document.getElementById('sumCash');
+      const sumDigital = document.getElementById('sumDigital');
 
       const withdrawalSection = document.getElementById('withdrawalSection');
+      const pendingTag = document.getElementById('pendingTag');
       const pendingList = document.getElementById('pendingList');
-      const autoWithdrawals = document.getElementById('autoWithdrawals');
 
       const cashInput = document.getElementById('cashInput');
       const zocoInput = document.getElementById('zocoInput');
       const cashQuickAdd = document.getElementById('cashQuickAdd');
+
+      const reviewCash = document.getElementById('reviewCash');
+      const reviewDigital = document.getElementById('reviewDigital');
+      const reviewWithdrawals = document.getElementById('reviewWithdrawals');
 
       const btnOpenIncident = document.getElementById('btnOpenIncident');
       const btnSend = document.getElementById('btnSend');
@@ -175,6 +284,79 @@
       // --- State ---
       let currentUser = null;
       let confirmedAmount = 0;
+      let confirmedCount = 0;
+      let pendingCount = 0;
+      let currentTerm = '';
+      let headCache = { id: null, status: null };
+      let terminalAlreadySent = false;
+
+      // --- UI helpers ---
+      function setStatus(msg, kind) {
+        if (!pageStatus) return;
+        pageStatus.textContent = msg || '';
+        pageStatus.classList.remove('ok', 'bad');
+        if (kind === 'ok') pageStatus.classList.add('ok');
+        if (kind === 'bad') pageStatus.classList.add('bad');
+      }
+
+      function setTag(el, label, variant) {
+        if (!el) return;
+        el.textContent = label;
+        el.classList.remove('tag-green', 'tag-red', 'tag-blue', 'tag-gold', 'tag-gray');
+        el.classList.add(variant || 'tag-gray');
+      }
+
+      function setWithdrawalsConfirmed(amount, count) {
+        confirmedAmount = Number(amount) || 0;
+        confirmedCount = Number(count) || 0;
+        sumConfirmed.textContent = formatCurrency(confirmedAmount);
+        reviewWithdrawals.textContent = formatCurrency(confirmedAmount);
+      }
+
+      function setPendingCount(count) {
+        pendingCount = Number(count) || 0;
+        sumPending.textContent = String(pendingCount);
+        if (pendingTag) pendingTag.textContent = `PENDIENTES: ${pendingCount}`;
+      }
+
+      function updateEnteredSummary() {
+        const cash = Math.max(0, Number(cashInput.value) || 0);
+        const zoco = Math.max(0, Number(zocoInput.value) || 0);
+
+        sumCash.textContent = formatCurrency(cash);
+        sumDigital.textContent = formatCurrency(zoco);
+        reviewCash.textContent = formatCurrency(cash);
+        reviewDigital.textContent = formatCurrency(zoco);
+      }
+
+      function setFormEnabled(enabled) {
+        cashInput.disabled = !enabled;
+        zocoInput.disabled = !enabled;
+        btnOpenIncident.disabled = !enabled;
+        cashQuickAdd.querySelectorAll('button').forEach(b => (b.disabled = !enabled));
+      }
+
+      function setSendEnabled(enabled) {
+        btnSend.disabled = !enabled;
+      }
+
+      function openIncidentModal() {
+        const term = termSelect.value;
+        const date = getOperationalDateYYYYMMDD();
+        if (!term) return alert('Seleccioná tu caja.');
+
+        if (!incDesc.value || incDesc.value.trim() === '') {
+          incDesc.value = `[${term}] ${date} — `;
+        }
+
+        incModal.style.display = 'flex';
+        incDesc.focus();
+        incDesc.setSelectionRange(incDesc.value.length, incDesc.value.length);
+      }
+
+      function closeIncidentModal() {
+        incModal.style.display = 'none';
+      }
 
       // --- Auth / session ---
       function loadSession() {
@@ -192,21 +374,6 @@
         }
         userDisplay.textContent = (currentUser.username || 'STAFF').toUpperCase();
         return true;
-      }
-
-      // --- UI helpers ---
-      function setWithdrawalsConfirmed(value) {
-        confirmedAmount = Number(value) || 0;
-        autoWithdrawals.textContent = formatCurrency(confirmedAmount);
-      }
-
-      function openIncidentModal() {
-        incModal.style.display = 'flex';
-        incDesc.focus();
-      }
-
-      function closeIncidentModal() {
-        incModal.style.display = 'none';
       }
 
       // --- Data ---
@@ -232,24 +399,66 @@
 
         termSelect.innerHTML =
           '<option value="">Seleccioná tu caja…</option>' +
-          names.map(n => `<option value="${String(n).replace(/"/g, '&quot;')}">${n}</option>`).join('');
+          names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+
+        // restore selection
+        const saved = localStorage.getItem(STORAGE_TERM) || '';
+        if (saved && names.includes(saved)) {
+          termSelect.value = saved;
+          currentTerm = saved;
+          await loadForSelectedTerminal();
+        } else {
+          currentTerm = '';
+          await refreshHeaderState();
+          setStatus('Seleccioná tu terminal para cargar retiros y habilitar cierre.', '');
+          setFormEnabled(false);
+          setSendEnabled(false);
+        }
       }
 
-      async function loadPendingWithdrawals() {
-        const term = termSelect.value;
+      async function refreshHeaderState() {
+        const date = getOperationalDateYYYYMMDD();
+        if (opDatePill) opDatePill.textContent = date;
+      }
 
-        pendingList.innerHTML = '';
-        withdrawalSection.hidden = true;
-        setWithdrawalsConfirmed(0);
+      async function loadHeadForDate(date) {
+        const { data, error } = await supa
+          .from('cash_closings')
+          .select('id, status')
+          .eq('event_date', date)
+          .maybeSingle();
 
-        if (!term) return;
+        // si no hay fila, PostgREST puede devolver error PGRST116 (0 rows); lo tratamos como normal
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error cash_closings', error);
+          return { id: null, status: null };
+        }
 
-        const date = todayLocalYYYYMMDD();
+        return { id: data?.id ?? null, status: data?.status ?? null };
+      }
 
+      async function loadTerminalRow(headId, term) {
+        if (!headId || !term) return null;
+
+        const { data, error } = await supa
+          .from('closing_terminals')
+          .select('terminal_name, final_count_cash, zoco_digital, cash_withdrawals')
+          .eq('closing_id', headId)
+          .eq('terminal_name', term)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error closing_terminals', error);
+          return null;
+        }
+        return data || null;
+      }
+
+      async function loadWithdrawals(term, date) {
         const [{ data: pending, error: e1 }, { data: conf, error: e2 }] = await Promise.all([
           supa
             .from('cash_movements')
-            .select('id, amount, description')
+            .select('id, amount, description, created_at')
             .eq('terminal_name', term)
             .eq('event_date', date)
             .eq('status', 'PENDING')
@@ -265,24 +474,42 @@
         if (e1) console.error('Error retiros pendientes', e1);
         if (e2) console.error('Error retiros confirmados', e2);
 
-        const confirmedSum = (conf || []).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-        setWithdrawalsConfirmed(confirmedSum);
+        const confList = conf || [];
+        const confirmedSum = confList.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
-        const list = pending || [];
-        if (!list.length) return;
+        return {
+          pending: pending || [],
+          confirmedSum,
+          confirmedCount: confList.length
+        };
+      }
+
+      function renderPending(list) {
+        pendingList.innerHTML = '';
+
+        if (!list || !list.length) {
+          withdrawalSection.hidden = true;
+          return;
+        }
 
         withdrawalSection.hidden = false;
 
         pendingList.innerHTML = list
           .map(w => {
-            const desc = (w.description || '').trim() || 'Sin detalle';
+            const desc = escapeHtml((w.description || '').trim() || 'Sin detalle');
+            const hhmm = timeHHMM(w.created_at);
+            const when = hhmm ? `• ${hhmm}` : '';
+            const amount = formatCurrency(w.amount);
+
             return `
-              <div class="alert-card" id="w-${w.id}">
-                <div class="row-title">Solicitud de retiro</div>
-                <div class="row-sub-text">${desc}</div>
-                <div class="kpi-value">${formatCurrency(w.amount)}</div>
+              <div class="staff-lib-row" id="w-${w.id}">
+                <div style="flex:1; padding-right:10px;">
+                  <div class="row-title">Solicitud de retiro ${when}</div>
+                  <div class="row-sub-text">${desc}</div>
+                  <div class="kpi-value" style="margin-top:6px;">${amount}</div>
+                </div>
                 <button class="btn-primary" type="button" data-withdrawal-id="${w.id}">
-                  Confirmar entrega
+                  Confirmar
                 </button>
               </div>
             `;
@@ -290,8 +517,106 @@
           .join('');
       }
 
+      function applyLockingRules() {
+        const hasTerm = !!termSelect.value;
+
+        // base
+        setFormEnabled(hasTerm);
+        setSendEnabled(hasTerm);
+
+        // si hay pendientes -> no se puede cerrar
+        if (hasTerm && pendingCount > 0) {
+          setSendEnabled(false);
+          setStatus('Tenés retiros pendientes. Confirmalos para habilitar el cierre.', 'bad');
+          setTag(terminalStatusTag, 'BLOQUEADO', 'tag-red');
+          return;
+        }
+
+        // si el cierre global está cerrado -> bloquear todo
+        if (hasTerm && headCache.status === 'closed') {
+          setFormEnabled(false);
+          setSendEnabled(false);
+          setStatus('La noche ya fue cerrada por Administración. No se puede modificar.', 'bad');
+          setTag(terminalStatusTag, 'CERRADO', 'tag-gray');
+          return;
+        }
+
+        // sin bloqueos
+        if (hasTerm) {
+          if (terminalAlreadySent) {
+            setTag(terminalStatusTag, 'ENVIADO', 'tag-green');
+            setStatus('Cierre ya enviado. Si corregís números, se actualiza al reenviar.', '');
+          } else {
+            setTag(terminalStatusTag, 'NO ENVIADO', 'tag-gray');
+            setStatus('', '');
+          }
+        }
+      }
+
+      async function loadForSelectedTerminal() {
+        const term = termSelect.value;
+
+        await refreshHeaderState();
+        updateEnteredSummary();
+
+        // reset UI
+        renderPending([]);
+        setPendingCount(0);
+        setWithdrawalsConfirmed(0, 0);
+        terminalAlreadySent = false;
+
+        if (!term) {
+          setTag(headStatusTag, 'SIN CIERRE', 'tag-gray');
+          setTag(terminalStatusTag, 'NO ENVIADO', 'tag-gray');
+          setFormEnabled(false);
+          setSendEnabled(false);
+          setStatus('Seleccioná tu terminal para cargar retiros y habilitar cierre.', '');
+          return;
+        }
+
+        localStorage.setItem(STORAGE_TERM, term);
+
+        const date = getOperationalDateYYYYMMDD();
+
+        // 1) head cierre global
+        headCache = await loadHeadForDate(date);
+        if (!headCache.id) {
+          setTag(headStatusTag, 'SIN CIERRE', 'tag-gray');
+        } else if (headCache.status === 'closed') {
+          setTag(headStatusTag, 'CIERRE CERRADO', 'tag-gray');
+        } else {
+          setTag(headStatusTag, 'CIERRE ABIERTO', 'tag-blue');
+        }
+
+        // 2) row existente de terminal (si hay head)
+        const existing = await loadTerminalRow(headCache.id, term);
+        terminalAlreadySent = !!existing;
+
+        if (existing) {
+          // si el usuario todavía no cargó nada, precargamos lo último enviado
+          const c = Number(existing.final_count_cash) || 0;
+          const z = Number(existing.zoco_digital) || 0;
+
+          if (!cashInput.value) cashInput.value = String(Math.max(0, c));
+          if (!zocoInput.value) zocoInput.value = String(Math.max(0, z));
+        }
+
+        // 3) retiros
+        const w = await loadWithdrawals(term, date);
+        setWithdrawalsConfirmed(w.confirmedSum, w.confirmedCount);
+        renderPending(w.pending);
+        setPendingCount((w.pending || []).length);
+
+        // 4) repaint summaries
+        updateEnteredSummary();
+        reviewWithdrawals.textContent = formatCurrency(confirmedAmount);
+
+        applyLockingRules();
+      }
+
       async function confirmWithdrawal(withdrawalId) {
-        if (!termSelect.value) return;
+        const term = termSelect.value;
+        if (!term) return;
 
         if (!confirm('¿Confirmás la entrega del dinero?')) return;
 
@@ -310,7 +635,8 @@
           return;
         }
 
-        await loadPendingWithdrawals();
+        setStatus('Retiro confirmado.', 'ok');
+        await loadForSelectedTerminal();
       }
 
       async function submitIncident() {
@@ -325,7 +651,7 @@
           reporter_id: currentUser && currentUser.id ? currentUser.id : null,
           area: 'CAJA',
           type,
-          description: `[${term}] ${detail}`,
+          description: detail,
           severity: 'MEDIA',
           status: 'open'
         };
@@ -337,20 +663,25 @@
           return;
         }
 
-        alert('Reportado.');
+        setStatus('Novedad enviada.', 'ok');
         incDesc.value = '';
         closeIncidentModal();
       }
 
       async function submitClose() {
         const term = termSelect.value;
-        const cash = Number(cashInput.value) || 0;
-        const zoco = Number(zocoInput.value) || 0;
+        const cash = Math.max(0, Number(cashInput.value) || 0);
+        const zoco = Math.max(0, Number(zocoInput.value) || 0);
 
         if (!term) return alert('Seleccioná tu caja.');
+        if (pendingCount > 0) return alert('Tenés retiros pendientes. Confirmalos antes de cerrar.');
+        if (headCache.status === 'closed') return alert('La noche ya fue cerrada por Administración.');
+
+        const date = getOperationalDateYYYYMMDD();
 
         const ok = confirm(
           `Confirmar cierre:\n` +
+          `Fecha operativa: ${date}\n` +
           `Caja: ${term}\n` +
           `Efectivo: ${formatCurrency(cash)}\n` +
           `Digital: ${formatCurrency(zoco)}\n` +
@@ -359,35 +690,25 @@
         if (!ok) return;
 
         btnSend.disabled = true;
-        btnSend.textContent = 'Enviando…';
+        btnSend.textContent = terminalAlreadySent ? 'Actualizando…' : 'Enviando…';
 
         try {
-          const date = todayLocalYYYYMMDD();
+          // Head de cierre global (por fecha)
+          let headId = headCache.id;
 
-          // Head de cierre
-          let headId = null;
-          const { data: head, error: e1 } = await supa
-            .from('cash_closings')
-            .select('id')
-            .eq('event_date', date)
-            .maybeSingle();
-
-          if (e1) throw e1;
-
-          if (head && head.id) {
-            headId = head.id;
-          } else {
+          if (!headId) {
             const { data: created, error: e2 } = await supa
               .from('cash_closings')
               .insert({ event_date: date, status: 'open' })
-              .select('id')
+              .select('id, status')
               .single();
 
             if (e2) throw e2;
             headId = created.id;
+            headCache = { id: created.id, status: created.status || 'open' };
           }
 
-          // Terminal dentro del cierre
+          // Terminal dentro del cierre (upsert)
           const { error: e3 } = await supa
             .from('closing_terminals')
             .upsert(
@@ -403,6 +724,7 @@
 
           if (e3) throw e3;
 
+          setStatus('Cierre registrado.', 'ok');
           alert('✅ Cierre registrado.');
           window.location.href = 'staff-index.html';
         } catch (e) {
@@ -417,20 +739,48 @@
       document.addEventListener('DOMContentLoaded', async () => {
         if (!loadSession()) return;
 
+        // init top pills
+        await refreshHeaderState();
+        updateEnteredSummary();
+        setWithdrawalsConfirmed(0, 0);
+        setPendingCount(0);
+
         btnBack.addEventListener('click', () => (window.location.href = 'staff-index.html'));
         btnLogout.addEventListener('click', () => {
           localStorage.removeItem('mc_user');
+          localStorage.removeItem(STORAGE_TERM);
           window.location.href = 'index.html';
         });
 
-        termSelect.addEventListener('change', loadPendingWithdrawals);
+        btnRefresh.addEventListener('click', async () => {
+          setStatus('Recargando…', '');
+          await loadForSelectedTerminal();
+        });
+
+        termSelect.addEventListener('change', async (ev) => {
+          const next = termSelect.value || '';
+          if (currentTerm && next && next !== currentTerm) {
+            const ok = confirm(`Cambiar terminal:\n${currentTerm} → ${next}\n\n¿Seguro?`);
+            if (!ok) {
+              termSelect.value = currentTerm;
+              return;
+            }
+          }
+          currentTerm = next;
+          await loadForSelectedTerminal();
+        });
+
+        // live summary
+        cashInput.addEventListener('input', updateEnteredSummary);
+        zocoInput.addEventListener('input', updateEnteredSummary);
 
         cashQuickAdd.addEventListener('click', (ev) => {
           const btn = ev.target.closest('button[data-add]');
           if (!btn) return;
-          const add = Number(btn.getAttribute('data-add')) || 0;
-          cashInput.value = (Number(cashInput.value) || 0) + add;
+          const add = Math.max(0, Number(btn.getAttribute('data-add')) || 0);
+          cashInput.value = String((Number(cashInput.value) || 0) + add);
           cashInput.focus();
+          updateEnteredSummary();
         });
 
         pendingList.addEventListener('click', (ev) => {

@@ -4,11 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Midnight - Stock Operativo</title>
-
   <link rel="stylesheet" href="admin-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
+
+  <style>
+    .mc-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+    .mc-left { flex:1; min-width:260px; max-width:520px; }
+    .mc-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .mc-subrow { display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:12px; flex-wrap:wrap; }
+    .mc-actions { display:flex; align-items:center; justify-content:center; gap:6px; }
+    .mc-muted { color: var(--text-secondary); }
+    .mc-empty { padding:40px; text-align:center; color: var(--text-secondary); }
+    .mc-small { font-size:10px; }
+    .mc-pack { font-size:11px; }
+    .mc-toggles { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .mc-toggle { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--border-subtle); border-radius:999px; background:var(--bg-card); cursor:pointer; user-select:none; }
+    .mc-toggle input { accent-color: var(--accent-green); }
+    .mc-debug { display:none; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; font-size:11px; color:var(--text-secondary); border:1px dashed var(--border-subtle); border-radius:14px; padding:10px; margin-top:10px; }
+  </style>
 </head>
 
 <body>
@@ -30,13 +45,13 @@
 
   <main class="admin-container">
     <section class="section-header">
-      <h1 class="section-title">STOCK GLOBAL OPERATIVO</h1>
-      <p class="section-desc">Control de inventario físico, ajustes rápidos y solicitudes de reposición hacia Compras/Admin.</p>
+      <h1 class="section-title">STOCK OPERATIVO</h1>
+      <p class="section-desc">Stock por ubicación (Depósito / Barras). Movimientos por ledger (in/out/adjust) y solicitudes hacia Compras/Admin.</p>
     </section>
 
     <div class="box-soft" style="margin-bottom:16px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:260px; max-width:520px;">
+      <div class="mc-toolbar">
+        <div class="mc-left">
           <input
             type="text"
             id="searchInput"
@@ -46,15 +61,34 @@
           >
         </div>
 
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div class="mc-right">
+          <select id="locationSelect" class="modal-select" style="min-width:220px;" onchange="loadData()">
+            <option value="">Cargando ubicaciones...</option>
+          </select>
+
+          <div class="mc-toggles">
+            <label class="mc-toggle" title="Muestra solo los que están por debajo del ideal">
+              <input type="checkbox" id="togLow" onchange="filterList()">
+              <span class="mc-small">Bajo ideal</span>
+            </label>
+
+            <label class="mc-toggle" title="Muestra solo los que tienen reposición pendiente">
+              <input type="checkbox" id="togPending" onchange="filterList()">
+              <span class="mc-small">Con pendientes</span>
+            </label>
+          </div>
+
           <span id="countSkus" class="tag tag-gray">0 insumos</span>
-          <button onclick="loadData()" class="btn-secondary">REFRESCAR DATOS</button>
+          <button onclick="loadData()" class="btn-secondary">REFRESCAR</button>
         </div>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:12px; flex-wrap:wrap;">
-        <span id="stockStatus" class="inline-status">Cargando inventario...</span>
+      <div class="mc-subrow">
+        <span id="stockStatus" class="inline-status">Cargando...</span>
+        <span id="locHint" class="tag tag-blue" style="display:none;">—</span>
       </div>
+
+      <div id="debugBox" class="mc-debug"></div>
     </div>
 
     <div class="table-container">
@@ -63,15 +97,15 @@
           <tr>
             <th style="padding-left:20px;">INSUMO / CATEGORÍA</th>
             <th>FORMATO</th>
-            <th class="text-center" style="width:120px;">STOCK (UN)</th>
+            <th class="text-center" style="width:140px;">STOCK (UBIC.)</th>
             <th class="text-center" style="width:100px;">IDEAL</th>
-            <th class="text-center" style="width:160px;">AJUSTE RÁPIDO</th>
+            <th class="text-center" style="width:160px;">MOVIMIENTO</th>
             <th class="text-center" style="width:240px; padding-right:20px;">SOLICITAR REPOSICIÓN</th>
           </tr>
         </thead>
         <tbody id="skuList">
           <tr>
-            <td colspan="6" class="text-center text-muted" style="padding:40px;">Cargando inventario...</td>
+            <td colspan="6" class="text-center text-muted mc-empty">Cargando...</td>
           </tr>
         </tbody>
       </table>
@@ -83,8 +117,8 @@
     <div class="modal-box">
       <div class="modal-header">
         <div>
-          <h3 class="section-title" style="font-size:18px; margin:0;">AJUSTE DE STOCK</h3>
-          <p class="section-desc" style="margin:0; font-size:12px;">Registra un movimiento manual (impacta al instante).</p>
+          <h3 class="section-title" style="font-size:18px; margin:0;">MOVIMIENTO DE STOCK</h3>
+          <p class="section-desc" style="margin:0; font-size:12px;">Inserta en ledger (inventory_movements). El stock se actualiza por trigger.</p>
         </div>
         <div style="text-align:right;">
           <span id="adjToday" class="tag tag-gray">Hoy</span>
@@ -102,24 +136,25 @@
 
       <div style="display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
         <div style="flex:1; min-width:240px;">
-          <label class="input-label">TIPO DE MOVIMIENTO</label>
-          <select id="adjType" class="modal-select">
-            <option value="AJUSTE_POSITIVO">INGRESO / AJUSTE (+)</option>
-            <option value="AJUSTE_NEGATIVO">EGRESO / AJUSTE (-)</option>
-            <option value="RECEPCION_COMPRA">RECEPCIÓN DE COMPRA (+)</option>
-            <option value="INVENTARIO_FISICO">CONTEO FÍSICO (CORRECCIÓN)</option>
+          <label class="input-label">ACCIÓN</label>
+          <select id="adjAction" class="modal-select" onchange="syncAdjHint()">
+            <option value="in">INGRESO (+)</option>
+            <option value="out">EGRESO (-)</option>
+            <option value="purchase_in">RECEPCIÓN COMPRA (+)</option>
+            <option value="count_set">CONTEO FÍSICO (setear stock)</option>
           </select>
+          <div id="adjHint" class="row-sub-text" style="margin-top:6px; font-size:11px; color:var(--text-secondary);">—</div>
         </div>
 
-        <div style="width:140px;">
-          <label class="input-label">CANTIDAD</label>
+        <div style="width:160px;">
+          <label id="adjAmountLabel" class="input-label">CANTIDAD</label>
           <input type="number" id="adjAmount" class="modal-input" placeholder="0" inputmode="numeric">
         </div>
       </div>
 
       <div style="margin-bottom:8px;">
         <label class="input-label">NOTA / JUSTIFICACIÓN (OBLIGATORIO)</label>
-        <textarea id="adjNotes" class="modal-input" placeholder="Motivo del ajuste..." style="height:90px;"></textarea>
+        <textarea id="adjNotes" class="modal-input" placeholder="Motivo..." style="height:90px;"></textarea>
       </div>
 
       <div class="modal-btns">
@@ -131,85 +166,209 @@
 
   <script>
     let allSkus = [];
+    let locations = [];
     let currentUser = null;
 
     const statusEl = document.getElementById('stockStatus');
     const countEl = document.getElementById('countSkus');
+    const locHintEl = document.getElementById('locHint');
+    const debugBox = document.getElementById('debugBox');
+
+    function getDb() {
+      if (typeof client !== 'undefined') return client;
+      if (window.client) return window.client;
+      if (window.supa) return window.supa;
+      throw new Error('Supabase client no inicializado (revisá config.js).');
+    }
+
+    function setDebug(msg) {
+      // activalo si querés: localStorage.mc_debug = "1"
+      const on = localStorage.getItem('mc_debug') === '1';
+      debugBox.style.display = on ? 'block' : 'none';
+      if (on) debugBox.textContent = String(msg || '');
+    }
+
+    window.addEventListener('error', (e) => setDebug('window.error:\n' + (e?.message || e)));
+    window.addEventListener('unhandledrejection', (e) => setDebug('unhandledrejection:\n' + (e?.reason?.message || e?.reason || e)));
 
     document.addEventListener('DOMContentLoaded', async () => {
-      const session = localStorage.getItem('mc_user');
-      if (!session) { window.location.href = 'index.html'; return; }
-      currentUser = JSON.parse(session);
+      try {
+        const session = localStorage.getItem('mc_user');
+        if (!session) { window.location.href = 'index.html'; return; }
+        currentUser = JSON.parse(session);
 
-      document.getElementById('adjToday').innerText = new Date().toLocaleDateString('es-AR');
+        document.getElementById('adjToday').innerText = new Date().toLocaleDateString('es-AR');
 
-      // click fuera para cerrar modal
-      document.getElementById('adjustModal').addEventListener('click', (e) => {
-        if (e.target && e.target.id === 'adjustModal') closeModal();
-      });
+        document.getElementById('adjustModal').addEventListener('click', (e) => {
+          if (e.target && e.target.id === 'adjustModal') closeModal();
+        });
 
-      await loadData();
+        await loadLocations();
+        await loadData();
+      } catch (e) {
+        console.error(e);
+        setFatalError(e);
+      }
     });
 
+    function setFatalError(e) {
+      const tbody = document.getElementById('skuList');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center mc-empty" style="color:var(--accent-red);">
+            Error: ${escapeHtml(e?.message || e)}
+          </td>
+        </tr>`;
+      statusEl.textContent = 'Error. Revisá config/RLS/vistas.';
+      setDebug(e?.stack || e?.message || e);
+    }
+
     // =========================
-    // CARGA DE DATOS
+    // UBICACIONES
+    // =========================
+    async function loadLocations() {
+      const db = getDb();
+      try {
+        const { data, error } = await db
+          .from('inventory_locations')
+          .select('id, code, name, kind, sort_order, is_active')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+
+        if (error) throw error;
+
+        locations = (data || []).map(x => ({
+          id: Number(x.id),
+          code: x.code || '',
+          name: x.name || '',
+          kind: x.kind || '',
+          sort_order: Number(x.sort_order || 0)
+        }));
+
+        const sel = document.getElementById('locationSelect');
+
+        if (!locations.length) {
+          sel.innerHTML = `<option value="">Sin ubicaciones</option>`;
+          return;
+        }
+
+        sel.innerHTML = locations.map(l =>
+          `<option value="${l.id}">${escapeHtml(l.code)} — ${escapeHtml(l.name)}</option>`
+        ).join('');
+
+        const deposit = locations.find(l => String(l.kind).toUpperCase() === 'DEPOSIT');
+        sel.value = String((deposit?.id || locations[0]?.id || 1));
+
+      } catch (e) {
+        console.error(e);
+        // fallback seguro
+        locations = [{ id: 1, code: 'DEP', name: 'DEPOSITO', kind: 'DEPOSIT', sort_order: 0 }];
+        const sel = document.getElementById('locationSelect');
+        sel.innerHTML = `<option value="1">DEP — DEPOSITO</option>`;
+        sel.value = "1";
+      }
+    }
+
+    function getSelectedLocationId() {
+      const v = document.getElementById('locationSelect').value;
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0 ? n : 1;
+    }
+
+    function getSelectedLocationLabel() {
+      const id = getSelectedLocationId();
+      const loc = locations.find(x => x.id === id);
+      return loc ? `${loc.code} — ${loc.name}` : `Ubicación ${id}`;
+    }
+
+    // =========================
+    // CARGA DE DATOS (sin embeds)
     // =========================
     async function loadData() {
+      const db = getDb();
       try {
-        statusEl.textContent = 'Actualizando datos...';
+        statusEl.textContent = 'Actualizando...';
 
-        const { data: skusData, error: skusError } = await client
+        const locationId = getSelectedLocationId();
+        const locLabel = getSelectedLocationLabel();
+        locHintEl.style.display = 'inline-flex';
+        locHintEl.textContent = `UBICACIÓN: ${locLabel}`;
+
+        // 1) SKUs
+        const { data: skusData, error: skusError } = await db
           .from('inventory_skus')
-          .select(`
-            id,
-            name,
-            category,
-            unit_type,
-            pack_size,
-            unit_label,
-            inventory_stock (stock_current, stock_ideal)
-          `)
+          .select('id, name, category, unit_type, pack_size, unit_label')
           .eq('is_active', true)
           .order('name');
 
         if (skusError) throw skusError;
 
-        const { data: reqData } = await client
+        const skuIds = (skusData || []).map(s => Number(s.id)).filter(Boolean);
+
+        // 2) IDEAL (inventory_stock)
+        const idealMap = new Map();
+        if (skuIds.length) {
+          for (const batch of chunkArray(skuIds, 500)) {
+            const { data: stockData, error: stockError } = await db
+              .from('inventory_stock')
+              .select('sku_id, stock_ideal')
+              .in('sku_id', batch);
+            if (stockError) throw stockError;
+            (stockData || []).forEach(r => idealMap.set(Number(r.sku_id), safeNum(r.stock_ideal)));
+          }
+        }
+
+        // 3) STOCK POR UBICACIÓN (vista inventory_location_stock)
+        const locMap = new Map();
+        if (skuIds.length) {
+          for (const batch of chunkArray(skuIds, 500)) {
+            const { data: locStockData, error: locStockError } = await db
+              .from('inventory_location_stock')
+              .select('sku_id, stock_current, location_id')
+              .eq('location_id', locationId)
+              .in('sku_id', batch);
+
+            if (locStockError) throw locStockError;
+            (locStockData || []).forEach(r => locMap.set(Number(r.sku_id), safeNum(r.stock_current)));
+          }
+        }
+
+        // 4) Requests pendientes
+        const { data: reqData, error: reqError } = await db
           .from('stock_requests')
           .select('sku_id, requested_qty, status')
           .eq('status', 'PENDING');
 
+        if (reqError) throw reqError;
+
         const pendingRequests = new Map();
         (reqData || []).forEach(r => {
-          const prev = pendingRequests.get(r.sku_id) || 0;
-          pendingRequests.set(r.sku_id, prev + (safeNum(r.requested_qty) || 0));
+          const key = Number(r.sku_id);
+          const prev = pendingRequests.get(key) || 0;
+          pendingRequests.set(key, prev + (safeNum(r.requested_qty) || 0));
         });
 
-        allSkus = (skusData || []).map(item => {
-          const stockRecord = Array.isArray(item.inventory_stock) ? item.inventory_stock[0] : item.inventory_stock;
-          return {
-            id: Number(item.id),
-            name: item.name || '',
-            category: item.category || null,
-            unit_type: item.unit_type || null,
-            pack_size: item.pack_size,
-            unit_label: item.unit_label || null,
-            stock_current: stockRecord ? safeNum(stockRecord.stock_current) : 0,
-            stock_ideal: stockRecord ? safeNum(stockRecord.stock_ideal) : 0,
-            pending_request: pendingRequests.get(item.id) || 0
-          };
-        });
+        allSkus = (skusData || []).map(item => ({
+          id: Number(item.id),
+          name: item.name || '',
+          category: item.category || null,
+          unit_type: item.unit_type || null,
+          pack_size: item.pack_size,
+          unit_label: item.unit_label || null,
+          stock_current: locMap.get(Number(item.id)) ?? 0,
+          stock_ideal: idealMap.get(Number(item.id)) ?? 0,
+          pending_request: pendingRequests.get(Number(item.id)) || 0
+        }));
 
         renderList(getCurrentList());
         updateCount();
 
-        statusEl.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        statusEl.textContent = 'OK — ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        setDebug('');
 
       } catch (e) {
-        console.error('Error:', e);
-        document.getElementById('skuList').innerHTML =
-          '<tr><td colspan="6" class="text-center" style="padding: 40px; color:var(--accent-red);">Error de conexión: ' + escapeHtml(e.message || e) + '</td></tr>';
-        statusEl.textContent = 'Error de conexión. Intentá nuevamente.';
+        console.error(e);
+        setFatalError(e);
       }
     }
 
@@ -220,11 +379,29 @@
     // =========================
     function getCurrentList() {
       const t = (document.getElementById('searchInput').value || '').toLowerCase().trim();
-      if (!t) return allSkus;
-      return allSkus.filter(i =>
-        (i.name || '').toLowerCase().includes(t) ||
-        (i.category || '').toLowerCase().includes(t)
-      );
+      const onlyLow = document.getElementById('togLow').checked;
+      const onlyPending = document.getElementById('togPending').checked;
+
+      let list = allSkus;
+
+      if (t) {
+        list = list.filter(i =>
+          (i.name || '').toLowerCase().includes(t) ||
+          (i.category || '').toLowerCase().includes(t)
+        );
+      }
+
+      if (onlyPending) list = list.filter(i => safeNum(i.pending_request) > 0);
+
+      if (onlyLow) {
+        list = list.filter(i => {
+          const ideal = safeNum(i.stock_ideal);
+          const cur = safeNum(i.stock_current);
+          return ideal > 0 && cur < ideal;
+        });
+      }
+
+      return list;
     }
 
     function filterList() { renderList(getCurrentList()); }
@@ -233,7 +410,7 @@
       const tbody = document.getElementById('skuList');
 
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">Sin resultados.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted mc-empty">Sin resultados.</td></tr>`;
         return;
       }
 
@@ -251,12 +428,12 @@
         }
 
         let presentation = escapeHtml(i.unit_type || '-');
-        if (i.unit_label === 'PACK' && safeNum(i.pack_size) > 1) {
-          presentation = `<span class="tag tag-blue">${escapeHtml(i.unit_type || 'UNIDAD')} (PACK x${safeNum(i.pack_size)})</span>`;
+        if (String(i.unit_label || '').toUpperCase() === 'PACK' && safeNum(i.pack_size) > 1) {
+          presentation = `<span class="tag tag-blue mc-pack">${escapeHtml(i.unit_type || 'UNIDAD')} (PACK x${safeNum(i.pack_size)})</span>`;
         }
 
         const pendingText = i.pending_request > 0
-          ? `<div style="font-size:10px; color:var(--accent-gold); margin-top:4px;">⏳ Pendiente: ${i.pending_request}</div>`
+          ? `<div class="mc-small" style="color:var(--accent-gold); margin-top:4px;">⏳ Pendiente: ${safeNum(i.pending_request)}</div>`
           : '';
 
         return `
@@ -266,7 +443,7 @@
               <div class="row-sub-text">${escapeHtml(i.category || 'SIN CATEGORÍA')}</div>
             </td>
 
-            <td style="font-size:11px;">${presentation}</td>
+            <td class="mc-pack">${presentation}</td>
 
             <td class="text-center" style="font-size:14px; font-weight:800; color:${stockColor};">
               ${stockVal}
@@ -277,18 +454,18 @@
             </td>
 
             <td class="text-center">
-              <button onclick="openModal(${i.id}, 1)" class="btn-icon" title="Ingreso rápido">+</button>
-              <button onclick="openModal(${i.id}, -1)" class="btn-icon" title="Egreso rápido" style="margin-left:6px;">−</button>
+              <button onclick="openModal(${i.id}, 1)" class="btn-icon" title="Ingreso">+</button>
+              <button onclick="openModal(${i.id}, -1)" class="btn-icon" title="Egreso" style="margin-left:6px;">−</button>
             </td>
 
             <td class="text-center" style="padding-right:20px;">
-              <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+              <div class="mc-actions">
                 <input
                   type="number"
                   min="1"
                   id="req-${i.id}"
                   class="table-input"
-                  style="width:70px; border:1px solid var(--border-subtle);"
+                  style="width:70px;"
                   placeholder="0"
                   inputmode="numeric"
                 >
@@ -304,60 +481,107 @@
     }
 
     // =========================
-    // MODAL AJUSTE
+    // MODAL MOVIMIENTO
     // =========================
     function openModal(skuId, typeSign) {
       const sku = allSkus.find(x => x.id === Number(skuId));
       if (!sku) return;
 
+      const locLabel = getSelectedLocationLabel();
+
       document.getElementById('adjSkuId').value = sku.id;
       document.getElementById('adjCurrentStock').value = safeNum(sku.stock_current);
       document.getElementById('adjSkuName').innerText = sku.name;
-      document.getElementById('adjSkuMeta').innerText = `Stock actual: ${safeNum(sku.stock_current)} ${sku.unit_type || 'UNIDAD'}`;
+      document.getElementById('adjSkuMeta').innerText = `Ubicación: ${locLabel} — Stock actual: ${safeNum(sku.stock_current)} ${sku.unit_type || 'UNIDAD'}`;
 
-      const selectType = document.getElementById('adjType');
+      const action = document.getElementById('adjAction');
       const btn = document.getElementById('btnSaveAdj');
 
       if (typeSign === 1) {
-        selectType.value = 'AJUSTE_POSITIVO';
+        action.value = 'in';
         btn.textContent = 'CONFIRMAR INGRESO';
       } else {
-        selectType.value = 'AJUSTE_NEGATIVO';
+        action.value = 'out';
         btn.textContent = 'CONFIRMAR EGRESO';
       }
 
       document.getElementById('adjAmount').value = '';
       document.getElementById('adjNotes').value = '';
 
+      syncAdjHint();
+
       document.getElementById('adjustModal').style.display = 'flex';
       setTimeout(() => document.getElementById('adjAmount').focus(), 50);
+    }
+
+    function syncAdjHint() {
+      const v = document.getElementById('adjAction').value;
+      const hint = document.getElementById('adjHint');
+      const label = document.getElementById('adjAmountLabel');
+
+      if (v === 'count_set') {
+        label.textContent = 'CONTEO (stock final)';
+        hint.textContent = 'Ingresás el stock final contado. Se registra un ADJUST con la diferencia (no permite delta 0).';
+      } else if (v === 'purchase_in') {
+        label.textContent = 'CANTIDAD';
+        hint.textContent = 'Ingreso por compra (movement_type=in, reason_code=PURCHASE).';
+      } else if (v === 'out') {
+        label.textContent = 'CANTIDAD';
+        hint.textContent = 'Egreso (movement_type=out).';
+      } else {
+        label.textContent = 'CANTIDAD';
+        hint.textContent = 'Ingreso (movement_type=in).';
+      }
     }
 
     function closeModal() { document.getElementById('adjustModal').style.display = 'none'; }
 
     // =========================
-    // ACCIONES
+    // ACCIONES (solo ledger)
     // =========================
     async function saveAdjustment() {
+      const db = getDb();
+
       const skuId = Number(document.getElementById('adjSkuId').value);
       const currentStock = safeNum(document.getElementById('adjCurrentStock').value);
-      const type = document.getElementById('adjType').value;
+      const action = document.getElementById('adjAction').value;
       const amount = safeNum(document.getElementById('adjAmount').value);
-      const notes = (document.getElementById('adjNotes').value || '').trim();
+      const notesRaw = (document.getElementById('adjNotes').value || '').trim();
 
-      if (!amount || amount <= 0) return alert('Ingresá una cantidad válida.');
-      if (!notes) return alert('La justificación es obligatoria.');
+      if (!notesRaw) return alert('La justificación es obligatoria.');
 
-      let changeAmount = amount;
+      const locationId = getSelectedLocationId();
+      const locLabel = getSelectedLocationLabel();
 
-      if (type === 'AJUSTE_NEGATIVO') changeAmount = -amount;
-      if (type === 'INVENTARIO_FISICO') {
-        // amount = conteo total
-        changeAmount = amount - currentStock;
+      let movement_type = 'adjust';
+      let reason_code = 'MANUAL';
+      let change_amount = 0;
+
+      if (action === 'count_set') {
+        if (!Number.isFinite(amount) || amount < 0) return alert('Ingresá un conteo válido (>= 0).');
+        change_amount = amount - currentStock;
+        movement_type = 'adjust';
+        reason_code = 'COUNT';
+        if (change_amount === 0) return alert('Conteo sin cambios. No se registra movimiento.');
+      } else {
+        if (!amount || amount <= 0) return alert('Ingresá una cantidad válida (> 0).');
+
+        if (action === 'purchase_in') {
+          movement_type = 'in';
+          reason_code = 'PURCHASE';
+          change_amount = Math.abs(amount);
+        } else if (action === 'in') {
+          movement_type = 'in';
+          reason_code = 'MANUAL_IN';
+          change_amount = Math.abs(amount);
+        } else if (action === 'out') {
+          movement_type = 'out';
+          reason_code = 'MANUAL_OUT';
+          change_amount = -Math.abs(amount);
+        }
       }
-      // RECEPCION_COMPRA => positivo, queda tal cual
 
-      const newStock = currentStock + changeAmount;
+      const newStock = currentStock + change_amount;
       if (newStock < 0) return alert('El stock resultante no puede ser negativo.');
 
       const btn = document.getElementById('btnSaveAdj');
@@ -366,28 +590,23 @@
       btn.textContent = 'PROCESANDO...';
 
       try {
-        const eventDate = getLocalISODate();
+        const userId = asUuidOrNull(currentUser?.id);
+        const notes = `[${locLabel}] ${notesRaw}`;
 
-        const { error: moveError } = await client.from('inventory_movements').insert({
+        const { error: moveError } = await db.from('inventory_movements').insert({
           sku_id: skuId,
-          user_id: currentUser?.id || null,
-          change_amount: changeAmount,
-          movement_type: type,
+          user_id: userId,
+          change_amount: change_amount,
+          movement_type: movement_type,     // in/out/adjust (SIEMPRE)
           notes: notes,
-          event_date: eventDate
+          location_id: locationId,
+          reason_code: reason_code
+          // event_date: opcional (trigger la completa si es null)
         });
+
         if (moveError) throw moveError;
 
-        const { error: stockError } = await client.from('inventory_stock').upsert({
-          sku_id: skuId,
-          stock_current: newStock
-        }, { onConflict: 'sku_id' });
-        if (stockError) throw stockError;
-
-        if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') {
-          MC_UTILS.showToast('Stock actualizado.');
-        }
-
+        toast('Movimiento registrado.');
         closeModal();
         await loadData();
 
@@ -401,27 +620,37 @@
     }
 
     async function handleRequest(skuId) {
+      const db = getDb();
+
       const input = document.getElementById(`req-${skuId}`);
       const qty = safeNum(input.value);
-
       if (!qty || qty <= 0) return alert('Ingresá una cantidad válida.');
 
       const sku = allSkus.find(x => x.id === Number(skuId));
       if (!sku) return;
 
-      if (!confirm(`¿Solicitar ${qty} ${sku.unit_type || 'UN'} de ${sku.name}?`)) return;
+      const locLabel = getSelectedLocationLabel();
+      if (!confirm(`¿Solicitar ${qty} ${sku.unit_type || 'UN'} de ${sku.name} para ${locLabel}?`)) return;
+
+      const payload = {
+        sku_id: Number(skuId),
+        requested_qty: qty,
+        requested_by: asUuidOrNull(currentUser?.id),
+        status: 'PENDING'
+      };
 
       try {
-        const { error } = await client.from('stock_requests').insert({
-          sku_id: Number(skuId),
-          requested_qty: qty,
-          requested_by: currentUser?.id || null,
-          status: 'PENDING'
-        });
+        let { error } = await db.from('stock_requests').insert(payload);
 
-        if (error) throw error;
+        // retry por compatibilidad si existen variaciones de schema (notes/location_id)
+        if (error && /column .*notes/i.test(error.message || '')) {
+          // nada, no mandamos notes
+        } else if (error) {
+          throw error;
+        }
 
         input.value = '';
+        toast('Solicitud creada.');
         await loadData();
 
       } catch (e) {
@@ -433,6 +662,12 @@
     // =========================
     // HELPERS
     // =========================
+    function toast(msg) {
+      if (window.MC_UTILS && typeof MC_UTILS.showToast === 'function') return MC_UTILS.showToast(msg);
+      // fallback silencioso
+      statusEl.textContent = msg;
+    }
+
     function safeNum(v) {
       const n = Number(String(v ?? '').replace(',', '.'));
       return Number.isFinite(n) ? n : 0;
@@ -447,12 +682,16 @@
         .replaceAll("'","&#039;");
     }
 
-    function getLocalISODate() {
-      const d = new Date();
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
+    function chunkArray(arr, size) {
+      const out = [];
+      for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+      return out;
+    }
+
+    function asUuidOrNull(v) {
+      const s = String(v || '').trim().toLowerCase();
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      return uuidRe.test(s) ? s : null;
     }
   </script>
 </body>

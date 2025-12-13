@@ -2,542 +2,886 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Midnight — Encargado Caja</title>
-  
+
   <link rel="stylesheet" href="admin-styles.css" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-</head>
-<body>
 
+  <style>
+    .btn-block { width: 100%; }
+    .is-muted { opacity: 0.6; }
+  </style>
+</head>
+
+<body>
+  <!-- HEADER -->
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
-        <!-- Columna izquierda (placeholder para respetar grid 1fr / auto / 1fr) -->
-        <div></div>
+        <div>
+          <button id="btnBack" class="btn-back" type="button">VOLVER</button>
+        </div>
 
-        <!-- Centro: Logo ERP -->
         <div class="admin-logo" aria-hidden="true"></div>
 
-        <!-- Derecha: usuario encargado -->
         <div class="admin-header-right">
-          <div class="user-badge-container">
-            <div id="userDisplay" class="user-name">ENCARGADO</div>
-            <div class="user-role" style="color:var(--accent-gold);">CAJA</div>
-          </div>
-          <button onclick="window.location.href='index.html'" class="btn-logout">SALIR</button>
+          <span id="userDisplay" class="session-chip">ENCARGADO</span>
+          <span class="tag tag-gold">CAJA</span>
+          <button id="btnLogout" class="btn-logout" type="button">SALIR</button>
         </div>
       </div>
     </div>
   </header>
 
   <main class="admin-container">
+    <!-- TÍTULO -->
+    <section class="section-header">
+      <h1 class="section-title">Encargado · Caja</h1>
+      <p class="section-desc">Validación, retiros, librería e incidentes.</p>
+      <div class="section-underline"></div>
+    </section>
+
     <!-- NAV TABS -->
-    <nav class="tab-nav tabs-gold">
-      <button class="tab-btn active" onclick="switchTab('validar', this)">🔍 VALIDAR CAJAS</button>
-      <button class="tab-btn" onclick="switchTab('retiros', this)">💸 GESTIÓN RETIROS</button>
-      <button class="tab-btn" onclick="switchTab('stock', this)">✏️ LIBRERÍA</button>
-      <button class="tab-btn" onclick="switchTab('novedades', this)">📢 NOVEDADES</button>
+    <nav class="tab-nav tabs-gold" id="tabNav" aria-label="Navegación Encargado Caja">
+      <button class="tab-btn active" type="button" data-view="validar">🔍 VALIDAR CAJAS</button>
+      <button class="tab-btn" type="button" data-view="retiros">💸 GESTIÓN RETIROS</button>
+      <button class="tab-btn" type="button" data-view="stock">✏️ LIBRERÍA</button>
+      <button class="tab-btn" type="button" data-view="novedades">📢 NOVEDADES</button>
     </nav>
 
-    <!-- TAB: VALIDAR CAJAS -->
+    <!-- TAB: VALIDAR -->
     <section id="view-validar">
-      <div
-        class="section-header"
-        style="margin-bottom:16px; text-align:left; display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;"
-      >
+      <div class="orders-section-head mb-2">
         <div>
-          <h2 class="section-title" style="font-size:18px;">Cierres Recibidos</h2>
-          <p class="section-desc">Monitoreo de declaraciones en tiempo real</p>
+          <h2 class="section-title section-title-sm section-title-left">CIERRES RECIBIDOS</h2>
+          <p class="section-desc">Monitoreo de declaraciones por terminal.</p>
         </div>
-        <div>
-          <label class="input-label" for="filterDate">FECHA</label>
-          <input
-            type="date"
-            id="filterDate"
-            class="modal-input"
-            style="width:auto; min-width:160px;"
-            onchange="loadClosings()"
-          />
+
+        <div class="orders-fixed-row">
+          <div>
+            <label class="input-label" for="filterDate">FECHA</label>
+            <input type="date" id="filterDate" class="modal-input input-date-sm" />
+          </div>
+          <button id="btnReloadClosings" class="btn-secondary" type="button">RECARGAR</button>
         </div>
+      </div>
+
+      <div class="summary-row" id="closingsSummary" hidden>
+        <div class="summary-card border-fiscal">
+          <div class="summary-label">Total efectivo</div>
+          <div class="summary-value" id="sumCash">$ 0</div>
+        </div>
+        <div class="summary-card border-digital">
+          <div class="summary-label">Total zoco</div>
+          <div class="summary-value" id="sumZoco">$ 0</div>
+        </div>
+        <div class="summary-card border-internal">
+          <div class="summary-label">Total retiros</div>
+          <div class="summary-value" id="sumWithdraw">$ 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Terminales</div>
+          <div class="summary-value" id="sumTerms">0</div>
+        </div>
+      </div>
+
+      <div id="missingBox" class="box-soft mb-2" hidden>
+        <div class="toolbar toolbar--tight">
+          <div>
+            <div class="row-title">FALTAN DECLARACIONES</div>
+            <div class="row-sub-text" id="missingText"></div>
+          </div>
+          <span class="tag tag-red">PENDIENTE</span>
+        </div>
+        <div id="missingTags" class="mt-1"></div>
       </div>
 
       <div id="closingsList">
-        <div class="text-center" style="padding:30px; color:var(--text-secondary);">
-          Buscando cierres...
+        <div class="box-soft text-center">
+          <div class="row-sub-text">Cargando datos...</div>
         </div>
       </div>
     </section>
 
-    <!-- TAB: GESTIÓN RETIROS -->
+    <!-- TAB: RETIROS -->
     <section id="view-retiros" style="display:none;">
-      <div
-        class="section-header"
-        style="margin-bottom:16px; text-align:left;"
-      >
-        <h2 class="section-title" style="font-size:18px;">Solicitar Retiro</h2>
-        <p class="section-desc">
-          Autorizar salida de dinero para que entregue la cajera
-        </p>
+      <div class="orders-section-head mb-2">
+        <div>
+          <h2 class="section-title section-title-sm section-title-left">SOLICITAR RETIRO</h2>
+          <p class="section-desc">Genera la orden para que la cajera entregue (queda en cash_movements).</p>
+        </div>
       </div>
 
-      <div class="box-soft" style="margin-bottom:30px;">
-        <div
-          style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;"
-        >
+      <div class="box-soft mb-2">
+        <div class="orders-summary-grid mb-2">
           <div>
-            <label class="input-label">ORIGEN (CAJA)</label>
+            <label class="input-label" for="wTerm">ORIGEN (CAJA)</label>
             <select id="wTerm" class="modal-select"></select>
           </div>
+
           <div>
-            <label class="input-label">MONTO A RETIRAR</label>
-            <input type="number" id="wAmount" class="modal-input" placeholder="$ 0" />
+            <label class="input-label" for="wAmount">MONTO A RETIRAR</label>
+            <input id="wAmount" type="number" class="modal-input" placeholder="$ 0" inputmode="numeric" />
           </div>
         </div>
-        <label class="input-label">MOTIVO / DESTINO</label>
-        <input
-          type="text"
-          id="wDesc"
-          class="modal-input"
-          placeholder="Ej: Pago Hielo, Retiro Gerencia..."
-        />
-        
-        <button
-          onclick="createWithdrawal()"
-          class="btn-primary"
-          style="background:var(--accent-gold); color:#000; width:100%; margin-top:10px;"
-        >
+
+        <div>
+          <label class="input-label" for="wDesc">MOTIVO / DESTINO</label>
+          <input id="wDesc" type="text" class="modal-input" placeholder="Ej: Pago hielo / Retiro gerencia..." />
+        </div>
+
+        <button id="btnCreateWithdrawal" class="btn-primary btn-gold btn-block mt-1" type="button">
           GENERAR ORDEN DE RETIRO 🚀
         </button>
+
+        <div class="status-line mt-1" id="withdrawalStatus"></div>
       </div>
 
-      <h3 class="section-title" style="font-size:16px; margin-bottom:15px; text-align:left;">
-        Estado de Solicitudes (Hoy)
-      </h3>
-      <div id="withdrawalList"></div>
-    </section>
-
-    <!-- TAB: STOCK LIBRERÍA -->
-    <section id="view-stock" style="display:none;">
-      <div
-        class="section-header"
-        style="margin-bottom:16px; text-align:left; display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;"
-      >
-        <div>
-          <h2 class="section-title" style="font-size:18px;">Insumos de Librería</h2>
-          <p class="section-desc">Rollos, precintos y oficina</p>
+      <h3 class="section-title section-title-left section-title-sm mt-2 mb-2">ESTADO DE SOLICITUDES (HOY)</h3>
+      <div id="withdrawalList">
+        <div class="box-soft text-center">
+          <div class="row-sub-text">Cargando movimientos...</div>
         </div>
-        <button onclick="openRequestModal()" class="btn-refresh">
-          + PEDIR A COMPRAS
-        </button>
       </div>
-      
-      <div id="suppliesList" style="margin-bottom:20px;"></div>
-      <button onclick="saveStock()" class="btn-primary" style="width:100%;">
-        GUARDAR CONTEO ✅
-      </button>
     </section>
 
-    <!-- TAB: NOVEDADES / INCIDENTES -->
-    <section id="view-novedades" style="display:none;">
-      <div class="box-soft">
-        <h3 class="dash-title" style="margin-bottom:16px;">Reportar Incidente</h3>
+    <!-- TAB: STOCK / LIBRERÍA -->
+    <section id="view-stock" style="display:none;">
+      <div class="orders-section-head mb-2">
+        <div>
+          <h2 class="section-title section-title-sm section-title-left">INSUMOS DE LIBRERÍA</h2>
+          <p class="section-desc">Rollos, precintos, lapiceras y oficina. (Conteo rápido)</p>
+        </div>
+        <button id="btnOpenRequestModal" class="btn-refresh" type="button">+ PEDIR A COMPRAS</button>
+      </div>
 
-        <label class="input-label">TIPO</label>
+      <div id="suppliesList" class="mb-2">
+        <div class="box-soft text-center">
+          <div class="row-sub-text">Cargando insumos...</div>
+        </div>
+      </div>
+
+      <button id="btnSaveStock" class="btn-primary btn-block" type="button">GUARDAR CONTEO ✅</button>
+      <div class="status-line mt-1" id="stockStatus"></div>
+    </section>
+
+    <!-- TAB: NOVEDADES -->
+    <section id="view-novedades" style="display:none;">
+      <div class="box-soft mb-2">
+        <h3 class="dash-title">REPORTAR INCIDENTE</h3>
+
+        <label class="input-label" for="incType">TIPO</label>
         <select id="incType" class="modal-select">
-          <option value="DIFERENCIA_CAJA">💰 Diferencia de Caja</option>
-          <option value="SISTEMA">💻 Error de Sistema</option>
-          <option value="PERSONAL">👥 Conducta Personal</option>
-          <option value="INFRAESTRUCTURA">🔧 Mantenimiento Caja</option>
+          <option value="DIFERENCIA_CAJA">💰 Diferencia de caja</option>
+          <option value="SISTEMA">💻 Error de sistema</option>
+          <option value="PERSONAL">👥 Conducta personal</option>
+          <option value="INFRAESTRUCTURA">🔧 Mantenimiento caja</option>
+          <option value="OTRO">📌 Otro</option>
         </select>
 
-        <label class="input-label">DETALLE</label>
-        <textarea
-          id="incDesc"
-          class="modal-input"
-          placeholder="Describa la situación..."
-          style="height:100px;"
-        ></textarea>
+        <label class="input-label" for="incDesc">DETALLE</label>
+        <textarea id="incDesc" class="modal-input" placeholder="Describí qué pasó, cuándo y en qué terminal…"></textarea>
 
-        <button
-          onclick="sendIncident()"
-          class="btn-primary"
-          style="background:var(--state-error); color:#fff; width:100%; margin-top:15px;"
-        >
+        <button id="btnSendIncident" class="btn-primary btn-block mt-1" type="button">
           REGISTRAR INCIDENTE
         </button>
+
+        <div class="status-line mt-1" id="incStatus"></div>
       </div>
-      
-      <div style="margin-top:30px;">
-        <h3 class="section-title" style="font-size:16px; margin-bottom:15px; text-align:left;">
-          Historial Reciente
-        </h3>
-        <div id="incHistory" class="data-list"></div>
+
+      <h3 class="section-title section-title-left section-title-sm mt-2 mb-2">HISTORIAL RECIENTE</h3>
+      <div id="incHistory">
+        <div class="box-soft text-center">
+          <div class="row-sub-text">Cargando reportes...</div>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- MODAL SOLICITAR INSUMOS -->
-  <div id="reqModal" class="modal-overlay">
+  <!-- MODAL: PEDIR A COMPRAS -->
+  <div id="reqModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="reqTitle">
     <div class="modal-box">
       <div class="modal-header">
         <div>
-          <h3 class="section-title" style="font-size:18px; margin-bottom:4px;">
-            Solicitar Insumos
-          </h3>
-          <p class="section-desc">Este pedido irá al Depto. de Compras</p>
+          <h3 id="reqTitle" class="section-title" style="font-size:18px; margin-bottom:4px;">Solicitar insumos</h3>
+          <p class="section-desc">Se registra como pedido para Compras.</p>
         </div>
+        <button id="btnCloseReqX" class="btn-icon" type="button" aria-label="Cerrar">✕</button>
       </div>
-      
-      <label class="input-label">DETALLE</label>
-      <textarea
-        id="reqDetail"
-        class="modal-input"
-        placeholder="Ej: 5 Cajas Rollos 80mm..."
-        style="height:100px;"
-      ></textarea>
+
+      <label class="input-label" for="reqDetail">DETALLE</label>
+      <textarea id="reqDetail" class="modal-input" placeholder="Ej: 5 cajas rollos 80mm, 10 lapiceras..." ></textarea>
 
       <div class="modal-btns">
-        <button
-          onclick="document.getElementById('reqModal').style.display='none'"
-          class="btn-secondary"
-        >
-          Cancelar
-        </button>
-        <button onclick="sendRequest()" class="btn-primary">
-          Enviar Pedido
-        </button>
+        <button id="btnCloseReq" class="btn-secondary" type="button">CANCELAR</button>
+        <button id="btnSendReq" class="btn-primary" type="button">ENVIAR PEDIDO</button>
       </div>
+
+      <div class="status-line mt-1" id="reqStatus"></div>
     </div>
   </div>
 
   <script>
-    let currentUser = null;
-    let supplies = [];
+    (function () {
+      'use strict';
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      const session = localStorage.getItem('mc_user');
-      if (!session) {
-        window.location.href = 'index.html';
+      const supa = window.client;
+      if (!supa) {
+        alert('Error: no hay conexión a Supabase (window.client).');
         return;
       }
-      currentUser = JSON.parse(session);
 
-      const name =
-        (currentUser.full_name || currentUser.username || 'ENCARGADO').toString();
-      document.getElementById('userDisplay').innerText = name.toUpperCase();
+      // ===== Utils =====
+      const formatCurrency =
+        window.MC_UTILS && typeof window.MC_UTILS.formatCurrency === 'function'
+          ? window.MC_UTILS.formatCurrency
+          : (amount) =>
+              new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: 'ARS',
+                maximumFractionDigits: 0
+              }).format(Number(amount) || 0);
+
+      function todayLocalYYYYMMDD() {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 10);
+      }
+
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      // ===== DOM =====
+      const btnBack = document.getElementById('btnBack');
+      const btnLogout = document.getElementById('btnLogout');
+      const userDisplay = document.getElementById('userDisplay');
+
+      const tabNav = document.getElementById('tabNav');
 
       const filterDate = document.getElementById('filterDate');
-      if (filterDate) {
-        filterDate.valueAsDate = new Date();
+      const btnReloadClosings = document.getElementById('btnReloadClosings');
+      const closingsList = document.getElementById('closingsList');
+
+      const closingsSummary = document.getElementById('closingsSummary');
+      const sumCash = document.getElementById('sumCash');
+      const sumZoco = document.getElementById('sumZoco');
+      const sumWithdraw = document.getElementById('sumWithdraw');
+      const sumTerms = document.getElementById('sumTerms');
+
+      const missingBox = document.getElementById('missingBox');
+      const missingText = document.getElementById('missingText');
+      const missingTags = document.getElementById('missingTags');
+
+      const wTerm = document.getElementById('wTerm');
+      const wAmount = document.getElementById('wAmount');
+      const wDesc = document.getElementById('wDesc');
+      const btnCreateWithdrawal = document.getElementById('btnCreateWithdrawal');
+      const withdrawalList = document.getElementById('withdrawalList');
+      const withdrawalStatus = document.getElementById('withdrawalStatus');
+
+      const suppliesList = document.getElementById('suppliesList');
+      const btnSaveStock = document.getElementById('btnSaveStock');
+      const btnOpenRequestModal = document.getElementById('btnOpenRequestModal');
+      const stockStatus = document.getElementById('stockStatus');
+
+      const incType = document.getElementById('incType');
+      const incDesc = document.getElementById('incDesc');
+      const btnSendIncident = document.getElementById('btnSendIncident');
+      const incHistory = document.getElementById('incHistory');
+      const incStatus = document.getElementById('incStatus');
+
+      const reqModal = document.getElementById('reqModal');
+      const reqDetail = document.getElementById('reqDetail');
+      const btnCloseReq = document.getElementById('btnCloseReq');
+      const btnCloseReqX = document.getElementById('btnCloseReqX');
+      const btnSendReq = document.getElementById('btnSendReq');
+      const reqStatus = document.getElementById('reqStatus');
+
+      // ===== State =====
+      let currentUser = null;
+      let supplies = []; // { id, name, category, current_stock }
+
+      // ===== Session =====
+      function loadSession() {
+        const raw = localStorage.getItem('mc_user');
+        if (!raw) {
+          window.location.href = 'index.html';
+          return false;
+        }
+        try {
+          currentUser = JSON.parse(raw);
+        } catch (e) {
+          localStorage.removeItem('mc_user');
+          window.location.href = 'index.html';
+          return false;
+        }
+
+        const name = (currentUser.full_name || currentUser.username || 'ENCARGADO').toString();
+        userDisplay.textContent = name.toUpperCase();
+        return true;
       }
 
-      // Carga inicial
-      loadClosings();
-      loadTerminals(); // Para el select de retiros
-    });
+      // ===== Tabs =====
+      function showView(view) {
+        ['validar', 'retiros', 'stock', 'novedades'].forEach(v => {
+          const el = document.getElementById('view-' + v);
+          if (el) el.style.display = v === view ? 'block' : 'none';
+        });
 
-    function switchTab(view, btn) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      
-      ['validar','retiros','stock','novedades'].forEach(v => {
-        const el = document.getElementById('view-' + v);
-        if (el) el.style.display = 'none';
-      });
-      const viewEl = document.getElementById('view-' + view);
-      if (viewEl) viewEl.style.display = 'block';
-
-      if (view === 'retiros') loadWithdrawals();
-      if (view === 'stock') loadSupplies();
-      if (view === 'novedades') loadHistory();
-    }
-
-    // === 1. VALIDACIÓN (Monitor) ===
-    async function loadClosings() {
-      const date = document.getElementById('filterDate').value;
-      const container = document.getElementById('closingsList');
-      container.innerHTML =
-        '<div class="text-center" style="padding:30px; color:var(--text-secondary);">Cargando datos...</div>';
-
-      // Buscar Cierre Global
-      const { data: head } = await client
-        .from('cash_closings')
-        .select('id')
-        .eq('event_date', date)
-        .maybeSingle();
-      
-      if (!head) {
-        container.innerHTML =
-          '<div style="text-align:center; padding:40px; color:var(--text-secondary);">No hay apertura de caja registrada para esta fecha.</div>';
-        return;
+        if (view === 'validar') loadClosings();
+        if (view === 'retiros') loadWithdrawals();
+        if (view === 'stock') loadSupplies();
+        if (view === 'novedades') loadHistory();
       }
 
-      // Buscar Detalles
-      const { data: terms } = await client
-        .from('closing_terminals')
-        .select('*')
-        .eq('closing_id', head.id)
-        .order('terminal_name');
+      function bindTabs() {
+        tabNav.addEventListener('click', (ev) => {
+          const btn = ev.target.closest('button.tab-btn[data-view]');
+          if (!btn) return;
 
-      if (!terms || terms.length === 0) {
-        container.innerHTML =
-          '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Esperando declaraciones de venta...</div>';
-        return;
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          const view = btn.getAttribute('data-view');
+          showView(view);
+        });
       }
 
-      container.innerHTML = terms
-        .map(t => {
-          const efvo = parseFloat(t.final_count_cash) || 0;
-          const zoco = parseFloat(t.zoco_digital) || 0;
-          const retiro = parseFloat(t.cash_withdrawals) || 0;
-
-          return `
-            <div class="box-soft" style="margin-bottom:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed var(--border-subtle);">
-                <span class="row-title" style="font-size:14px;">${t.terminal_name}</span>
-                <span class="tag tag-green">RECIBIDO</span>
-              </div>
-              <div class="summary-row" style="margin-bottom:0;">
-                <div class="summary-card" style="min-width:0;">
-                  <div class="summary-label">EFECTIVO</div>
-                  <div class="summary-value" style="font-size:16px; color:var(--state-success);">
-                    ${MC_UTILS.formatCurrency(efvo)}
-                  </div>
-                </div>
-                <div class="summary-card" style="min-width:0;">
-                  <div class="summary-label">ZOCO</div>
-                  <div class="summary-value" style="font-size:16px; color:var(--state-info);">
-                    ${MC_UTILS.formatCurrency(zoco)}
-                  </div>
-                </div>
-                <div class="summary-card" style="min-width:0;">
-                  <div class="summary-label">RETIROS</div>
-                  <div class="summary-value" style="font-size:16px; color:var(--state-error);">
-                    ${MC_UTILS.formatCurrency(retiro)}
-                  </div>
-                </div>
-              </div>
-            </div>`;
-        })
-        .join('');
-    }
-
-    // === 2. GESTIÓN RETIROS ===
-    async function loadTerminals() {
-      const { data } = await client
-        .from('pos_terminals')
-        .select('friendly_name')
-        .eq('is_active', true)
-        .order('friendly_name');
-
-      const list = Array.isArray(data) ? data : [];
-      const unique = [...new Set(list.map(i => i.friendly_name))];
-
-      document.getElementById('wTerm').innerHTML = unique
-        .map(n => `<option value="${n}">${n}</option>`)
-        .join('');
-    }
-
-    async function createWithdrawal() {
-      const term = document.getElementById('wTerm').value;
-      const amount = document.getElementById('wAmount').value;
-      const desc = document.getElementById('wDesc').value;
-
-      if (!amount || !desc) return alert('Complete monto y motivo.');
-
-      const { error } = await client.from('cash_movements').insert({
-        requested_by: currentUser.id,
-        terminal_name: term,
-        amount: amount,
-        description: desc,
-        event_date: new Date(),
-        status: 'PENDING'
-      });
-
-      if (error) alert(error.message);
-      else {
-        alert('Solicitud enviada a la caja.');
-        document.getElementById('wAmount').value = '';
-        document.getElementById('wDesc').value = '';
-        loadWithdrawals();
-      }
-    }
-
-    async function loadWithdrawals() {
-      const today = new Date().toISOString().split('T')[0];
-      const { data } = await client
-        .from('cash_movements')
-        .select('*')
-        .eq('event_date', today)
-        .order('created_at', { ascending: false });
-
-      const list = document.getElementById('withdrawalList');
-      if (!data || !data.length) {
-        list.innerHTML =
-          '<div style="text-align:center; padding:20px; color:var(--text-secondary);">Sin movimientos hoy.</div>';
-        return;
+      // ===== Helpers UI =====
+      function setStatus(el, msg, kind) {
+        if (!el) return;
+        if (!msg) {
+          el.innerHTML = '';
+          return;
+        }
+        const cls = kind === 'ok' ? 'ok' : kind === 'bad' ? 'bad' : '';
+        el.innerHTML = cls ? `<span class="${cls}">${escapeHtml(msg)}</span>` : `<span>${escapeHtml(msg)}</span>`;
       }
 
-      list.innerHTML = data
-        .map(w => {
-          let statusBadge = `<span class="tag tag-gray">PENDIENTE</span>`;
-          if (w.status === 'CONFIRMED') {
-            statusBadge = `<span class="tag tag-green">ENTREGADO</span>`;
+      // ===== Data: Terminals =====
+      async function loadTerminals() {
+        const { data, error } = await supa
+          .from('pos_terminals')
+          .select('friendly_name')
+          .eq('is_active', true)
+          .order('friendly_name', { ascending: true });
+
+        if (error) {
+          console.error('Error cargando terminales', error);
+          wTerm.innerHTML = '<option value="">No se pudieron cargar terminales</option>';
+          return [];
+        }
+
+        const names = Array.from(new Set((data || []).map(x => x.friendly_name).filter(Boolean)));
+        if (!names.length) {
+          wTerm.innerHTML = '<option value="">No hay terminales activas</option>';
+          return [];
+        }
+
+        wTerm.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        return names;
+      }
+
+      // ===== 1) VALIDAR CIERRES =====
+      async function loadClosings() {
+        const date = filterDate.value;
+        closingsList.innerHTML = '<div class="box-soft text-center"><div class="row-sub-text">Cargando datos...</div></div>';
+        closingsSummary.hidden = true;
+        missingBox.hidden = true;
+        missingTags.innerHTML = '';
+        missingText.textContent = '';
+
+        if (!date) return;
+
+        try {
+          // Head
+          const { data: head, error: headError } = await supa
+            .from('cash_closings')
+            .select('id')
+            .eq('event_date', date)
+            .maybeSingle();
+
+          if (headError && headError.code !== 'PGRST116') throw headError;
+
+          if (!head || !head.id) {
+            closingsList.innerHTML =
+              '<div class="box-soft text-center"><div class="row-sub-text">No hay apertura/cierre registrado para esta fecha.</div></div>';
+            return;
           }
-          
-          return `
-            <div class="box-soft" style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; opacity:${w.status === 'CONFIRMED' ? 0.6 : 1};">
-              <div>
-                <div style="font-weight:700; color:#fff;">
-                  ${w.terminal_name}: ${MC_UTILS.formatCurrency(w.amount)}
+
+          // Details
+          const [{ data: terms, error: termsError }, expected] = await Promise.all([
+            supa
+              .from('closing_terminals')
+              .select('terminal_name, final_count_cash, zoco_digital, cash_withdrawals')
+              .eq('closing_id', head.id)
+              .order('terminal_name', { ascending: true }),
+            loadTerminals()
+          ]);
+
+          if (termsError) throw termsError;
+
+          const list = Array.isArray(terms) ? terms : [];
+
+          if (!list.length) {
+            closingsList.innerHTML =
+              '<div class="box-soft text-center"><div class="row-sub-text">Esperando declaraciones de venta...</div></div>';
+            return;
+          }
+
+          // Summary
+          let tCash = 0, tZoco = 0, tW = 0;
+          list.forEach(t => {
+            tCash += Number(t.final_count_cash) || 0;
+            tZoco += Number(t.zoco_digital) || 0;
+            tW += Number(t.cash_withdrawals) || 0;
+          });
+
+          sumCash.textContent = formatCurrency(tCash);
+          sumZoco.textContent = formatCurrency(tZoco);
+          sumWithdraw.textContent = formatCurrency(tW);
+          sumTerms.textContent = String(list.length);
+          closingsSummary.hidden = false;
+
+          // Missing terminals (si existe pos_terminals)
+          if (Array.isArray(expected) && expected.length) {
+            const receivedNames = new Set(list.map(x => (x.terminal_name || '').trim()).filter(Boolean));
+            const missing = expected.filter(n => !receivedNames.has(n));
+
+            if (missing.length) {
+              missingText.textContent = `${missing.length} terminal(es) sin declaración`;
+              missingTags.innerHTML = missing.map(n => `<span class="tag tag-red" style="margin-right:6px; margin-top:6px;">${escapeHtml(n)}</span>`).join('');
+              // Nota: los "margin" están en el tag para spacing visual; si querés 0 inline total, lo pasamos a clase.
+              missingBox.hidden = false;
+            }
+          }
+
+          // Render list
+          closingsList.innerHTML = list.map(t => {
+            const termName = escapeHtml(t.terminal_name || 'SIN NOMBRE');
+            const efvo = Number(t.final_count_cash) || 0;
+            const zoco = Number(t.zoco_digital) || 0;
+            const retiro = Number(t.cash_withdrawals) || 0;
+
+            return `
+              <div class="box-soft mb-2">
+                <div class="toolbar toolbar--tight">
+                  <span class="row-title">${termName}</span>
+                  <span class="tag tag-green">RECIBIDO</span>
                 </div>
-                <div style="font-size:12px; color:var(--text-secondary);">
-                  ${w.description}
+
+                <div class="summary-row">
+                  <div class="summary-card border-fiscal">
+                    <div class="summary-label">EFECTIVO</div>
+                    <div class="summary-value">${formatCurrency(efvo)}</div>
+                  </div>
+                  <div class="summary-card border-digital">
+                    <div class="summary-label">ZOCO</div>
+                    <div class="summary-value">${formatCurrency(zoco)}</div>
+                  </div>
+                  <div class="summary-card border-internal">
+                    <div class="summary-label">RETIROS</div>
+                    <div class="summary-value">${formatCurrency(retiro)}</div>
+                  </div>
                 </div>
               </div>
-              ${statusBadge}
-            </div>`;
-        })
-        .join('');
-    }
-
-    // === 3. STOCK LIBRERÍA ===
-    async function loadSupplies() {
-      const { data } = await client
-        .from('inventory_skus')
-        .select('*')
-        .in('category', ['LIBRERIA', 'OFICINA', 'INSUMOS_CAJA'])
-        .eq('is_active', true)
-        .order('name');
-      
-      supplies = data || [];
-      const container = document.getElementById('suppliesList');
-      
-      if (supplies.length === 0) {
-        container.innerHTML =
-          '<div style="padding:30px; text-align:center; color:var(--text-secondary);">No hay artículos configurados.</div>';
-        return;
-      }
-
-      container.innerHTML = supplies
-        .map(s => `
-          <div class="staff-lib-row">
-            <div style="flex:1;">
-              <div class="row-title" style="font-size:14px;">${s.name}</div>
-              <div class="row-sub-text">Actual: ${s.stock_current}</div>
-            </div>
-            <input
-              type="number"
-              id="stk_${s.id}"
-              class="input-stock"
-              placeholder="${s.stock_current}"
-            />
-          </div>
-        `)
-        .join('');
-    }
-
-    async function saveStock() {
-      let updates = [];
-      for (const s of supplies) {
-        const inp = document.getElementById(`stk_${s.id}`);
-        if (inp && inp.value !== '') {
-          updates.push(
-            client
-              .from('inventory_skus')
-              .update({ stock_current: parseFloat(inp.value) })
-              .eq('id', s.id)
-          );
+            `;
+          }).join('');
+        } catch (err) {
+          console.error('Error al cargar cierres', err);
+          closingsList.innerHTML =
+            '<div class="box-soft text-center"><div class="row-sub-text">No se pudo cargar la información para esa fecha.</div></div>';
         }
       }
-      if (updates.length === 0) return alert('No ingresaste cambios.');
-      await Promise.all(updates);
-      alert('Stock actualizado.');
-      loadSupplies();
-    }
 
-    function openRequestModal() {
-      document.getElementById('reqModal').style.display = 'flex';
-      document.getElementById('reqDetail').value = '';
-    }
+      // ===== 2) RETIROS =====
+      async function createWithdrawal() {
+        setStatus(withdrawalStatus, '', '');
 
-    async function sendRequest() {
-      const desc = document.getElementById('reqDetail').value;
-      if (!desc) return;
-      await client.from('incident_reports').insert({
-        reporter_id: currentUser.id,
-        area: 'CAJA',
-        type: 'PEDIDO',
-        description: desc,
-        severity: 'BAJA',
-        status: 'open'
-      });
-      document.getElementById('reqModal').style.display = 'none';
-      alert('Pedido enviado.');
-    }
+        const term = (wTerm.value || '').trim();
+        const amount = Number(wAmount.value) || 0;
+        const desc = (wDesc.value || '').trim();
 
-    // === 4. NOVEDADES ===
-    async function sendIncident() {
-      const type = document.getElementById('incType').value;
-      const desc = document.getElementById('incDesc').value;
-      if (!desc) return alert('Detalle requerido.');
+        if (!term) return setStatus(withdrawalStatus, 'Seleccioná una caja.', 'bad');
+        if (!amount || amount <= 0) return setStatus(withdrawalStatus, 'Ingresá un monto válido.', 'bad');
+        if (!desc) return setStatus(withdrawalStatus, 'Escribí motivo/destino.', 'bad');
 
-      const { error } = await client.from('incident_reports').insert({
-        reporter_id: currentUser.id,
-        area: 'CAJA',
-        type: type,
-        description: desc,
-        severity: 'MEDIA',
-        status: 'open'
-      });
+        const date = todayLocalYYYYMMDD();
 
-      if (error) alert(error.message);
-      else {
-        alert('Novedad registrada.');
-        document.getElementById('incDesc').value = '';
-        loadHistory();
-      }
-    }
+        btnCreateWithdrawal.disabled = true;
+        btnCreateWithdrawal.textContent = 'ENVIANDO...';
 
-    async function loadHistory() {
-      const { data } = await client
-        .from('incident_reports')
-        .select('*')
-        .eq('area', 'CAJA')
-        .order('created_at', { ascending: false })
-        .limit(10);
+        try {
+          const { error } = await supa.from('cash_movements').insert({
+            requested_by: currentUser && currentUser.id ? currentUser.id : null,
+            terminal_name: term,
+            amount: amount,
+            description: desc,
+            event_date: date,
+            status: 'PENDING'
+          });
 
-      const c = document.getElementById('incHistory');
-      
-      if (!data || !data.length) {
-        c.innerHTML =
-          '<div style="text-align:center; padding:20px; color:var(--text-secondary);">Sin reportes.</div>';
-        return;
+          if (error) throw error;
+
+          wAmount.value = '';
+          wDesc.value = '';
+          setStatus(withdrawalStatus, 'Solicitud enviada a la caja.', 'ok');
+          await loadWithdrawals();
+        } catch (err) {
+          console.error('Error creando retiro', err);
+          setStatus(withdrawalStatus, 'No se pudo crear la solicitud.', 'bad');
+        } finally {
+          btnCreateWithdrawal.disabled = false;
+          btnCreateWithdrawal.textContent = 'GENERAR ORDEN DE RETIRO 🚀';
+        }
       }
 
-      c.innerHTML = data
-        .map(i => `
-          <div class="list-row" style="padding:10px 0; border-bottom:1px solid var(--border-subtle);">
-            <div>
-              <div class="row-title">${i.type}</div>
-              <div class="row-sub-text">${i.description}</div>
-            </div>
-            <div style="font-size:10px; color:var(--text-tertiary);">
-              ${new Date(i.created_at).toLocaleDateString()}
-            </div>
-          </div>
-        `)
-        .join('');
-    }
+      async function loadWithdrawals() {
+        setStatus(withdrawalStatus, '', '');
+        const date = todayLocalYYYYMMDD();
+
+        withdrawalList.innerHTML = '<div class="box-soft text-center"><div class="row-sub-text">Cargando movimientos...</div></div>';
+
+        try {
+          const { data, error } = await supa
+            .from('cash_movements')
+            .select('id, terminal_name, amount, description, status, created_at')
+            .eq('event_date', date)
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          const list = Array.isArray(data) ? data : [];
+          if (!list.length) {
+            withdrawalList.innerHTML = '<div class="box-soft text-center"><div class="row-sub-text">Sin movimientos hoy.</div></div>';
+            return;
+          }
+
+          withdrawalList.innerHTML = list.map(w => {
+            const muted = w.status === 'CONFIRMED' ? 'is-muted' : '';
+            const badge = w.status === 'CONFIRMED'
+              ? '<span class="tag tag-green">ENTREGADO</span>'
+              : '<span class="tag tag-gray">PENDIENTE</span>';
+
+            return `
+              <div class="box-soft mb-2 ${muted}">
+                <div class="toolbar toolbar--tight">
+                  <div>
+                    <div class="row-title">${escapeHtml(w.terminal_name || 'SIN NOMBRE')}: ${formatCurrency(w.amount)}</div>
+                    <div class="row-sub-text">${escapeHtml(w.description || '')}</div>
+                  </div>
+                  ${badge}
+                </div>
+              </div>
+            `;
+          }).join('');
+        } catch (err) {
+          console.error('Error cargando retiros', err);
+          withdrawalList.innerHTML =
+            '<div class="box-soft text-center"><div class="row-sub-text">No se pudieron cargar los movimientos.</div></div>';
+        }
+      }
+
+      // ===== 3) STOCK / LIBRERÍA =====
+      async function loadSupplies() {
+        setStatus(stockStatus, '', '');
+        suppliesList.innerHTML = '<div class="box-soft text-center"><div class="row-sub-text">Cargando insumos...</div></div>';
+
+        try {
+          // 1) SKUs
+          const { data: skuRows, error: skuError } = await supa
+            .from('inventory_skus')
+            .select('id, name, category')
+            .in('category', ['LIBRERIA', 'OFICINA', 'INSUMOS_CAJA'])
+            .eq('is_active', true)
+            .order('name', { ascending: true });
+
+          if (skuError) throw skuError;
+
+          const skus = Array.isArray(skuRows) ? skuRows : [];
+          if (!skus.length) {
+            supplies = [];
+            suppliesList.innerHTML = '<div class="box-soft text-center"><div class="row-sub-text">No hay artículos configurados.</div></div>';
+            return;
+          }
+
+          // 2) Stock actual desde inventory_stock (si existe)
+          const ids = skus.map(s => s.id).filter(Boolean);
+          let stockMap = new Map();
+
+          if (ids.length) {
+            const { data: stRows, error: stError } = await supa
+              .from('inventory_stock')
+              .select('sku_id, stock_current')
+              .in('sku_id', ids);
+
+            if (!stError && Array.isArray(stRows)) {
+              stRows.forEach(r => {
+                if (!r || !r.sku_id) return;
+                stockMap.set(r.sku_id, Number(r.stock_current) || 0);
+              });
+            }
+          }
+
+          supplies = skus.map(s => ({
+            id: s.id,
+            name: s.name,
+            category: s.category,
+            current_stock: stockMap.get(s.id) ?? 0
+          }));
+
+          suppliesList.innerHTML = supplies.map(s => {
+            const id = Number(s.id);
+            return `
+              <div class="staff-lib-row">
+                <div style="flex:1;">
+                  <div class="row-title">${escapeHtml(s.name || 'SIN NOMBRE')}</div>
+                  <div class="row-sub-text">Actual: ${escapeHtml(String(s.current_stock))}</div>
+                </div>
+                <input
+                  type="number"
+                  id="stk_${id}"
+                  class="input-stock"
+                  placeholder="${escapeHtml(String(s.current_stock))}"
+                  inputmode="numeric"
+                />
+              </div>
+            `;
+          }).join('');
+        } catch (err) {
+          console.error('Error cargando insumos', err);
+          supplies = [];
+          suppliesList.innerHTML =
+            '<div class="box-soft text-center"><div class="row-sub-text">No se pudo cargar librería.</div></div>';
+        }
+      }
+
+      async function saveStock() {
+        setStatus(stockStatus, '', '');
+
+        if (!supplies.length) return setStatus(stockStatus, 'No hay insumos para guardar.', 'bad');
+
+        const updates = [];
+        for (const s of supplies) {
+          const inp = document.getElementById(`stk_${Number(s.id)}`);
+          if (!inp) continue;
+          if (inp.value === '') continue;
+
+          const val = Number(inp.value);
+          if (!Number.isFinite(val) || val < 0) continue;
+
+          updates.push(
+            supa
+              .from('inventory_stock')
+              .upsert({ sku_id: s.id, stock_current: val }, { onConflict: 'sku_id' })
+          );
+        }
+
+        if (!updates.length) return setStatus(stockStatus, 'No ingresaste cambios.', 'bad');
+
+        btnSaveStock.disabled = true;
+        btnSaveStock.textContent = 'GUARDANDO...';
+
+        try {
+          const results = await Promise.all(updates);
+          const anyErr = results.find(r => r && r.error);
+          if (anyErr) throw anyErr.error;
+
+          setStatus(stockStatus, 'Stock actualizado.', 'ok');
+          await loadSupplies();
+        } catch (err) {
+          console.error('Error guardando stock', err);
+          setStatus(stockStatus, 'No se pudo guardar el stock.', 'bad');
+        } finally {
+          btnSaveStock.disabled = false;
+          btnSaveStock.textContent = 'GUARDAR CONTEO ✅';
+        }
+      }
+
+      // ===== Modal Pedido a Compras =====
+      function openRequestModal() {
+        reqStatus.innerHTML = '';
+        reqDetail.value = '';
+        reqModal.style.display = 'flex';
+        reqDetail.focus();
+      }
+
+      function closeRequestModal() {
+        reqModal.style.display = 'none';
+      }
+
+      async function sendRequest() {
+        setStatus(reqStatus, '', '');
+        const desc = (reqDetail.value || '').trim();
+        if (!desc) return setStatus(reqStatus, 'Escribí el detalle.', 'bad');
+
+        btnSendReq.disabled = true;
+        btnSendReq.textContent = 'ENVIANDO...';
+
+        try {
+          const { error } = await supa.from('incident_reports').insert({
+            reporter_id: currentUser && currentUser.id ? currentUser.id : null,
+            area: 'CAJA',
+            type: 'PEDIDO_LIBRERIA',
+            description: desc,
+            severity: 'BAJA',
+            status: 'open'
+          });
+
+          if (error) throw error;
+
+          setStatus(reqStatus, 'Pedido enviado.', 'ok');
+          setTimeout(closeRequestModal, 450);
+        } catch (err) {
+          console.error('Error enviando pedido', err);
+          setStatus(reqStatus, 'No se pudo enviar el pedido.', 'bad');
+        } finally {
+          btnSendReq.disabled = false;
+          btnSendReq.textContent = 'ENVIAR PEDIDO';
+        }
+      }
+
+      // ===== 4) INCIDENTES =====
+      async function sendIncident() {
+        setStatus(incStatus, '', '');
+        const type = incType.value;
+        const desc = (incDesc.value || '').trim();
+        if (!desc) return setStatus(incStatus, 'Detalle requerido.', 'bad');
+
+        btnSendIncident.disabled = true;
+        btnSendIncident.textContent = 'ENVIANDO...';
+
+        try {
+          const { error } = await supa.from('incident_reports').insert({
+            reporter_id: currentUser && currentUser.id ? currentUser.id : null,
+            area: 'CAJA',
+            type: type,
+            description: desc,
+            severity: 'MEDIA',
+            status: 'open'
+          });
+
+          if (error) throw error;
+
+          incDesc.value = '';
+          setStatus(incStatus, 'Novedad registrada.', 'ok');
+          await loadHistory();
+        } catch (err) {
+          console.error('Error registrando incidente', err);
+          setStatus(incStatus, 'No se pudo registrar.', 'bad');
+        } finally {
+          btnSendIncident.disabled = false;
+          btnSendIncident.textContent = 'REGISTRAR INCIDENTE';
+        }
+      }
+
+      async function loadHistory() {
+        setStatus(incStatus, '', '');
+        incHistory.innerHTML = '<div class="box-soft text-center"><div class="row-sub-text">Cargando reportes...</div></div>';
+
+        try {
+          const { data, error } = await supa
+            .from('incident_reports')
+            .select('id, type, description, created_at, status, severity')
+            .eq('area', 'CAJA')
+            .order('created_at', { ascending: false })
+            .limit(12);
+
+          if (error) throw error;
+
+          const list = Array.isArray(data) ? data : [];
+          if (!list.length) {
+            incHistory.innerHTML = '<div class="box-soft text-center"><div class="row-sub-text">Sin reportes.</div></div>';
+            return;
+          }
+
+          incHistory.innerHTML = list.map(i => {
+            const dt = i.created_at ? new Date(i.created_at) : null;
+            const when = dt ? dt.toLocaleDateString('es-AR') : '';
+            const badge = i.status === 'closed'
+              ? '<span class="tag tag-green">CERRADO</span>'
+              : '<span class="tag tag-gray">ABIERTO</span>';
+
+            return `
+              <div class="box-soft mb-2">
+                <div class="toolbar toolbar--tight">
+                  <div>
+                    <div class="row-title">${escapeHtml(i.type || 'INCIDENTE')}</div>
+                    <div class="row-sub-text">${escapeHtml(i.description || '')}</div>
+                  </div>
+                  <div style="text-align:right;">
+                    ${badge}
+                    <div class="row-sub-text">${escapeHtml(when)}</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } catch (err) {
+          console.error('Error cargando historial', err);
+          incHistory.innerHTML = '<div class="box-soft text-center"><div class="row-sub-text">No se pudo cargar el historial.</div></div>';
+        }
+      }
+
+      // ===== Init =====
+      document.addEventListener('DOMContentLoaded', async () => {
+        if (!loadSession()) return;
+
+        // defaults
+        filterDate.value = todayLocalYYYYMMDD();
+
+        // header actions
+        btnBack.addEventListener('click', () => {
+          // Ajustá si tenés un index específico de encargado
+          window.location.href = 'staff-index.html';
+        });
+
+        btnLogout.addEventListener('click', () => {
+          localStorage.removeItem('mc_user');
+          window.location.href = 'index.html';
+        });
+
+        // tabs
+        bindTabs();
+
+        // closings
+        btnReloadClosings.addEventListener('click', loadClosings);
+        filterDate.addEventListener('change', loadClosings);
+
+        // withdrawals
+        btnCreateWithdrawal.addEventListener('click', createWithdrawal);
+
+        // stock
+        btnSaveStock.addEventListener('click', saveStock);
+        btnOpenRequestModal.addEventListener('click', openRequestModal);
+
+        // incidents
+        btnSendIncident.addEventListener('click', sendIncident);
+
+        // request modal events
+        btnCloseReq.addEventListener('click', closeRequestModal);
+        btnCloseReqX.addEventListener('click', closeRequestModal);
+        reqModal.addEventListener('click', (ev) => {
+          if (ev.target === reqModal) closeRequestModal();
+        });
+        btnSendReq.addEventListener('click', sendRequest);
+
+        // preload terminals for withdrawals + monitor missing
+        await loadTerminals();
+
+        // initial view
+        showView('validar');
+      });
+    })();
   </script>
 </body>
 </html>

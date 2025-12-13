@@ -4,89 +4,106 @@
   <meta charset="UTF-8" />
   <title>MIDNIGHT ERP · Operativo Evento</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <link rel="stylesheet" href="admin-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* Mínimo, solo para completar lo que tu CSS no trae (sin “pesar” admin-styles) */
+    .evento-main{ display:flex; flex-direction:column; gap:16px; min-width:0; }
+    .evento-card-header{
+      display:flex; justify-content:space-between; align-items:flex-start;
+      gap:12px; flex-wrap:wrap;
+      margin-bottom:14px; padding-bottom:10px;
+      border-bottom:1px solid var(--border-subtle);
+    }
+    .evento-card-header-actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .evento-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; }
+    .plan-total{
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      padding:12px; border:1px solid var(--border-subtle);
+      border-radius:var(--radius-md);
+      background:rgba(0,0,0,0.25);
+      margin-top:12px;
+    }
+    .plan-total .value{ font-family:var(--font-display); font-size:20px; font-weight:900; }
+    .role-controls{ display:flex; align-items:center; gap:6px; }
+    .role-controls .input-stock{ width:76px; }
+    .role-controls .btn-icon{ width:32px; height:32px; border-radius:12px; }
+    .link-soft{ color:var(--text-secondary); font-size:12px; }
+    .link-soft:hover{ color:#fff; }
+    .inline-status{ margin-left:6px; }
+    .stack-8{ display:flex; flex-direction:column; gap:8px; }
+    .divider-soft{ height:1px; background:var(--border-subtle); margin:12px 0; }
+  </style>
 </head>
+
 <body>
   <!-- HEADER -->
   <header class="admin-header">
     <div class="admin-header-inner">
       <div class="admin-header-top">
         <div>
-          <button class="btn-back" onclick="window.location.href='operativo-index.html'">
-            Volver
-          </button>
+          <button class="btn-back" type="button" onclick="window.location.href='operativo-index.html'">Volver</button>
         </div>
+
         <div class="admin-logo" aria-hidden="true"></div>
+
         <div class="admin-header-right">
           <span class="session-chip">Operativo · Evento</span>
+          <button id="btnLogout" class="btn-logout" type="button">Salir</button>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- CONTENIDO PRINCIPAL -->
   <main class="admin-container">
     <section class="section-header">
       <h1 class="section-title">Operativo · Evento</h1>
-      <p class="section-desc">
-        Definí la fecha operativa y convocá personal. Un evento por fecha, sin duplicados.
-      </p>
+      <p class="section-desc">Un evento por fecha. Dotación por rol (sin nombres) + checklist de insumos críticos.</p>
+      <div class="section-underline"></div>
     </section>
 
     <section class="evento-layout">
-      <!-- COLUMNA IZQUIERDA: PERSONAL -->
+      <!-- IZQUIERDA: DOTACIÓN (PLAN) -->
       <aside class="evento-sidebar">
-        <div class="modal-header">
+        <div class="staff-lib-header">
+          <div class="row-title">Dotación (plan)</div>
+          <div class="row-sub-text">Cargá cantidades por rol</div>
+        </div>
+
+        <div id="rolesPlanList" class="stack-8"></div>
+
+        <div class="plan-total">
           <div>
-            <div class="modal-title">Personal</div>
-            <div class="modal-subtitle">Biblioteca de staff</div>
+            <div class="summary-label">Total planificado</div>
+            <div class="row-sub-text">Se guarda en el evento</div>
           </div>
+          <div id="planTotal" class="value">0</div>
         </div>
 
-        <!-- Alta rápida de persona -->
-        <div class="mt-2">
-          <label for="newStaffName" class="input-label">Nombre</label>
-          <input
-            id="newStaffName"
-            class="modal-input"
-            type="text"
-            placeholder="Nombre y apellido"
-          />
-        </div>
-        <div class="mt-2">
-          <label for="newStaffRole" class="input-label">Rol</label>
-          <select id="newStaffRole" class="modal-select">
-            <option value="">Seleccionar rol…</option>
-          </select>
-        </div>
-        <div class="mt-2">
-          <button id="btnAddStaff" class="btn-primary" type="button">
-            Agregar
-          </button>
-        </div>
-
-        <!-- Listado de personal -->
-        <div class="staff-lib-header mt-3">
-          <span class="input-label">Lista</span>
-        </div>
-        <div id="staffLibraryList" class="mt-1"></div>
+        <div class="divider-soft"></div>
+        <a class="link-soft" href="encargado-caja.html">→ Encargado Caja (retiros/validación)</a>
+        <div style="height:6px;"></div>
+        <a class="link-soft" href="operativo-stock.html">→ Operativo Stock (detalle completo)</a>
       </aside>
 
-      <!-- COLUMNA DERECHA: CREAR EVENTO + DETALLE -->
+      <!-- DERECHA: EVENTO + INSUMOS -->
       <section class="evento-main">
-        <!-- BLOQUE CREAR EVENTO -->
-        <article class="evento-card" id="eventCreateCard">
+        <!-- EVENTO -->
+        <article class="evento-card" id="eventCard">
           <div class="evento-card-header">
             <div>
-              <div class="input-label">Crear evento</div>
+              <div class="row-title" id="currentEventTitle">Sin evento seleccionado</div>
+              <div class="row-sub-text" id="currentEventSubtitle">Elegí una fecha y abrí o creá el evento.</div>
             </div>
+
             <div class="evento-card-header-actions">
-              <button id="btnCreateEvent" class="btn-secondary" type="button">
-                Abrir / crear
-              </button>
-              <button id="btnLockEvent" class="btn-primary" type="button" disabled>
-                Guardar
-              </button>
+              <span id="currentEventStatusTag" class="tag tag-gray">Sin evento</span>
+              <span id="saveState" class="inline-status">—</span>
+              <button id="btnNew" class="btn-secondary" type="button">Nuevo</button>
+              <button id="btnOpen" class="btn-secondary" type="button">Abrir / crear</button>
+              <button id="btnSave" class="btn-primary" type="button" disabled>Guardar</button>
             </div>
           </div>
 
@@ -95,408 +112,617 @@
               <label for="eventDate" class="input-label">Fecha operativa</label>
               <input id="eventDate" type="date" class="modal-input" />
             </div>
+
             <div>
               <label for="eventLabel" class="input-label">Etiqueta</label>
-              <input
-                id="eventLabel"
-                type="text"
-                class="modal-input"
-                placeholder="Ej: Sábado reggaetón"
-              />
+              <input id="eventLabel" type="text" class="modal-input" placeholder="Ej: Sábado reggaetón" />
             </div>
+
             <div>
               <label for="eventStartTime" class="input-label">Hora inicio</label>
               <input id="eventStartTime" type="time" class="modal-input" />
             </div>
+
             <div>
               <label for="eventEndTime" class="input-label">Hora cierre</label>
               <input id="eventEndTime" type="time" class="modal-input" />
             </div>
           </div>
-        </article>
 
-        <!-- BLOQUE DETALLE DEL EVENTO -->
-        <article class="evento-card" id="eventDetailCard">
-          <div class="evento-card-header">
-            <div>
-              <div class="input-label">Detalle del evento</div>
-              <div id="currentEventTitle" class="row-title">Sin evento seleccionado</div>
-              <div id="currentEventSubtitle" class="row-sub-text">
-                Elegí una fecha y abrí o creá el evento.
-              </div>
-            </div>
-            <div>
-              <span id="currentEventStatusTag" class="tag tag-gray tag-small">
-                Sin evento
-              </span>
-            </div>
-          </div>
-
-          <!-- Resumen simple -->
-          <div class="stock-summary">
-            <div class="summary-card">
-              <div class="summary-row">
-                <span class="text-muted">Fecha</span>
-                <span id="summaryDate">—</span>
-              </div>
-              <div class="summary-row">
-                <span class="text-muted">Horario</span>
-                <span id="summaryTime">—</span>
-              </div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-row">
-                <span class="text-muted">Dotación convocada</span>
-                <span id="summaryStaffCount">0</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tabla de staff convocado -->
           <div class="mt-2">
-            <div class="summary-row mb-1">
-              <span class="text-muted">Personal convocado</span>
-            </div>
-            <div class="table-container">
-              <table class="sku-table">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Rol</th>
-                  </tr>
-                </thead>
-                <tbody id="eventStaffTableBody">
-                  <tr>
-                    <td colspan="2" class="text-muted text-center">
-                      Aún no hay personal convocado.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <label for="eventNotes" class="input-label">Notas operativas</label>
+            <textarea id="eventNotes" class="modal-input" placeholder="Observaciones, pendientes, etc."></textarea>
+          </div>
+
+          <div class="mt-2">
+            <div class="summary-row">
+              <div class="summary-card border-total">
+                <div class="summary-label">Fecha</div>
+                <div id="summaryDate" class="summary-value">—</div>
+              </div>
+              <div class="summary-card border-digital">
+                <div class="summary-label">Horario</div>
+                <div id="summaryTime" class="summary-value">—</div>
+              </div>
+              <div class="summary-card border-internal">
+                <div class="summary-label">Dotación</div>
+                <div id="summaryStaffTotal" class="summary-value">0</div>
+              </div>
             </div>
           </div>
+
+          <div id="toast" class="toast inline-toast"></div>
         </article>
 
-        <!-- BLOQUE INSUMOS CRÍTICOS -->
+        <!-- INSUMOS CRÍTICOS -->
         <article class="evento-card" id="lowStockCard">
           <div class="evento-card-header">
             <div>
-              <div class="input-label">Insumos con stock bajo ideal</div>
-              <div class="row-sub-text">
-                Top 6 insumos más críticos para revisar antes del evento.
-              </div>
+              <div class="row-title">Insumos con stock bajo ideal</div>
+              <div class="row-sub-text">Top 6 más críticos para revisar antes del evento.</div>
             </div>
             <div class="evento-card-header-actions">
-              <button id="btnRefreshLowStock" class="btn-refresh" type="button">
-                Refrescar
-              </button>
+              <button id="btnRefreshLowStock" class="btn-refresh" type="button">Refrescar</button>
             </div>
           </div>
 
-          <div class="mt-1">
-            <div class="table-container">
-              <table class="sku-table">
-                <thead>
-                  <tr>
-                    <th>Insumo / Categoría</th>
-                    <th class="text-center">Stock actual</th>
-                    <th class="text-center">Stock ideal</th>
-                    <th class="text-center">Sugerido</th>
-                    <th class="text-right">Costo estimado</th>
-                    <th class="text-center">Acción</th>
-                  </tr>
-                </thead>
-                <tbody id="lowStockTableBody">
-                  <tr>
-                    <td colspan="6" class="text-muted text-center">
-                      Creá un evento para ver insumos críticos.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <div class="table-container">
+            <table class="sku-table">
+              <thead>
+                <tr>
+                  <th>Insumo / Categoría</th>
+                  <th class="text-center">Actual</th>
+                  <th class="text-center">Ideal</th>
+                  <th class="text-center">Sugerido</th>
+                  <th class="text-right">Costo</th>
+                  <th class="text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="lowStockTableBody">
+                <tr>
+                  <td colspan="6" class="text-muted text-center">Creá un evento para ver insumos críticos.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-            <div class="mt-2 text-right">
-              <a href="operativo-stock.html" class="text-muted">
-                Ver detalle completo en Operativo Stock →
-              </a>
-            </div>
+          <div class="mt-2 text-right">
+            <a href="operativo-stock.html" class="text-muted">Ver detalle completo en Operativo Stock →</a>
           </div>
         </article>
       </section>
     </section>
   </main>
 
-  <!-- SUPABASE + CONFIG -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 
-  <!-- LÓGICA -->
   <script>
-    document.addEventListener('DOMContentLoaded', initOperativoEvento);
+    (function () {
+      'use strict';
 
-    function initOperativoEvento() {
       const supa = window.client;
       if (!supa) {
-        console.error('Supabase client no inicializado.');
         alert('Error de conexión a la base de datos.');
         return;
       }
 
-      // DOM refs
-      const inputNewStaffName = document.getElementById('newStaffName');
-      const selectNewStaffRole = document.getElementById('newStaffRole');
-      const btnAddStaff = document.getElementById('btnAddStaff');
-      const staffLibraryList = document.getElementById('staffLibraryList');
+      // --- DOM ---
+      const btnLogout = document.getElementById('btnLogout');
+      const btnNew = document.getElementById('btnNew');
+      const btnOpen = document.getElementById('btnOpen');
+      const btnSave = document.getElementById('btnSave');
 
-      const inputEventDate = document.getElementById('eventDate');
-      const inputEventLabel = document.getElementById('eventLabel');
-      const inputEventStart = document.getElementById('eventStartTime');
-      const inputEventEnd = document.getElementById('eventEndTime');
-      const btnCreateEvent = document.getElementById('btnCreateEvent');
-      const btnLockEvent = document.getElementById('btnLockEvent');
+      const eventDate = document.getElementById('eventDate');
+      const eventLabel = document.getElementById('eventLabel');
+      const eventStartTime = document.getElementById('eventStartTime');
+      const eventEndTime = document.getElementById('eventEndTime');
+      const eventNotes = document.getElementById('eventNotes');
 
       const currentEventTitle = document.getElementById('currentEventTitle');
       const currentEventSubtitle = document.getElementById('currentEventSubtitle');
       const currentEventStatusTag = document.getElementById('currentEventStatusTag');
+      const saveState = document.getElementById('saveState');
+
       const summaryDate = document.getElementById('summaryDate');
       const summaryTime = document.getElementById('summaryTime');
-      const summaryStaffCount = document.getElementById('summaryStaffCount');
-      const eventStaffTableBody = document.getElementById('eventStaffTableBody');
+      const summaryStaffTotal = document.getElementById('summaryStaffTotal');
+
+      const rolesPlanList = document.getElementById('rolesPlanList');
+      const planTotalEl = document.getElementById('planTotal');
 
       const lowStockTableBody = document.getElementById('lowStockTableBody');
       const btnRefreshLowStock = document.getElementById('btnRefreshLowStock');
 
-      // Estado en memoria
-      let roles = [];
-      let rolesById = {};
-      let profiles = [];
-      let profilesById = {};
-      let currentEvent = null;
-      let eventStaff = [];
-      let lowStockItems = [];
+      const toastEl = document.getElementById('toast');
 
-      // Usuario DEV (para requested_by en stock_requests, si existe)
+      // --- Session ---
       let currentUser = null;
-      const devSession = localStorage.getItem('mc_user');
-      if (devSession) {
-        try {
-          currentUser = JSON.parse(devSession);
-        } catch (e) {
-          console.warn('mc_user inválido en localStorage');
-        }
+      try {
+        const raw = localStorage.getItem('mc_user');
+        if (raw) currentUser = JSON.parse(raw);
+      } catch (_) {}
+
+      btnLogout.addEventListener('click', () => {
+        localStorage.removeItem('mc_user');
+        window.location.href = 'index.html';
+      });
+
+      // --- Utils ---
+      const formatCurrency =
+        window.MC_UTILS && typeof window.MC_UTILS.formatCurrency === 'function'
+          ? window.MC_UTILS.formatCurrency
+          : (amount) =>
+              new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: 'ARS',
+                maximumFractionDigits: 0
+              }).format(Number(amount) || 0);
+
+      function todayLocalYYYYMMDD() {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 10);
       }
 
-      // Helpers de formato
       function formatDateYYYYMMDDToDDMM(dateStr) {
         if (!dateStr) return '—';
-        const parts = dateStr.split('-');
-        if (parts.length !== 3) return dateStr;
-        const [y, m, d] = parts;
-        return d + '/' + m;
+        const p = dateStr.split('-');
+        if (p.length !== 3) return dateStr;
+        return p[2] + '/' + p[1];
       }
 
       function formatTimeHHMM(timeStr) {
         if (!timeStr) return '—';
-        return timeStr.slice(0, 5);
+        return String(timeStr).slice(0, 5);
       }
 
-      const formatCurrency =
-        window.MC_UTILS && typeof window.MC_UTILS.formatCurrency === 'function'
-          ? window.MC_UTILS.formatCurrency
-          : function (amount) {
-              return new Intl.NumberFormat('es-AR', {
-                style: 'currency',
-                currency: 'ARS',
-                maximumFractionDigits: 0
-              }).format(amount || 0);
-            };
+      function showToast(type, msg) {
+        toastEl.className = 'toast ' + (type === 'ok' ? 'ok' : 'warn') + ' inline-toast';
+        toastEl.textContent = msg;
+        window.clearTimeout(showToast._t);
+        showToast._t = window.setTimeout(() => {
+          toastEl.className = 'toast inline-toast';
+          toastEl.textContent = '';
+        }, 3500);
+      }
 
-      function applyEventLockState() {
-        const isLocked = currentEvent && currentEvent.status === 'LOCKED';
+      // --- State ---
+      let roles = [];
+      let currentEvent = null;
+      let dirty = false;
 
-        inputEventDate.disabled = isLocked;
-        inputEventStart.disabled = isLocked;
-        inputEventEnd.disabled = isLocked;
-        inputEventLabel.disabled = isLocked;
+      // planCounts por role_id (string)
+      let planCounts = {};
 
-        btnCreateEvent.disabled = isLocked;
-        btnLockEvent.disabled = !currentEvent || isLocked;
-
+      function setDirty(v) {
+        dirty = !!v;
         if (!currentEvent) {
+          saveState.textContent = '—';
+          return;
+        }
+        saveState.textContent = dirty ? 'EDITANDO' : 'GUARDADO';
+      }
+
+      function getPlanTotal() {
+        return Object.values(planCounts).reduce((sum, n) => sum + (Number(n) || 0), 0);
+      }
+
+      function getPlanPayload() {
+        // guardar solo roles con > 0
+        const out = {};
+        for (const k of Object.keys(planCounts)) {
+          const v = Number(planCounts[k]) || 0;
+          if (v > 0) out[k] = v;
+        }
+        return out;
+      }
+
+      function applyEventUIState() {
+        const hasEvent = !!currentEvent;
+        const status = hasEvent ? (currentEvent.status || 'OPEN') : null;
+
+        // fecha fija desde que hay evento (aunque esté abierto)
+        eventDate.disabled = hasEvent;
+        btnSave.disabled = !hasEvent;
+
+        if (!hasEvent) {
           currentEventStatusTag.textContent = 'Sin evento';
-          currentEventStatusTag.className = 'tag tag-gray tag-small';
-        } else if (isLocked) {
-          currentEventStatusTag.textContent = 'Guardado';
-          currentEventStatusTag.className = 'tag tag-green tag-small';
-        } else {
-          currentEventStatusTag.textContent = 'En edición';
-          currentEventStatusTag.className = 'tag tag-gray tag-small';
-        }
-
-        const btnDeleteEvent = document.getElementById('btnDeleteEvent');
-        if (btnDeleteEvent) {
-          btnDeleteEvent.disabled = isLocked;
-          btnDeleteEvent.classList.toggle('hidden', isLocked);
-        }
-      }
-
-      function renderEventSummary() {
-        if (!currentEvent) {
+          currentEventStatusTag.className = 'tag tag-gray';
           currentEventTitle.textContent = 'Sin evento seleccionado';
           currentEventSubtitle.textContent = 'Elegí una fecha y abrí o creá el evento.';
           summaryDate.textContent = '—';
           summaryTime.textContent = '—';
-          summaryStaffCount.textContent = '0';
-          applyEventLockState();
+          summaryStaffTotal.textContent = '0';
+          saveState.textContent = '—';
           return;
+        }
+
+        if (String(status).toUpperCase() === 'LOCKED') {
+          currentEventStatusTag.textContent = 'Cerrado';
+          currentEventStatusTag.className = 'tag tag-green';
+        } else {
+          currentEventStatusTag.textContent = 'Abierto';
+          currentEventStatusTag.className = 'tag tag-gray';
         }
 
         const dateLabel = formatDateYYYYMMDDToDDMM(currentEvent.operational_date);
-        const timeLabel =
-          formatTimeHHMM(currentEvent.start_time) +
-          ' – ' +
-          formatTimeHHMM(currentEvent.end_time);
+        const timeLabel = formatTimeHHMM(currentEvent.start_time) + ' – ' + formatTimeHHMM(currentEvent.end_time);
 
-        currentEventTitle.textContent = currentEvent.label || dateLabel;
+        currentEventTitle.textContent = (currentEvent.label || dateLabel).toUpperCase();
         currentEventSubtitle.textContent = dateLabel + ' · ' + timeLabel;
+
         summaryDate.textContent = dateLabel;
         summaryTime.textContent = timeLabel;
-        summaryStaffCount.textContent = String(eventStaff.length);
-
-        applyEventLockState();
+        summaryStaffTotal.textContent = String(getPlanTotal());
       }
 
-      function renderEventStaffTable() {
-        eventStaffTableBody.innerHTML = '';
+      function renderRolesPlanner() {
+        rolesPlanList.innerHTML = '';
 
-        if (!currentEvent) {
-          const row = document.createElement('tr');
-          const cell = document.createElement('td');
-          cell.colSpan = 2;
-          cell.className = 'text-muted text-center';
-          cell.textContent = 'Sin evento seleccionado.';
-          row.appendChild(cell);
-          eventStaffTableBody.appendChild(row);
-          return;
-        }
-
-        if (!eventStaff.length) {
-          const row = document.createElement('tr');
-          const cell = document.createElement('td');
-          cell.colSpan = 2;
-          cell.className = 'text-muted text-center';
-          cell.textContent = 'Aún no hay personal convocado.';
-          row.appendChild(cell);
-          eventStaffTableBody.appendChild(row);
-          return;
-        }
-
-        eventStaff.forEach(item => {
-          const profile = profilesById[item.profile_id];
-          const role = rolesById[item.role_id];
-
-          const tr = document.createElement('tr');
-          const tdName = document.createElement('td');
-          const tdRole = document.createElement('td');
-
-          tdName.innerHTML =
-            '<div class="row-title">' +
-            (profile && (profile.full_name || profile.username) || 'Sin nombre') +
-            '</div>';
-
-          tdRole.innerHTML =
-            '<div class="row-sub-text">' +
-            (role && role.role_name || 'Sin rol') +
-            '</div>';
-
-          tr.appendChild(tdName);
-          tr.appendChild(tdRole);
-          eventStaffTableBody.appendChild(tr);
-        });
-      }
-
-      function renderStaffLibrary() {
-        staffLibraryList.innerHTML = '';
-
-        if (!profiles.length) {
+        if (!roles.length) {
           const empty = document.createElement('div');
           empty.className = 'text-muted';
-          empty.textContent = 'Todavía no hay personal cargado.';
-          staffLibraryList.appendChild(empty);
+          empty.textContent = 'No hay roles activos.';
+          rolesPlanList.appendChild(empty);
+          planTotalEl.textContent = '0';
           return;
         }
 
-        profiles.forEach(profile => {
-          const role = rolesById[profile.default_staff_role_id];
+        roles.forEach(r => {
+          const roleId = String(r.id);
+          const count = Number(planCounts[roleId]) || 0;
 
           const row = document.createElement('div');
           row.className = 'staff-lib-row';
+          row.dataset.roleId = roleId;
 
-          const info = document.createElement('div');
-          info.className = 'staff-lib-info';
-          info.innerHTML =
-            '<div class="row-title">' +
-            (profile.full_name || profile.username) +
-            '</div>' +
-            '<div class="row-sub-text">' +
-            (role ? role.role_name : 'Sin rol') +
-            '</div>';
+          const left = document.createElement('div');
+          left.style.flex = '1';
 
-          const controls = document.createElement('div');
-          controls.className = 'staff-lib-controls';
+          left.innerHTML =
+            `<div class="row-title">${r.role_name}</div>` +
+            `<div class="row-sub-text">${r.base_pay ? ('Base: ' + formatCurrency(r.base_pay) + ' / h') : '—'}</div>`;
 
-          const addBtn = document.createElement('button');
-          addBtn.type = 'button';
-          addBtn.className = 'btn-icon';
-          addBtn.textContent = '+';
-          addBtn.title = 'Agregar al evento';
-          addBtn.addEventListener('click', () => handleAddProfileToCurrentEvent(profile));
+          const right = document.createElement('div');
+          right.className = 'role-controls';
 
-          controls.appendChild(addBtn);
+          const btnMinus = document.createElement('button');
+          btnMinus.type = 'button';
+          btnMinus.className = 'btn-icon';
+          btnMinus.textContent = '−';
+          btnMinus.title = 'Restar 1';
 
-          row.appendChild(info);
-          row.appendChild(controls);
-          staffLibraryList.appendChild(row);
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.min = '0';
+          input.step = '1';
+          input.className = 'input-stock';
+          input.value = String(count);
+
+          const btnPlus = document.createElement('button');
+          btnPlus.type = 'button';
+          btnPlus.className = 'btn-icon';
+          btnPlus.textContent = '+';
+          btnPlus.title = 'Sumar 1';
+
+          btnMinus.addEventListener('click', () => {
+            const v = Math.max(0, (Number(input.value) || 0) - 1);
+            input.value = String(v);
+            planCounts[roleId] = v;
+            planTotalEl.textContent = String(getPlanTotal());
+            if (currentEvent) applyEventUIState();
+            setDirty(true);
+          });
+
+          btnPlus.addEventListener('click', () => {
+            const v = (Number(input.value) || 0) + 1;
+            input.value = String(v);
+            planCounts[roleId] = v;
+            planTotalEl.textContent = String(getPlanTotal());
+            if (currentEvent) applyEventUIState();
+            setDirty(true);
+          });
+
+          input.addEventListener('input', () => {
+            const v = Math.max(0, Number(input.value) || 0);
+            planCounts[roleId] = v;
+            planTotalEl.textContent = String(getPlanTotal());
+            if (currentEvent) applyEventUIState();
+            setDirty(true);
+          });
+
+          right.appendChild(btnMinus);
+          right.appendChild(input);
+          right.appendChild(btnPlus);
+
+          row.appendChild(left);
+          row.appendChild(right);
+
+          rolesPlanList.appendChild(row);
         });
+
+        planTotalEl.textContent = String(getPlanTotal());
       }
 
-      function renderLowStockTable() {
+      // --- Data ---
+      async function loadRoles() {
+        const { data, error } = await supa
+          .from('staff_roles')
+          .select('id, role_name, base_pay, is_active')
+          .eq('is_active', true)
+          .order('role_name', { ascending: true });
+
+        if (error) {
+          console.error('Error cargando roles', error);
+          showToast('warn', 'No se pudieron cargar roles.');
+          roles = [];
+        } else {
+          roles = data || [];
+        }
+
+        // inicializar planCounts (manteniendo lo que haya)
+        const next = { ...planCounts };
+        roles.forEach(r => {
+          const k = String(r.id);
+          if (next[k] == null) next[k] = 0;
+        });
+        planCounts = next;
+
+        renderRolesPlanner();
+      }
+
+      function hydratePlanFromEvent(ev) {
+        const raw = ev && ev.staff_plan ? ev.staff_plan : null;
+        const next = {};
+
+        // inicializar con 0
+        roles.forEach(r => next[String(r.id)] = 0);
+
+        if (raw && typeof raw === 'object') {
+          // caso guardado por role_id (recomendado)
+          for (const k of Object.keys(raw)) {
+            if (next[k] != null) next[k] = Number(raw[k]) || 0;
+          }
+        }
+
+        planCounts = next;
+        renderRolesPlanner();
+      }
+
+      async function openOrCreateEvent() {
+        const dateValue = eventDate.value;
+        if (!dateValue) return alert('Elegí una fecha operativa.');
+
+        btnOpen.disabled = true;
+
+        try {
+          const { data: found, error: e1 } = await supa
+            .from('staff_events')
+            .select('*')
+            .eq('operational_date', dateValue)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (e1) throw e1;
+
+          if (found) {
+            currentEvent = found;
+
+            // hidratar formulario
+            eventLabel.value = currentEvent.label || '';
+            eventStartTime.value = currentEvent.start_time ? formatTimeHHMM(currentEvent.start_time) : '';
+            eventEndTime.value = currentEvent.end_time ? formatTimeHHMM(currentEvent.end_time) : '';
+            eventNotes.value = currentEvent.notes || '';
+
+            hydratePlanFromEvent(currentEvent);
+            setDirty(false);
+
+            applyEventUIState();
+            await loadLowStock();
+
+            showToast('ok', 'Evento cargado.');
+            return;
+          }
+
+          // crear base (sin staff_plan por compatibilidad si aún no corriste SQL)
+          const payload = {
+            operational_date: dateValue,
+            label: (eventLabel.value || '').trim() || null,
+            start_time: eventStartTime.value || null,
+            end_time: eventEndTime.value || null,
+            status: 'OPEN'
+          };
+
+          const { data: created, error: e2 } = await supa
+            .from('staff_events')
+            .insert(payload)
+            .select('*')
+            .single();
+
+          if (e2) throw e2;
+
+          currentEvent = created;
+
+          // intentar guardar extras (staff_plan/notes/total) si existen columnas
+          await saveEvent(true);
+
+          applyEventUIState();
+          await loadLowStock();
+
+          showToast('ok', 'Evento creado.');
+        } catch (e) {
+          console.error('openOrCreateEvent error', e);
+          alert(e && e.message ? e.message : 'No se pudo abrir/crear el evento.');
+        } finally {
+          btnOpen.disabled = false;
+        }
+      }
+
+      async function saveEvent(silent) {
+        if (!currentEvent) return;
+
+        const payload = {
+          label: (eventLabel.value || '').trim() || null,
+          start_time: eventStartTime.value || null,
+          end_time: eventEndTime.value || null,
+          staff_plan: getPlanPayload(),
+          staff_total: getPlanTotal(),
+          notes: (eventNotes.value || '').trim() || null
+        };
+
+        btnSave.disabled = true;
+
+        try {
+          const { data, error } = await supa
+            .from('staff_events')
+            .update(payload)
+            .eq('id', currentEvent.id)
+            .select('*')
+            .single();
+
+          if (error) {
+            // si todavía no corriste el SQL de columnas, cae acá
+            const msg = String(error.message || '');
+            if (msg.toLowerCase().includes('staff_plan') || msg.toLowerCase().includes('staff_total') || msg.toLowerCase().includes('notes')) {
+              if (!silent) {
+                showToast('warn', 'Faltan columnas (staff_plan/staff_total/notes). Corré el SQL que te pasé.');
+              }
+              // igual guardamos lo “base” sin romper: reintento sin extras
+              const basePayload = {
+                label: payload.label,
+                start_time: payload.start_time,
+                end_time: payload.end_time
+              };
+              const { data: d2, error: e2 } = await supa
+                .from('staff_events')
+                .update(basePayload)
+                .eq('id', currentEvent.id)
+                .select('*')
+                .single();
+              if (e2) throw e2;
+              currentEvent = d2;
+            } else {
+              throw error;
+            }
+          } else {
+            currentEvent = data;
+          }
+
+          setDirty(false);
+          applyEventUIState();
+          if (!silent) showToast('ok', 'Guardado.');
+        } catch (e) {
+          console.error('saveEvent error', e);
+          alert(e && e.message ? e.message : 'No se pudo guardar.');
+        } finally {
+          btnSave.disabled = false;
+        }
+      }
+
+      function resetToNew() {
+        currentEvent = null;
+        eventDate.disabled = false;
+
+        eventDate.value = todayLocalYYYYMMDD();
+        eventLabel.value = '';
+        eventStartTime.value = '';
+        eventEndTime.value = '';
+        eventNotes.value = '';
+
+        // reset plan
+        const next = {};
+        roles.forEach(r => next[String(r.id)] = 0);
+        planCounts = next;
+
+        renderRolesPlanner();
+        applyEventUIState();
+
+        lowStockTableBody.innerHTML =
+          '<tr><td colspan="6" class="text-muted text-center">Creá un evento para ver insumos críticos.</td></tr>';
+      }
+
+      async function loadLowStock() {
+        // si no hay evento, solo render placeholder
+        if (!currentEvent) {
+          lowStockTableBody.innerHTML =
+            '<tr><td colspan="6" class="text-muted text-center">Creá un evento para ver insumos críticos.</td></tr>';
+          return;
+        }
+
+        try {
+          const { data, error } = await supa
+            .from('inventory_stock')
+            .select(`
+              sku_id,
+              stock_current,
+              stock_ideal,
+              inventory_skus (
+                id,
+                name,
+                category,
+                unit_type,
+                cost_price,
+                is_active
+              )
+            `);
+
+          if (error) throw error;
+
+          const raw = (data || []).filter(x => x.inventory_skus && x.inventory_skus.is_active);
+
+          const mapped = raw
+            .map(item => {
+              const sku = item.inventory_skus;
+              const stockCurrent = Number(item.stock_current) || 0;
+              const stockIdeal = item.stock_ideal != null ? Number(item.stock_ideal) : null;
+              if (stockIdeal == null) return null;
+              if (stockIdeal <= 0) return null;
+              if (stockCurrent >= stockIdeal) return null;
+
+              const suggested = Math.max(0, stockIdeal - stockCurrent);
+              const costPrice = Number(sku.cost_price) || 0;
+
+              return {
+                sku_id: item.sku_id,
+                name: sku.name,
+                category: sku.category,
+                unit_type: sku.unit_type,
+                stock_current: stockCurrent,
+                stock_ideal: stockIdeal,
+                suggested_qty: suggested,
+                estimated_cost: suggested * costPrice
+              };
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.suggested_qty - a.suggested_qty)
+            .slice(0, 6);
+
+          renderLowStock(mapped);
+        } catch (e) {
+          console.error('loadLowStock error', e);
+          lowStockTableBody.innerHTML =
+            '<tr><td colspan="6" class="text-muted text-center">No se pudo cargar stock crítico.</td></tr>';
+        }
+      }
+
+      function renderLowStock(items) {
         lowStockTableBody.innerHTML = '';
 
-        if (!currentEvent) {
-          const row = document.createElement('tr');
-          const cell = document.createElement('td');
-          cell.colSpan = 6;
-          cell.className = 'text-muted text-center';
-          cell.textContent = 'Creá un evento para ver insumos críticos.';
-          row.appendChild(cell);
-          lowStockTableBody.appendChild(row);
+        if (!items || !items.length) {
+          lowStockTableBody.innerHTML =
+            '<tr><td colspan="6" class="text-muted text-center">No hay insumos por debajo del ideal.</td></tr>';
           return;
         }
 
-        if (!lowStockItems.length) {
-          const row = document.createElement('tr');
-          const cell = document.createElement('td');
-          cell.colSpan = 6;
-          cell.className = 'text-muted text-center';
-          cell.textContent = 'No hay insumos por debajo del stock ideal.';
-          row.appendChild(cell);
-          lowStockTableBody.appendChild(row);
-          return;
-        }
-
-        lowStockItems.forEach(item => {
+        items.forEach(item => {
           const tr = document.createElement('tr');
 
           const tdName = document.createElement('td');
           tdName.innerHTML =
-            '<div class="row-title">' +
-            item.name +
-            '</div>' +
-            '<div class="row-sub-text"><span class="tag tag-gray">' +
-            (item.category || 'GRAL') +
-            '</span></div>';
+            '<div class="row-title">' + item.name + '</div>' +
+            '<div class="row-sub-text"><span class="tag tag-gray">' + (item.category || 'GRAL') + '</span></div>';
 
           const tdCurrent = document.createElement('td');
           tdCurrent.className = 'text-center';
@@ -504,7 +730,7 @@
 
           const tdIdeal = document.createElement('td');
           tdIdeal.className = 'text-center text-muted';
-          tdIdeal.textContent = item.stock_ideal ?? '—';
+          tdIdeal.textContent = item.stock_ideal;
 
           const tdSuggested = document.createElement('td');
           tdSuggested.className = 'text-center';
@@ -536,350 +762,15 @@
         });
       }
 
-      async function loadRoles() {
-        const { data, error } = await supa
-          .from('staff_roles')
-          .select('id, role_name, base_pay, is_active')
-          .eq('is_active', true)
-          .order('role_name', { ascending: true });
-
-        if (error) {
-          console.error('Error cargando roles', error);
-          return;
-        }
-
-        roles = data || [];
-        rolesById = {};
-        roles.forEach(r => {
-          rolesById[r.id] = r;
-        });
-
-        selectNewStaffRole.innerHTML = '<option value="">Seleccionar rol…</option>';
-        roles.forEach(r => {
-          const opt = document.createElement('option');
-          opt.value = r.id;
-          opt.textContent = r.role_name;
-          selectNewStaffRole.appendChild(opt);
-        });
-      }
-
-      async function loadProfiles() {
-        const { data, error } = await supa
-          .from('profiles')
-          .select('id, username, full_name, default_staff_role_id')
-          .order('full_name', { ascending: true });
-
-        if (error) {
-          console.error('Error cargando profiles', error);
-          return;
-        }
-
-        profiles = data || [];
-        profilesById = {};
-        profiles.forEach(p => {
-          profilesById[p.id] = p;
-        });
-
-        renderStaffLibrary();
-      }
-
-      async function loadEventStaff() {
-        if (!currentEvent) {
-          eventStaff = [];
-          renderEventStaffTable();
-          renderEventSummary();
-          return;
-        }
-
-        const { data, error } = await supa
-          .from('staff_event_staff')
-          .select('id, event_id, profile_id, role_id, hourly_rate, estimated_hours')
-          .eq('event_id', currentEvent.id)
-          .order('created_at', { ascending: true });
-
-        if (error) {
-          console.error('Error cargando staff del evento', error);
-          eventStaff = [];
-        } else {
-          eventStaff = data || [];
-        }
-
-        renderEventStaffTable();
-        renderEventSummary();
-      }
-
-      async function loadLowStock() {
-        try {
-          const { data, error } = await supa
-            .from('inventory_stock')
-            .select(`
-              sku_id,
-              stock_current,
-              stock_ideal,
-              inventory_skus (
-                id,
-                name,
-                category,
-                unit_type,
-                cost_price,
-                is_active
-              )
-            `)
-            .eq('inventory_skus.is_active', true);
-
-          if (error) {
-            console.error('Error cargando insumos críticos', error);
-            lowStockItems = [];
-            renderLowStockTable();
-            return;
-          }
-
-          const raw = (data || []).filter(item => item.inventory_skus);
-
-          const mapped = raw
-            .map(item => {
-              const sku = item.inventory_skus;
-              const stockCurrent = Number(item.stock_current) || 0;
-              const stockIdeal = item.stock_ideal != null ? Number(item.stock_ideal) : null;
-              if (stockIdeal == null) return null;
-              if (stockCurrent >= stockIdeal) return null;
-
-              const deficit = stockIdeal - stockCurrent;
-              const suggested = deficit > 0 ? deficit : 0;
-              const costPrice = Number(sku.cost_price) || 0;
-              const estimated = suggested * costPrice;
-
-              return {
-                sku_id: item.sku_id,
-                name: sku.name,
-                category: sku.category,
-                unit_type: sku.unit_type,
-                stock_current: stockCurrent,
-                stock_ideal: stockIdeal,
-                suggested_qty: suggested,
-                estimated_cost: estimated
-              };
-            })
-            .filter(Boolean);
-
-          mapped.sort((a, b) => b.suggested_qty - a.suggested_qty);
-
-          lowStockItems = mapped.slice(0, 6);
-
-          renderLowStockTable();
-        } catch (e) {
-          console.error('Error general al cargar insumos críticos', e);
-          lowStockItems = [];
-          renderLowStockTable();
-        }
-      }
-
-      async function handleAddStaff() {
-        const name = (inputNewStaffName.value || '').trim();
-        const roleId = selectNewStaffRole.value ? Number(selectNewStaffRole.value) : null;
-
-        if (!name) {
-          alert('Escribí un nombre.');
-          return;
-        }
-        if (!roleId) {
-          alert('Elegí un rol.');
-          return;
-        }
-
-        const baseUsername = name
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '_')
-          .replace(/^_+|_+$/g, '');
-        const randomSuffix = Math.floor(Math.random() * 9000 + 1000);
-        const username = (baseUsername || 'staff') + '_' + randomSuffix;
-
-        const { data, error } = await supa
-          .from('profiles')
-          .insert({
-            username,
-            full_name: name,
-            default_staff_role_id: roleId
-          })
-          .select('id, username, full_name, default_staff_role_id')
-          .single();
-
-        if (error) {
-          console.error('Error creando perfil', error);
-          alert('No se pudo crear la persona.');
-          return;
-        }
-
-        profiles.push(data);
-        profilesById[data.id] = data;
-        inputNewStaffName.value = '';
-        selectNewStaffRole.value = '';
-
-        renderStaffLibrary();
-      }
-
-      async function handleAddProfileToCurrentEvent(profile) {
-        if (!currentEvent) {
-          alert('Primero creá o abrí un evento.');
-          return;
-        }
-
-        const role = rolesById[profile.default_staff_role_id];
-        if (!role) {
-          alert('Esta persona no tiene rol asignado.');
-          return;
-        }
-
-        const already = eventStaff.some(item => item.profile_id === profile.id);
-        if (already) {
-          alert('Esta persona ya está convocada en este evento.');
-          return;
-        }
-
-        const basePay = role.base_pay || 0;
-        const estimatedHours = 1;
-
-        const { error } = await supa.from('staff_event_staff').insert({
-          event_id: currentEvent.id,
-          profile_id: profile.id,
-          role_id: role.id,
-          hourly_rate: basePay,
-          estimated_hours: estimatedHours
-          // estimated_cost la calcula Postgres (columna generada)
-        });
-
-        if (error) {
-          console.error('Error agregando staff al evento', error);
-          alert('No se pudo agregar al evento.');
-          return;
-        }
-
-        await loadEventStaff();
-      }
-
-            async function handleCreateOrOpenEvent() {
-        const dateValue = inputEventDate.value;
-        const startTime = inputEventStart.value;
-        const endTime = inputEventEnd.value;
-        const label = (inputEventLabel.value || '').trim() || null;
-
-        if (!dateValue) {
-          alert('Elegí una fecha operativa.');
-          return;
-        }
-
-        const { data: existing, error: errorSearch } = await supa
-          .from('staff_events')
-          .select('*')
-          .eq('operational_date', dateValue)
-          .order('created_at', { ascending: true })
-          .limit(1);
-
-        if (errorSearch) {
-          console.error('Error buscando evento existente', errorSearch);
-          alert('No se pudo verificar si ya hay un evento para esa fecha.');
-          return;
-        }
-
-        if (existing && existing.length > 0) {
-          currentEvent = existing[0];
-
-          inputEventDate.value = currentEvent.operational_date;
-          inputEventStart.value = formatTimeHHMM(currentEvent.start_time);
-          inputEventEnd.value = formatTimeHHMM(currentEvent.end_time);
-          inputEventLabel.value = currentEvent.label || '';
-
-          await loadEventStaff();
-          alert('Ya existe un evento para esa fecha. Se cargó el existente.');
-          btnLockEvent.disabled = currentEvent.status === 'LOCKED';
-          renderEventSummary();
-          renderLowStockTable();
-          return;
-        }
-
-        const payload = {
-          operational_date: dateValue,
-          label
-        };
-
-        if (startTime) {
-          payload.start_time = startTime;
-        }
-        if (endTime) {
-          payload.end_time = endTime;
-        }
-
-        const { data: created, error } = await supa
-          .from('staff_events')
-          .insert(payload)
-          .select('*')
-          .single();
-
-        if (error) {
-          console.error('Error creando evento', error);
-          alert('No se pudo crear el evento.');
-          return;
-        }
-
-        currentEvent = created;
-        btnLockEvent.disabled = false;
-
-        await loadEventStaff();
-        renderEventSummary();
-        renderLowStockTable();
-}
-
-      async function handleLockEvent() {
-        if (!currentEvent) {
-          alert('No hay evento para guardar.');
-          return;
-        }
-        if (currentEvent.status === 'LOCKED') {
-          return;
-        }
-
-        const { data, error } = await supa
-          .from('staff_events')
-          .update({ status: 'LOCKED' })
-          .eq('id', currentEvent.id)
-          .select('*')
-          .single();
-
-        if (error) {
-          console.error('Error guardando evento', error);
-          alert('No se pudo guardar el evento.');
-          return;
-        }
-
-        currentEvent = data;
-        renderEventSummary();
-      }
-
       async function handleLowStockRequest(item) {
-        if (!currentEvent) {
-          alert('Primero creá o abrí un evento.');
-          return;
-        }
-
-        if (!item || !item.sku_id || !item.suggested_qty) {
-          alert('Insumo inválido.');
-          return;
-        }
+        if (!currentEvent) return alert('Primero creá o abrí un evento.');
 
         const userId =
           currentUser && currentUser.id && currentUser.id !== 'dev'
             ? currentUser.id
             : null;
 
-        if (
-          !confirm(
-            `Confirmar solicitud de ${item.suggested_qty} ${item.unit_type || ''} de "${item.name}"?`
-          )
-        ) {
-          return;
-        }
+        if (!confirm(`Confirmar solicitud de ${item.suggested_qty} ${item.unit_type || ''} de "${item.name}"?`)) return;
 
         try {
           const { error } = await supa.from('stock_requests').insert({
@@ -891,28 +782,35 @@
 
           if (error) throw error;
 
-          alert('Solicitud registrada y enviada a Administración.');
+          showToast('ok', 'Solicitud registrada.');
           await loadLowStock();
         } catch (e) {
-          console.error('Error al registrar solicitud de insumo crítico', e);
-          alert('No se pudo registrar la solicitud. Intenta nuevamente.');
+          console.error('handleLowStockRequest error', e);
+          alert('No se pudo registrar la solicitud.');
         }
       }
 
-      // Eventos de UI
-      btnAddStaff.addEventListener('click', handleAddStaff);
-      btnCreateEvent.addEventListener('click', handleCreateOrOpenEvent);
-      btnLockEvent.addEventListener('click', handleLockEvent);
+      // --- Listeners: mark dirty ---
+      [eventLabel, eventStartTime, eventEndTime, eventNotes].forEach(el => {
+        el.addEventListener('input', () => {
+          if (!currentEvent) return;
+          setDirty(true);
+        });
+      });
+
+      btnNew.addEventListener('click', resetToNew);
+      btnOpen.addEventListener('click', openOrCreateEvent);
+      btnSave.addEventListener('click', () => saveEvent(false));
       btnRefreshLowStock.addEventListener('click', loadLowStock);
 
-      // Init: cargar roles, perfiles, insumos críticos
+      // --- Bootstrap ---
       (async function bootstrap() {
+        eventDate.value = todayLocalYYYYMMDD();
         await loadRoles();
-        await loadProfiles();
-        await loadLowStock();
-        renderEventSummary();
+        resetToNew(); // deja todo consistente
       })();
-    }
+    })();
   </script>
 </body>
 </html>
+
